@@ -1,0 +1,111 @@
+# Squirrel for Android
+
+An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 phones and x86_64 emulators. No root required.
+
+- Separate Connection, Configuration, and Logs tabs with swipe navigation.
+- Import local files or download remote YAML configs, then edit, validate, save, and export them.
+- TCP/UDP forwarding over IPv4 and IPv6, with ShadowQUIC's outbound protocols and Lua routing.
+- Persistent service and native core logs, a live log viewer, and export. Each log retains a current file and one rotated file at approximately 1 MiB each.
+- The VPN **always excludes its own package** (`dev.squirrel.vpn`) with `VpnService.Builder.addDisallowedApplication()` before establishing the interface. This bypass whitelist covers Rust upstream sockets and the app's DNS/network requests, preventing a routing loop. Failure to add the exclusion fails startup.
+- Foreground notification with a disconnect action; cleanup on disconnect, permission revocation, and core exit.
+
+## Build
+
+Use the pinned Nix development environment on **x86_64 Linux**, following the Android SDK composition used by Homesick. `nix/flake.nix` and `nix/flake.lock` supply JDK 21, Rust with both Android targets, Python, native build tools, Android SDK/build tools 36, NDK **28.2.13676358**, and the emulator with a Google APIs x86_64 system image. A separate Android Studio installation, mutable SDK, or `steam-run` is not required. The composition accepts the Android SDK licenses through Nixpkgs configuration.
+
+Put ShadowQUIC at `../shadowquic`, or set `SHADOWQUIC_DIR` to its workspace root:
+
+```sh
+nix develop ./nix
+# Only needed if the core is not at ../shadowquic:
+export SHADOWQUIC_DIR=/path/to/shadowquic
+./gradlew assembleDebug
+```
+
+For a single command without entering an interactive shell:
+
+```sh
+SHADOWQUIC_DIR=/path/to/shadowquic nix develop ./nix --command ./gradlew assembleDebug
+```
+
+The flake lives in `nix/` so Nix excludes changing build artifacts even in a source archive without Git metadata. Nix pins the development tools; Gradle and Cargo still fetch their locked project dependencies on first use. The shell sets the SDK/NDK/Java paths and overrides Gradle's AAPT2 with the Nix-packaged executable. Update tool inputs deliberately with `(cd nix && nix flake update)`; use `nixfmt nix/flake.nix`, `nix flake check ./nix`, and `shellcheck scripts/*.sh` to check the environment and shell scripts. The Android SDK setup follows the [Nixpkgs Android documentation](https://nixos.org/manual/nixpkgs/unstable/#android).
+
+The installable APK is `app/build/outputs/apk/debug/app-debug.apk`. Gradle builds and packages the actual Rust library for both supported ABIs. To build only one architecture, use `ANDROID_ABIS=arm64-v8a ./gradlew assembleDebug` or `ANDROID_ABIS=x86_64 ./gradlew assembleDebug`. Native ELF segments are aligned for 16 KiB Android pages.
+
+In the current workspace the source checkout is `/home/liu/ws/shadowquic`, so use `SHADOWQUIC_DIR=/home/liu/ws/shadowquic`.
+
+Native builds explicitly load `$SHADOWQUIC_DIR/.cargo/config.toml` (or `../shadowquic/.cargo/config.toml` with the default source location). This preserves upstream target settings, including Android ARM64's `-C default-linker-libraries`. The build appends its 16 KiB page-alignment flag through Cargo configuration array merging. Changes to the upstream config take effect on the next build without copying it into Squirrel. See [Cargo configuration](https://doc.rust-lang.org/cargo/reference/config.html).
+
+The Android TUN changes are applied directly in `/home/liu/ws/shadowquic`. They enable Android TUN and fake-IP restoration, and accept an owned `VpnService` descriptor instead of creating a desktop adapter. `scripts/prepare-core.py` copies the checkout into the ignored `.build/shadowquic/` directory for configurable Cargo path dependencies. It recognizes the applied changes and copies them without applying the patch again. For an unpatched checkout based on ShadowQUIC `8ba1f5c07eca6c46c280e8e9a97a60c5c30f73f9` (0.4.4), it can still apply `patches/android-tun.patch` to the build copy; the preparation script never edits its source checkout. The Rust dependency lockfile is checked in. Incompatible core changes fail patching/building explicitly.
+
+## Use
+
+Start an emulator, install the existing debug APK, and open the app with:
+
+```sh
+./scripts/run-emulator.sh
+# Rebuild after source changes, or run without a window:
+./scripts/run-emulator.sh --build
+./scripts/run-emulator.sh --headless
+# Cold-restart the selected emulator without clearing its saved data:
+./scripts/run-emulator.sh --restart
+# Use a particular AVD:
+./scripts/run-emulator.sh squirrel_api36
+```
+
+The launcher automatically enters `nix develop ./nix`, creates `squirrel_api36` with the packaged API 36 system image if missing, and builds the debug APK if missing. It reuses the selected AVD, reconnects or restarts an offline instance, waits for Android to boot, installs the app, and opens it. A normal invocation reopens a headless instance with a window. VPN consent remains in Android's normal connection dialog.
+
+Software graphics (`-gpu swiftshader`) are the default; use `SQUIRREL_EMULATOR_GPU=host ./scripts/run-emulator.sh --restart` to try host graphics. GUI launches use Qt's X11 backend when `DISPLAY` is available, including XWayland sessions. Emulator data stays under `~/.android/avd` (or `ANDROID_AVD_HOME`). Separate startup and kernel logs are retained in `.build/emulator-logs/`; `.build/run-emulator.log` links to the latest launch. Use `--help` for further overrides.
+
+If the launcher reports interrupted encryption, Android cannot mount the AVD's data partition. Restarting cannot repair that condition. Stop the emulator, move both its `.ini` file and `.avd` directory into a backup directory outside `~/.android/avd`, then rerun the launcher to create a fresh profile. Keep the backup for recovery; the new profile starts with empty app data. The launcher never automatically wipes an AVD.
+
+1. Install the APK and open Squirrel. Tap a tab or swipe horizontally between **Connection**, **Configuration**, and **Logs**.
+2. In **Configuration**, choose **Import file**, **Download URL**, or **Proxy template**. Replace the template's server, credentials, and TLS server name as needed.
+3. For a remote config, paste its HTTP/HTTPS URL and tap **Download**. The app downloads and validates it before replacing the editor contents. A failed download preserves the editor. Tap **Save**, or go to **Connection** and tap **Connect**, to apply it.
+4. **Connect** validates and saves the editor contents, then requests Android VPN consent. Allow notifications to see the disconnect control.
+5. Open **Logs** to view live service/core output or export logs. Set `log-level: debug` or `trace` in the configuration for more detail, then reconnect.
+
+**VPN active** means the local packet engine is running. ShadowQUIC opens remote connections when traffic arrives; authentication or remote availability failures appear in the core log.
+
+The built-in **Direct test** profile exercises the packet engine without a remote server. It forwards directly and does not provide an encrypted remote tunnel. ICMP/ping is not supported by the core's TCP/UDP stack.
+
+## Configuration
+
+See [`examples/shadowquic.yaml`](examples/shadowquic.yaml) and [`examples/direct.yaml`](examples/direct.yaml). Standard ShadowQUIC configs are accepted. If a config has no TUN inbound, Squirrel adds one tagged `squirrel-tun` and preserves the other listeners. If you provide a TUN inbound, its addresses, MTU, session limits, and routing preference are used. Exactly one TUN is supported. The desktop TUN `name` is ignored on Android.
+
+The optional app-specific section controls the DNS addresses advertised to Android:
+
+```yaml
+android:
+  dns-servers: [1.1.1.1, 1.0.0.1]
+```
+
+Both default routes (`0.0.0.0/0`, `::/0`) enter the VPN. DNS packets to these addresses follow the configured outbound/router, just like other UDP/TCP traffic. Defaults are the two addresses above. For local fake-IP DNS, use the core's inline Lua routing to send port 53 traffic to the configured DNS service. Imported `protect-path` values are cleared because UID bypass handles socket protection here.
+
+Local and remote imports must be UTF-8 YAML, at most 1 MiB. URL downloads support up to five redirects, with 10-second connection and 15-second read timeouts. HTTPS uses normal certificate verification; redirects from HTTPS to HTTP are rejected. Downloaded configs enter the editor for review and are saved only by Save or Connect. Unsaved editor text and the selected tab survive activity recreation. Configs are copied into private app storage; future edits to the original file require reimporting. Saving while connected applies on the next connection. Use inline `router.src` for portable imports: the file picker imports only the YAML, not referenced Lua scripts, certificates, or databases. Lua scripts and certificate references must point to readable absolute paths on the Android device. App data backup is disabled. Exported configs contain the credentials you entered; verbose logs can include destination addresses.
+
+When loading the VPN configuration, Squirrel resolves relative `router.database[].path` values under its private files directory: `data/geosite.redb` becomes `<app files>/data/geosite.redb`. Downloaded databases persist there across reconnects. Explicit absolute paths are preserved; relative paths that escape the private directory are rejected. The editor, saved YAML, and exports keep the original portable paths and comments.
+
+Always-on/lockdown VPN is disabled for this version. Android's “Block connections without VPN” policy prevents bypassed apps from using the underlying network and is incompatible with this UID exclusion strategy. Wi-Fi/mobile handovers rely on the core's reconnection behavior; disconnect/reconnect if a session does not recover.
+
+## Verification
+
+```sh
+nix develop ./nix
+python3 scripts/prepare-core.py
+cargo test --manifest-path native/Cargo.toml --locked
+./gradlew assembleDebug assembleDebugAndroidTest lintDebug
+# With an emulator or phone connected:
+./gradlew connectedDebugAndroidTest
+nix flake check ./nix
+shellcheck scripts/*.sh
+python3 scripts/test-run-emulator.py -v
+```
+
+Host tests cover config normalization, private database paths, legacy imports, routing validation, DNS validation, bundled examples, and log rotation. Instrumentation tests load the real JNI library, send a raw UDP packet through a simulated TUN to a local echo server, verify its reply, stop/restart the runtime, check Java descriptor ownership, and reject invalid imports. Database tests load a saved config with relative paths, download Geosite data from a local HTTP server into private storage, reopen it after restart with the source offline, and verify that saved YAML and DNS settings are preserved. UI and download tests cover swipe/tab navigation, draft retention across recreation, redirects, HTTP failures, UTF-8 and size validation, and replacing the editor only after config validation. The tests do not require VPN consent.
+
+Validated locally: both Android ABIs built; Android lint passed; all 10 host tests, 9 API 36 emulator instrumentation tests, and 8 core TUN tests passed (the desktop kernel-adapter test was skipped). A real Android VPN service session also forwarded a TCP HTTP request from the shell UID through the TUN; Android reported the app UID excluded from the VPN ranges. A remote ShadowQUIC server was not supplied, so remote authentication and transport were not tested.
+
+The Nix environment was also used to rebuild both ABIs, run lint and all 9 API 36 instrumentation tests, and verify fresh AVD creation, visible app launch, emulator persistence after the launcher exits, reuse, and a cold restart retaining a file in app-private storage. Launcher regression tests use an isolated fake SDK to check AVD directory matching, offline reconnection/restart, reopening a headless instance, and interrupted-encryption diagnostics without touching real AVDs. Flake formatting and ShellCheck pass.
+
+Android VPN integration follows the [Android VPN guide](https://developer.android.com/develop/connectivity/vpn).

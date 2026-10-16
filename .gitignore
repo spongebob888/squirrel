@@ -1,0 +1,8 @@
+.gradle/
+.build/
+**/build/
+native/target/
+local.properties
+*.iml
+.idea/
+__pycache__/

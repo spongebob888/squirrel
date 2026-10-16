@@ -1,0 +1,11 @@
+<resources>
+    <item name="pages" type="id" />
+    <item name="connection_tab" type="id" />
+    <item name="configuration_tab" type="id" />
+    <item name="logs_tab" type="id" />
+    <item name="config_editor" type="id" />
+    <item name="config_notice" type="id" />
+    <item name="download_config" type="id" />
+    <item name="remote_url" type="id" />
+    <item name="log_text" type="id" />
+</resources>

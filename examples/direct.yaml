@@ -1,0 +1,8 @@
+# Smoke test the local VPN packet stack without a remote proxy.
+# This profile forwards traffic directly; it provides no remote tunnel.
+outbounds:
+  - type: direct
+    tag: direct
+android:
+  dns-servers: [1.1.1.1, 1.0.0.1]
+log-level: debug
