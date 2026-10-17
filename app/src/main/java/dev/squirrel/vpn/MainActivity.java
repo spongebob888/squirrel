@@ -7,7 +7,6 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.net.VpnService;
 import android.os.Build;
@@ -26,7 +25,6 @@ import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 import java.io.InputStream;
@@ -41,8 +39,7 @@ import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
     private static final int IMPORT = 10, EXPORT_LOG = 11, VPN_PERMISSION = 12, EXPORT_CONFIG = 13;
-    private static final int CONNECTION = 0, CONFIGURATION = 1, LOGS = 2, PROXIES = 3, SESSIONS = 4;
-    private static final int GREEN = 0xFFB7E88C, MUTED = 0xFFA9B4A5, WHITE = 0xFFE7EDE2;
+    static final int CONNECTION = 0, PROXIES = 1, CONFIGURATION = 2, LOGS = 3, SESSIONS = 4;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService network = Executors.newSingleThreadExecutor();
@@ -50,10 +47,13 @@ public final class MainActivity extends Activity {
     private final ExecutorService apiActionExecutor = Executors.newSingleThreadExecutor();
     private ConfigDownloader downloader;
     private final AtomicBoolean logRead = new AtomicBoolean(), apiRead = new AtomicBoolean();
-    private TextView status, detail, logs, configNotice, networkStats, proxyNotice, sessionList;
+    private TextView configNotice, brand;
+    private DiagnosticsUi diagnostics;
+    private WorkspaceUi workspace;
+    private LinearLayout root, appHeader;
     private EditText editor;
-    private Button connect, connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton, profileButton;
-    private LinearLayout configActions, configSamples, proxyList, profileActions;
+    private Button connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton, profileButton;
+    private LinearLayout configActions, configTools, profileActions;
     private HorizontalScrollView tabScroll;
     private ViewPager2 pager;
     private boolean showingLogs, preparing, loadingConfig = true, downloading;
@@ -73,12 +73,12 @@ public final class MainActivity extends Activity {
         @Override public void run() {
             renderStatus();
             refreshApi();
-            if (showingLogs && logRead.compareAndSet(false, true)) {
+            if (showingLogs && workspace.needsLogRead() && logRead.compareAndSet(false, true)) {
                 io.execute(() -> {
                     try {
                         String text = AppLog.read(MainActivity.this, false);
-                        post(() -> { if (!text.contentEquals(logs.getText())) logs.setText(text); });
-                    } catch (Exception e) { post(() -> logs.setText(SquirrelVpnService.message(e))); }
+                        post(() -> workspace.renderLogs(text));
+                    } catch (Exception e) { post(() -> workspace.logReadError(SquirrelVpnService.message(e))); }
                     finally { logRead.set(false); }
                 });
             }
@@ -90,21 +90,35 @@ public final class MainActivity extends Activity {
         super.onCreate(saved);
         // Configs may contain credentials; keep them out of recents and screenshots.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
-        LinearLayout root = column();
-        root.setPadding(dp(20), dp(12), dp(20), 0);
+        diagnostics = new DiagnosticsUi(this, this::toggleVpn, this::chooseOutbound, this::probeOutbound);
+        workspace = new WorkspaceUi(diagnostics, this::chooseProfile, this::manageProfiles,
+            this::importFile, this::downloadConfig, () -> save(false), this::exportConfig,
+            () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
+            () -> createDocument(EXPORT_LOG, "squirrel-logs.txt", "text/plain"));
+        root = column();
+        appHeader = row();
+        appHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        boolean compact = getResources().getConfiguration().screenHeightDp < 480;
+        appHeader.setPadding(dp(22), dp(compact ? 8 : 16), dp(22), dp(compact ? 8 : 18));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
-            view.setPadding(dp(20), dp(12) + insets.getSystemWindowInsetTop(), dp(20), insets.getSystemWindowInsetBottom());
+            view.setPadding(insets.getSystemWindowInsetLeft(), 0, insets.getSystemWindowInsetRight(),
+                insets.getSystemWindowInsetBottom());
+            appHeader.setPadding(dp(22), dp(compact ? 8 : 16) + insets.getSystemWindowInsetTop(), dp(22), dp(compact ? 8 : 18));
             return insets.consumeSystemWindowInsets();
         });
         setContentView(root);
-        TextView brand = text("SQUIRREL  /  SHADOWQUIC", 12, GREEN);
-        brand.setLetterSpacing(0.16f);
-        root.addView(brand);
+        brand = text("Squirrel", 23, Color.WHITE);
+        brand.setTypeface(null, Typeface.BOLD);
+        appHeader.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
+        TextView core = text("SHADOWQUIC", 10, 0xFFE2DEF9);
+        core.setLetterSpacing(0.08f);
+        appHeader.addView(core);
+        root.addView(appHeader);
         tabScroll = new HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
         tabScroll.setFillViewport(true);
         LinearLayout tabs = row();
-        tabs.setPadding(0, dp(12), 0, dp(10));
+        tabs.setPadding(dp(10), 0, dp(10), 0);
         connectionTab = button("Connection", () -> showPage(CONNECTION));
         configTab = button("Configuration", () -> showPage(CONFIGURATION));
         proxyTab = button("Proxies", () -> showPage(PROXIES));
@@ -115,8 +129,10 @@ public final class MainActivity extends Activity {
         proxyTab.setId(R.id.proxies_tab);
         sessionsTab.setId(R.id.sessions_tab);
         logsTab.setId(R.id.logs_tab);
-        for (Button tab : new Button[]{connectionTab, configTab, logsTab, proxyTab, sessionsTab}) {
-            tab.setPadding(dp(9), 0, dp(9), 0);
+        for (Button tab : new Button[]{connectionTab, proxyTab, configTab, logsTab, sessionsTab}) {
+            tab.setPadding(dp(12), dp(10), dp(12), dp(10));
+            tab.setMinHeight(dp(48));
+            tab.setMinimumHeight(dp(48));
             tabs.addView(tab);
         }
         tabScroll.addView(tabs);
@@ -125,7 +141,8 @@ public final class MainActivity extends Activity {
         pager = new ViewPager2(this);
         pager.setId(R.id.pages);
         pager.setOffscreenPageLimit(4);
-        View[] pages = {connectionPage(), configurationPage(), logsPage(), proxiesPage(), sessionsPage()};
+        View[] pages = {diagnostics.connectionPage(), diagnostics.proxiesPage(), configurationPage(),
+            logsPage(), diagnostics.sessionsPage()};
         pager.setAdapter(new PageAdapter(pages));
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override public void onPageSelected(int page) { selectTab(page); }
@@ -143,142 +160,22 @@ public final class MainActivity extends Activity {
         if (page < 0 || page >= pages.length) page = CONNECTION;
         pager.setCurrentItem(page, false);
         selectTab(page);
+        if (saved != null) { diagnostics.restoreFilters(saved); workspace.restoreState(saved); }
         renderStatus();
     }
 
-    private LinearLayout connectionPage() {
-        LinearLayout page = column();
-        page.setFocusableInTouchMode(true);
-        TextView title = text("Your network. Your rules.", 26, WHITE);
-        title.setTypeface(null, Typeface.BOLD);
-        title.setPadding(0, dp(24), 0, dp(24));
-        page.addView(title);
-        LinearLayout card = column();
-        card.setPadding(dp(18), dp(20), dp(18), dp(18));
-        card.setBackground(background(0xFF202C20, 18));
-        status = text("Disconnected", 21, WHITE);
-        status.setTypeface(null, Typeface.BOLD);
-        detail = text("Ready when you are", 13, MUTED);
-        detail.setPadding(0, dp(8), 0, dp(18));
-        card.addView(status);
-        card.addView(detail);
-        connect = button("Connect", this::toggleVpn);
-        connect.setBackgroundTintList(android.content.res.ColorStateList.valueOf(GREEN));
-        connect.setTextColor(0xFF15220F);
-        card.addView(connect);
-        TextView bypass = text("✓  App bypass always enabled", 12, GREEN);
-        bypass.setPadding(0, dp(14), 0, 0);
-        card.addView(bypass);
-        page.addView(card);
-        networkStats = text("Live traffic and memory appear while connected.", 13, MUTED);
-        networkStats.setPadding(dp(2), dp(16), dp(2), dp(8));
-        page.addView(networkStats);
-        TextView help = text("Add your configuration in the next tab, then connect here. Swipe between tabs to edit your config or follow the live logs.", 14, MUTED);
-        help.setPadding(0, dp(24), 0, dp(20));
-        page.addView(help);
-        View space = new View(this);
-        page.addView(space, new LinearLayout.LayoutParams(-1, 0, 1));
-        TextView footer = text("TCP + UDP  ·  IPv4 + IPv6  ·  ShadowQUIC core", 11, MUTED);
-        footer.setPadding(0, dp(12), 0, dp(16));
-        page.addView(footer);
-        return page;
+    private View configurationPage() {
+        editor = workspace.editor;
+        configNotice = workspace.configNotice;
+        profileButton = workspace.profileButton;
+        downloadButton = workspace.downloadButton;
+        profileActions = workspace.profileActions;
+        configActions = workspace.configActions;
+        configTools = workspace.configTools;
+        return workspace.configurationPage();
     }
 
-    private LinearLayout configurationPage() {
-        LinearLayout page = column();
-        page.setFocusableInTouchMode(true);
-        page.addView(heading("Configuration"));
-        profileActions = row();
-        profileButton = button("Loading profiles…", this::chooseProfile);
-        profileButton.setId(R.id.config_profile);
-        profileActions.addView(profileButton, new LinearLayout.LayoutParams(0, -2, 2));
-        Button manageProfiles = button("Manage", this::manageProfiles);
-        manageProfiles.setId(R.id.manage_profiles);
-        profileActions.addView(manageProfiles, weight());
-        page.addView(profileActions);
-        configNotice = text("Import a file, download a URL, or edit YAML below. Save or Connect to apply.", 12, MUTED);
-        configNotice.setId(R.id.config_notice);
-        configNotice.setPadding(0, dp(6), 0, dp(8));
-        page.addView(configNotice);
-        configActions = column();
-        LinearLayout imports = row();
-        imports.addView(button("Import file", this::importFile), weight());
-        downloadButton = button("Download URL", this::downloadConfig);
-        downloadButton.setId(R.id.download_config);
-        imports.addView(downloadButton, weight());
-        configActions.addView(imports);
-        LinearLayout actions = row();
-        actions.addView(button("Save", () -> save(false)), weight());
-        actions.addView(button("Export", this::exportConfig), weight());
-        configActions.addView(actions);
-        page.addView(configActions);
-        configSamples = row();
-        configSamples.addView(button("Proxy template", () -> loadExample("example.yaml")), weight());
-        configSamples.addView(button("Direct test", () -> loadExample("direct.yaml")), weight());
-        page.addView(configSamples);
-        editor = new EditText(this);
-        editor.setId(R.id.config_editor);
-        editor.setTextSize(13);
-        editor.setTextColor(WHITE);
-        editor.setTypeface(Typeface.MONOSPACE);
-        editor.setGravity(android.view.Gravity.TOP | android.view.Gravity.START);
-        editor.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE
-            | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        editor.setHorizontallyScrolling(true);
-        editor.setPadding(dp(12), dp(10), dp(12), dp(10));
-        editor.setBackground(background(0xFF182018, 12));
-        editor.setSaveEnabled(false);
-        EditorScrollHost editorHost = new EditorScrollHost(this);
-        editorHost.addView(editor, new FrameLayout.LayoutParams(-1, -1));
-        page.addView(editorHost, new LinearLayout.LayoutParams(-1, 0, 1));
-        return page;
-    }
-
-    private LinearLayout logsPage() {
-        LinearLayout page = column();
-        page.setFocusableInTouchMode(true);
-        page.addView(heading("Logs"));
-        TextView caption = text("Live service + core logs · rotated at 1 MiB per file", 12, MUTED);
-        caption.setPadding(0, dp(6), 0, dp(8));
-        page.addView(caption);
-        page.addView(button("Export logs", () -> createDocument(EXPORT_LOG, "squirrel-logs.txt", "text/plain")));
-        ScrollView scroller = new ScrollView(this);
-        logs = text("Loading logs…", 11, WHITE);
-        logs.setId(R.id.log_text);
-        logs.setTypeface(Typeface.MONOSPACE);
-        logs.setTextIsSelectable(true);
-        logs.setPadding(dp(10), dp(10), dp(10), dp(10));
-        scroller.setBackground(background(0xFF182018, 12));
-        scroller.addView(logs);
-        page.addView(scroller, new LinearLayout.LayoutParams(-1, 0, 1));
-        return page;
-    }
-
-    private LinearLayout proxiesPage() {
-        LinearLayout page = column();
-        page.setFocusableInTouchMode(true);
-        page.addView(heading("Proxies"));
-        proxyNotice = text("Connect the VPN to load outbound quality and selector state.", 12, MUTED);
-        proxyNotice.setPadding(0, dp(5), 0, dp(8));
-        page.addView(proxyNotice);
-        ScrollView scroll = new ScrollView(this);
-        proxyList = column();
-        scroll.addView(proxyList);
-        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        return page;
-    }
-
-    private LinearLayout sessionsPage() {
-        LinearLayout page = column();
-        page.setFocusableInTouchMode(true);
-        page.addView(heading("Alive sessions"));
-        sessionList = text("Connect the VPN to view active TCP and UDP sessions.", 13, MUTED);
-        sessionList.setTypeface(Typeface.MONOSPACE);
-        ScrollView scroll = new ScrollView(this);
-        scroll.addView(sessionList);
-        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
-        return page;
-    }
+    private View logsPage() { return workspace.logsPage(); }
 
     private static final class PageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         private final View[] pages;
@@ -301,36 +198,48 @@ public final class MainActivity extends Activity {
     private void showPage(int page) { pager.setCurrentItem(page, true); }
     private void selectTab(int page) {
         showingLogs = page == LOGS;
-        Button[] tabs = {connectionTab, configTab, logsTab, proxyTab, sessionsTab};
+        root.setBackgroundColor(diagnostics.surface);
+        appHeader.setBackgroundColor(diagnostics.header);
+        brand.setTextColor(Color.WHITE);
+        tabScroll.setBackgroundColor(diagnostics.container);
+        getWindow().setStatusBarColor(diagnostics.header);
+        getWindow().setNavigationBarColor(diagnostics.surface);
+        int visibility = getWindow().getDecorView().getSystemUiVisibility();
+        boolean lightNavigation = (getResources().getConfiguration().uiMode
+            & android.content.res.Configuration.UI_MODE_NIGHT_MASK) != android.content.res.Configuration.UI_MODE_NIGHT_YES;
+        getWindow().getDecorView().setSystemUiVisibility(lightNavigation
+            ? visibility | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : visibility & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        Button[] tabs = {connectionTab, proxyTab, configTab, logsTab, sessionsTab};
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = i == page;
             tabs[i].setSelected(selected);
-            tabs[i].setTextColor(selected ? GREEN : MUTED);
-            tabs[i].setBackgroundTintList(android.content.res.ColorStateList.valueOf(selected ? 0xFF283A25 : 0xFF182018));
+            tabs[i].setTextColor(selected ? diagnostics.primary : diagnostics.secondary);
+            android.graphics.drawable.LayerDrawable background = new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{new android.graphics.drawable.ColorDrawable(diagnostics.container),
+                    new android.graphics.drawable.ColorDrawable(selected ? diagnostics.primary : diagnostics.container)});
+            background.setLayerHeight(1, dp(3));
+            background.setLayerGravity(1, android.view.Gravity.BOTTOM);
+            tabs[i].setBackgroundTintList(null);
+            tabs[i].setBackground(new android.graphics.drawable.RippleDrawable(
+                android.content.res.ColorStateList.valueOf(diagnostics.outline), background, null));
         }
-        tabs[page].post(() -> tabScroll.smoothScrollTo(tabs[page].getLeft(), 0));
+        tabs[page].post(() -> tabScroll.smoothScrollTo(tabs[page].getLeft() - dp(10), 0));
+        if (page != LOGS) workspace.clearLogFilterFocus();
         if (page != CONFIGURATION) {
             editor.clearFocus();
+            diagnostics.clearFilterFocus();
             getSystemService(InputMethodManager.class).hideSoftInputFromWindow(editor.getWindowToken(), 0);
         }
     }
 
     private void renderStatus() {
         AppState.Snapshot state = AppState.get();
-        switch (state.phase) {
-            case CONNECTED: status.setText("●  VPN active"); status.setTextColor(GREEN); break;
-            case CONNECTING: status.setText("Connecting…"); status.setTextColor(WHITE); break;
-            case STOPPING: status.setText("Disconnecting…"); status.setTextColor(WHITE); break;
-            case ERROR: status.setText("Connection failed"); status.setTextColor(0xFFFFB4A5); break;
-            default: status.setText("Disconnected"); status.setTextColor(WHITE);
-        }
-        detail.setText(state.detail);
-        connect.setText(preparing ? "Checking configuration…" : state.busy() ? "Disconnect" : "Connect");
+        diagnostics.renderState(state, preparing, profileState == null ? null : profileState.selected().name);
         boolean ready = !loadingConfig && !downloading && !preparing && profileId != null;
-        connect.setEnabled(state.phase != AppState.Phase.STOPPING && (state.busy() || ready));
+        diagnostics.connect.setEnabled(state.phase != AppState.Phase.STOPPING && (state.busy() || ready));
         editor.setEnabled(ready);
         enableActions(configActions, ready);
-        enableActions(configSamples, ready);
+        enableActions(configTools, ready);
         enableActions(profileActions, ready && profileState != null);
         downloadButton.setText(downloading ? "Downloading…" : "Download URL");
     }
@@ -358,8 +267,9 @@ public final class MainActivity extends Activity {
                     profileId = state.selectedId;
                     editor.setText(profileDrafts.containsKey(profileId) ? profileDrafts.get(profileId) : config);
                     remoteUrl = profileUrls.containsKey(profileId) ? profileUrls.get(profileId) : "";
-                    profileButton.setText(state.selected().name + "  ▾");
-                    configNotice.setText("Editing " + state.selected().name + ". Save or Connect to apply. Switching keeps drafts until the app closes.");
+                    profileButton.setText(state.selected().name);
+                    profileButton.setContentDescription("Select configuration. Current: " + state.selected().name);
+                    setConfigNotice("Save or Connect to apply. Switching profiles keeps drafts until the app closes.", false);
                     loadingConfig = false;
                     renderStatus();
                 });
@@ -379,7 +289,7 @@ public final class MainActivity extends Activity {
             names[i] = profile.name;
             if (profile.id.equals(profileId)) selected = i;
         }
-        new AlertDialog.Builder(this).setTitle("Configurations").setSingleChoiceItems(names, selected, (dialog, which) -> {
+        new AlertDialog.Builder(diagnostics.context).setTitle("Configurations").setSingleChoiceItems(names, selected, (dialog, which) -> {
             dialog.dismiss();
             String id = state.profiles.get(which).id;
             if (!id.equals(profileId)) loadProfile(() -> ConfigProfiles.select(this, id), null);
@@ -391,11 +301,11 @@ public final class MainActivity extends Activity {
         String[] actions = profileState.profiles.size() > 1
             ? new String[]{"New configuration", "Duplicate current", "Rename", "Delete"}
             : new String[]{"New configuration", "Duplicate current", "Rename"};
-        new AlertDialog.Builder(this).setTitle("Manage configurations").setItems(actions, (dialog, which) -> {
+        new AlertDialog.Builder(diagnostics.context).setTitle("Manage configurations").setItems(actions, (dialog, which) -> {
             if (which < 3) nameProfile(which);
             else {
                 String id = profileId;
-                new AlertDialog.Builder(this).setTitle("Delete " + profileState.selected().name + "?")
+                new AlertDialog.Builder(diagnostics.context).setTitle("Delete " + profileState.selected().name + "?")
                     .setMessage("This removes the saved configuration and its draft. An active VPN keeps running until you disconnect.")
                     .setNegativeButton("Cancel", null).setPositiveButton("Delete", (confirm, button) ->
                         loadProfile(() -> ConfigProfiles.delete(this, id), id)).show();
@@ -404,7 +314,7 @@ public final class MainActivity extends Activity {
     }
 
     private void nameProfile(int action) {
-        EditText name = new EditText(this);
+        EditText name = new EditText(diagnostics.context);
         name.setId(R.id.profile_name);
         name.setSingleLine(true);
         name.setHint("Configuration name");
@@ -412,7 +322,7 @@ public final class MainActivity extends Activity {
             ? profileState.selected().name + " copy" : "Configuration " + (profileState.profiles.size() + 1));
         name.selectAll();
         String title = action == 2 ? "Rename configuration" : action == 1 ? "Duplicate configuration" : "New configuration";
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(name)
+        AlertDialog dialog = new AlertDialog.Builder(diagnostics.context).setTitle(title).setView(name)
             .setMessage(action == 0 ? "Start with the proxy template, then edit, import, or download your configuration." : null)
             .setNegativeButton("Cancel", null).setPositiveButton(action == 2 ? "Rename" : "Create", null).create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
@@ -433,7 +343,9 @@ public final class MainActivity extends Activity {
     }
 
     private void refreshApi() {
-        if (pager == null || AppState.get().phase != AppState.Phase.CONNECTED) return;
+        if (pager == null) return;
+        AppState.Snapshot connection = AppState.get();
+        if (connection.phase != AppState.Phase.CONNECTED) return;
         int page = pager.getCurrentItem();
         if (page != CONNECTION && page != PROXIES && page != SESSIONS) return;
         if (!apiRead.compareAndSet(false, true)) return;
@@ -445,164 +357,104 @@ public final class MainActivity extends Activity {
                         .put("traffic", api.get("/traffic"))
                     : api.get(page == PROXIES ? "/outbounds" : "/connections");
                 post(() -> {
-                    if (pager.getCurrentItem() != page) return;
-                    if (page == CONNECTION) renderNetworkStats(value);
-                    else if (page == PROXIES) renderOutbounds(value.optJSONArray("outbounds"));
-                    else renderSessions(value.optJSONArray("connections"));
+                    if (!acceptApiResult(connection, page)) return;
+                    if (page == CONNECTION) diagnostics.renderNetworkStats(value);
+                    else if (page == PROXIES) diagnostics.renderOutbounds(value.optJSONArray("outbounds"));
+                    else diagnostics.renderSessions(value.optJSONArray("connections"));
                 });
             } catch (Exception error) {
                 post(() -> {
-                    if (pager.getCurrentItem() != page) return;
-                    String message = "Stats unavailable: " + SquirrelVpnService.message(error);
-                    if (page == CONNECTION) networkStats.setText(message);
-                    else if (page == PROXIES) proxyNotice.setText(message);
-                    else sessionList.setText(message);
+                    if (acceptApiResult(connection, page)) diagnostics.unavailable(page, SquirrelVpnService.message(error));
                 });
             } finally { apiRead.set(false); }
         });
     }
 
-    private void renderNetworkStats(JSONObject response) {
-        JSONObject memory = response.optJSONObject("memory");
-        JSONObject traffic = response.optJSONObject("traffic");
-        long tcp = 0, udp = 0, tcpUp = 0, tcpDown = 0, udpUp = 0, udpDown = 0;
-        JSONArray inbounds = traffic == null ? null : traffic.optJSONArray("inbounds");
-        if (inbounds != null) for (int i = 0; i < inbounds.length(); i++) {
-            JSONObject item = inbounds.optJSONObject(i);
-            if (item == null) continue;
-            tcp += item.optLong("tcp_conns"); udp += item.optLong("udp_conns");
-            tcpUp += item.optLong("tcp_upload_bytes"); tcpDown += item.optLong("tcp_download_bytes");
-            udpUp += item.optLong("udp_upload_bytes"); udpDown += item.optLong("udp_download_bytes");
-        }
-        String memoryText = memory == null ? "Unavailable" : formatBytes(memory.optLong("resident_bytes"))
-            + " resident · " + formatBytes(memory.optLong("allocated_bytes")) + " allocated";
-        networkStats.setText("MEMORY\n" + memoryText + "\n\nTCP  " + tcp + " sessions   ↑ "
-            + formatBytes(tcpUp) + "   ↓ " + formatBytes(tcpDown) + "\nUDP  " + udp
-            + " sessions   ↑ " + formatBytes(udpUp) + "   ↓ " + formatBytes(udpDown));
-    }
-
-    private void renderOutbounds(JSONArray outbounds) {
-        proxyList.removeAllViews();
-        if (outbounds == null || outbounds.length() == 0) {
-            proxyNotice.setText("No outbounds are configured.");
-            return;
-        }
-        proxyNotice.setText("Select a member on selector outbounds. Probe latency measures an HTTP request through that outbound.");
-        for (int i = 0; i < outbounds.length(); i++) {
-            JSONObject item = outbounds.optJSONObject(i);
-            if (item == null) continue;
-            String tag = item.optString("tag", "outbound");
-            JSONObject quality = item.optJSONObject("quality");
-            JSONObject sample = quality == null ? null : quality.optJSONObject("sq_conn_stats");
-            JSONObject probe = quality == null ? null : quality.optJSONObject("probe");
-            JSONObject uplink = sample == null ? null : sample.optJSONObject("uplink");
-            JSONObject downlink = sample == null ? null : sample.optJSONObject("downlink");
-            String probeLatency = probe == null ? "Not probed" : probe.optString("status", "unknown").equals("ok")
-                ? probe.optLong("latency_ms") + " ms" : "Unavailable";
-            String stats = "Probe latency  " + probeLatency + "\n"
-                + "RTT  ↑ " + metric(uplink, "rtt", " ms") + "   ↓ " + metric(downlink, "rtt", " ms") + "\n"
-                + "Packet loss  ↑ " + loss(uplink) + "   ↓ " + loss(downlink);
-            LinearLayout card = column();
-            card.setPadding(dp(14), dp(12), dp(14), dp(12));
-            card.setBackground(background(0xFF202C20, 14));
-            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
-            cardParams.bottomMargin = dp(10);
-            TextView title = text(tag, 17, WHITE);
-            title.setTypeface(null, Typeface.BOLD);
-            card.addView(title);
-            JSONObject selector = item.optJSONObject("selector");
-            if (selector != null) {
-                String selected = selector.optString("selected", "");
-                TextView selectedView = text("Selected: " + selected, 13, GREEN);
-                selectedView.setPadding(0, dp(5), 0, dp(3));
-                card.addView(selectedView);
-                card.addView(button("Choose proxy", () -> chooseOutbound(tag, selector)));
-            }
-            TextView details = text(stats, 12, MUTED);
-            details.setPadding(0, dp(8), 0, dp(4));
-            card.addView(details);
-            card.addView(button("Probe latency", () -> probeOutbound(tag)));
-            proxyList.addView(card, cardParams);
-        }
+    private boolean acceptApiResult(AppState.Snapshot connection, int page) {
+        // Snapshot identity also rejects a previous run that stopped and reconnected in the meantime.
+        return AppState.get() == connection && connection.phase == AppState.Phase.CONNECTED
+            && pager.getCurrentItem() == page;
     }
 
     private void chooseOutbound(String selectorTag, JSONObject selector) {
+        AppState.Snapshot connection = AppState.get();
+        if (connection.phase != AppState.Phase.CONNECTED || selector == null) return;
         JSONArray options = selector.optJSONArray("outbounds");
         if (options == null || options.length() == 0) return;
         String[] labels = new String[options.length()];
-        for (int i = 0; i < options.length(); i++) labels[i] = options.optString(i);
-        new AlertDialog.Builder(this).setTitle("Select outbound")
-            .setItems(labels, (dialog, which) -> apiActionExecutor.execute(() -> {
-                try {
-                    new ShadowQuicApi(this).put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
-                        new JSONObject().put("selected", labels[which]));
-                    post(() -> proxyNotice.setText("Selected " + labels[which] + " for new sessions."));
-                    post(this::refreshApi);
-                } catch (Exception error) { post(() -> proxyNotice.setText("Selection failed: " + SquirrelVpnService.message(error))); }
-            })).setNegativeButton("Cancel", null).show();
+        int selected = -1;
+        for (int i = 0; i < options.length(); i++) {
+            labels[i] = options.optString(i);
+            if (labels[i].equals(selector.optString("selected"))) selected = i;
+        }
+        new AlertDialog.Builder(diagnostics.context).setTitle("Select outbound · " + selectorTag)
+            .setSingleChoiceItems(labels, selected, (dialog, which) -> {
+                dialog.dismiss();
+                if (AppState.get() != connection) return;
+                diagnostics.outboundAction("Selecting " + labels[which] + "…", false);
+                apiActionExecutor.execute(() -> {
+                    try {
+                        if (AppState.get() != connection) return;
+                        new ShadowQuicApi(this).put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
+                            new JSONObject().put("selected", labels[which]));
+                        post(() -> {
+                            if (AppState.get() != connection) return;
+                            diagnostics.outboundAction("Selected " + labels[which] + " for new sessions.", false);
+                            refreshApi();
+                        });
+                    } catch (Exception error) {
+                        post(() -> { if (AppState.get() == connection)
+                            diagnostics.outboundAction("Selection failed: " + SquirrelVpnService.message(error), true); });
+                    }
+                });
+            }).setNegativeButton("Cancel", null).show();
     }
 
     private void probeOutbound(String tag) {
-        EditText url = new EditText(this);
+        AppState.Snapshot connection = AppState.get();
+        if (connection.phase != AppState.Phase.CONNECTED) return;
+        EditText url = new EditText(diagnostics.context);
         url.setSingleLine(true);
         url.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         url.setText("http://example.com/");
-        new AlertDialog.Builder(this).setTitle("Probe " + tag).setMessage("HTTP URL used to measure latency")
-            .setView(url).setNegativeButton("Cancel", null).setPositiveButton("Probe", (dialog, which) -> {
-                String target = url.getText().toString().trim();
-                apiActionExecutor.execute(() -> {
-                    try {
-                        new ShadowQuicApi(this).post("/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
-                            new JSONObject().put("url", target).put("timeout_ms", 10000));
-                        post(() -> proxyNotice.setText("Probe completed for " + tag + "."));
-                        post(this::refreshApi);
-                    } catch (Exception error) { post(() -> proxyNotice.setText("Probe failed: " + SquirrelVpnService.message(error))); }
-                });
-            }).show();
+        url.setContentDescription("HTTP URL for latency probe");
+        LinearLayout content = new LinearLayout(diagnostics.context);
+        content.setPadding(dp(20), dp(8), dp(20), 0);
+        content.addView(url, new LinearLayout.LayoutParams(-1, -2));
+        AlertDialog dialog = new AlertDialog.Builder(diagnostics.context).setTitle("Probe " + tag)
+            .setMessage("Measure an HTTP request through this outbound.")
+            .setView(content).setNegativeButton("Cancel", null).setPositiveButton("Probe", null).create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String target = url.getText().toString().trim();
+            Uri parsed = Uri.parse(target);
+            if (!("http".equalsIgnoreCase(parsed.getScheme()) || "https".equalsIgnoreCase(parsed.getScheme()))
+                    || parsed.getHost() == null) {
+                url.setError("Enter an HTTP or HTTPS URL");
+                return;
+            }
+            dialog.dismiss();
+            if (AppState.get() != connection) return;
+            diagnostics.probePending(tag, true);
+            diagnostics.outboundAction("Probing " + tag + "…", false);
+            apiActionExecutor.execute(() -> {
+                try {
+                    if (AppState.get() != connection) return;
+                    new ShadowQuicApi(this).post("/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
+                        new JSONObject().put("url", target).put("timeout_ms", 10000));
+                    post(() -> {
+                        if (AppState.get() != connection) return;
+                        diagnostics.outboundAction("Probe completed for " + tag + ".", false);
+                        refreshApi();
+                    });
+                } catch (Exception error) {
+                    post(() -> { if (AppState.get() == connection)
+                        diagnostics.outboundAction("Probe failed: " + SquirrelVpnService.message(error), true); });
+                } finally { post(() -> { if (AppState.get() == connection) diagnostics.probePending(tag, false); }); }
+            });
+        }));
+        dialog.show();
     }
 
-    private void renderSessions(JSONArray connections) {
-        if (connections == null || connections.length() == 0) {
-            sessionList.setText("No active TCP or UDP sessions.");
-            return;
-        }
-        StringBuilder text = new StringBuilder();
-        for (int i = 0; i < connections.length(); i++) {
-            JSONObject item = connections.optJSONObject(i);
-            if (item == null) continue;
-            String protocol = item.optString("protocol", "?").toUpperCase(java.util.Locale.ROOT);
-            String domain = item.isNull("dst_domain") ? "" : item.optString("dst_domain", "").trim();
-            String destination = domain.isEmpty() ? value(item, "dst_ip") : domain;
-            if (domain.isEmpty() && destination.contains(":")) destination = "[" + destination + "]";
-            text.append(protocol).append("  ").append(value(item, "inbound"))
-                .append(" → ").append(value(item, "outbound")).append('\n')
-                .append(destination);
-            text.append(':').append(value(item, "dst_port")).append('\n')
-                .append("↑ ").append(formatBytes(item.optLong("upload_bytes")))
-                .append("   ↓ ").append(formatBytes(item.optLong("download_bytes")))
-                .append("   ").append(item.optLong("duration_ms") / 1000).append(" s\n")
-                .append("First response  ").append(metric(item, "first_response_ms", " ms"))
-                .append("\n\n");
-        }
-        sessionList.setText(text.toString());
-    }
-
-    private static String value(JSONObject object, String key) {
-        return object.isNull(key) ? "—" : object.optString(key, "—");
-    }
-    private static String metric(JSONObject stats, String key, String suffix) {
-        return stats == null || stats.isNull(key) ? "—" : stats.optString(key) + suffix;
-    }
-    private static String loss(JSONObject stats) {
-        if (stats == null || stats.optLong("sent_packets") == 0) return "—";
-        return String.format(java.util.Locale.ROOT, "%.2f%%", 100.0 * stats.optLong("lost_packets") / stats.optLong("sent_packets"));
-    }
-    private static String formatBytes(long bytes) {
-        if (bytes < 1024) return bytes + " B";
-        if (bytes < 1024 * 1024) return String.format(java.util.Locale.ROOT, "%.1f KiB", bytes / 1024.0);
-        if (bytes < 1024L * 1024 * 1024) return String.format(java.util.Locale.ROOT, "%.1f MiB", bytes / (1024.0 * 1024));
-        return String.format(java.util.Locale.ROOT, "%.2f GiB", bytes / (1024.0 * 1024 * 1024));
-    }
     private void toggleVpn() {
         if (AppState.get().busy()) {
             startService(new Intent(this, SquirrelVpnService.class).setAction(SquirrelVpnService.STOP));
@@ -622,7 +474,7 @@ public final class MainActivity extends Activity {
                 ConfigProfiles.save(this, id, config);
                 post(() -> {
                     preparing = false;
-                    configNotice.setText("Saved and validated. Changes apply on the next connection.");
+                    setConfigNotice("Saved and validated. Changes apply on the next connection.", false);
                     if (start) prepareVpn();
                     else Toast.makeText(this, "Configuration saved", Toast.LENGTH_SHORT).show();
                     renderStatus();
@@ -660,7 +512,7 @@ public final class MainActivity extends Activity {
     }
     private void downloadConfig() {
         if (downloading || preparing || loadingConfig) return;
-        EditText address = new EditText(this);
+        EditText address = new EditText(diagnostics.context);
         address.setId(R.id.remote_url);
         address.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
         address.setSingleLine(true);
@@ -669,7 +521,7 @@ public final class MainActivity extends Activity {
         LinearLayout content = column();
         content.setPadding(dp(20), dp(8), dp(20), 0);
         content.addView(address);
-        AlertDialog dialog = new AlertDialog.Builder(this).setTitle("Download configuration")
+        AlertDialog dialog = new AlertDialog.Builder(diagnostics.context).setTitle("Download configuration")
             .setMessage("Enter an HTTP or HTTPS URL. The downloaded YAML replaces the editor after validation. Save or Connect to apply it.")
             .setView(content).setNegativeButton("Cancel", null).setPositiveButton("Download", null).create();
         dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
@@ -678,7 +530,7 @@ public final class MainActivity extends Activity {
             remoteUrl = url;
             dialog.dismiss();
             downloading = true;
-            configNotice.setText("Downloading and validating configuration…");
+            setConfigNotice("Downloading and validating configuration…", false);
             renderStatus();
             ConfigDownloader download = new ConfigDownloader();
             downloader = download;
@@ -688,13 +540,13 @@ public final class MainActivity extends Activity {
                     NativeBridge.validate(ConfigStore.forRuntime(this, config));
                     post(() -> {
                         editor.setText(config);
-                        configNotice.setText("Downloaded and validated. Save or Connect to use this configuration.");
+                        setConfigNotice("Downloaded and validated. Save or Connect to use this configuration.", false);
                         finishDownload();
                         showPage(CONFIGURATION);
                     });
                 } catch (Exception | LinkageError error) {
                     post(() -> {
-                        configNotice.setText("Download failed. Your editor contents are preserved.");
+                        setConfigNotice("Download failed. Your editor contents are preserved.", true);
                         finishDownload();
                         showError(error);
                     });
@@ -718,7 +570,7 @@ public final class MainActivity extends Activity {
     }
     private void loadExample(String name) {
         if (preparing || downloading || loadingConfig) return;
-        new AlertDialog.Builder(this).setTitle("Load " + (name.equals("direct.yaml") ? "direct test" : "proxy template") + "?")
+        new AlertDialog.Builder(diagnostics.context).setTitle("Load " + (name.equals("direct.yaml") ? "direct test" : "proxy template") + "?")
             .setMessage("This replaces the text in the editor. Your saved configuration stays available until you save or connect.")
             .setNegativeButton("Cancel", null).setPositiveButton("Load", (dialog, which) -> {
                 loadingConfig = true;
@@ -728,7 +580,7 @@ public final class MainActivity extends Activity {
                         String text = ConfigStore.asset(this, name);
                         post(() -> {
                             editor.setText(text);
-                            configNotice.setText("Example loaded. Edit, then save or connect.");
+                            setConfigNotice("Example loaded. Edit, then save or connect.", false);
                             loadingConfig = false;
                             renderStatus();
                         });
@@ -756,7 +608,7 @@ public final class MainActivity extends Activity {
                     try (InputStream stream = getContentResolver().openInputStream(uri)) { text = ConfigStore.readText(stream); }
                     post(() -> {
                         editor.setText(text);
-                        configNotice.setText("Imported into editor. Save or connect to validate and use this file.");
+                        setConfigNotice("Imported into editor. Save or connect to validate and use this file.", false);
                         loadingConfig = false;
                         renderStatus();
                         showPage(CONFIGURATION);
@@ -782,6 +634,8 @@ public final class MainActivity extends Activity {
     @Override protected void onPause() { main.removeCallbacks(refresh); super.onPause(); }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putInt("selectedPage", pager.getCurrentItem());
+        diagnostics.saveFilters(state);
+        workspace.saveState(state);
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
@@ -807,30 +661,24 @@ public final class MainActivity extends Activity {
             for (int i = 0; i < group.getChildCount(); i++) enableActions(group.getChildAt(i), enabled);
         }
     }
-    private TextView heading(String label) {
-        TextView view = text(label, 22, WHITE);
-        view.setTypeface(null, Typeface.BOLD);
-        view.setPadding(0, dp(6), 0, dp(4));
-        return view;
+    private void setConfigNotice(String message, boolean failed) {
+        configNotice.setText(message);
+        configNotice.setTextColor(failed ? diagnostics.error : diagnostics.secondary);
     }
     private void showError(Throwable e) {
         if (isFinishing() || isDestroyed()) return;
-        new AlertDialog.Builder(this).setTitle("Squirrel").setMessage(SquirrelVpnService.message(e))
+        new AlertDialog.Builder(diagnostics.context).setTitle("Squirrel").setMessage(SquirrelVpnService.message(e))
             .setPositiveButton("OK", null).show();
     }
     private LinearLayout column() { LinearLayout layout = new LinearLayout(this); layout.setOrientation(LinearLayout.VERTICAL); return layout; }
     private LinearLayout row() { LinearLayout layout = new LinearLayout(this); layout.setOrientation(LinearLayout.HORIZONTAL); return layout; }
-    private LinearLayout.LayoutParams weight() { return new LinearLayout.LayoutParams(0, -2, 1); }
     private TextView text(String value, int size, int color) {
         TextView view = new TextView(this); view.setText(value); view.setTextSize(size); view.setTextColor(color); return view;
     }
     private Button button(String label, Runnable action) {
-        Button view = new Button(this); view.setText(label); view.setAllCaps(false); view.setTextSize(13);
+        Button view = new Button(diagnostics.context); view.setText(label); view.setAllCaps(false); view.setTextSize(13);
         view.setPadding(dp(4), 0, dp(4), 0); view.setMinWidth(0); view.setMinimumWidth(0);
         view.setOnClickListener(v -> action.run()); return view;
-    }
-    private GradientDrawable background(int color, int radius) {
-        GradientDrawable shape = new GradientDrawable(); shape.setColor(color); shape.setCornerRadius(dp(radius)); return shape;
     }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }
 }

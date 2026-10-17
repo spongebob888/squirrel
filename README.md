@@ -2,8 +2,9 @@
 
 An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 phones and x86_64 emulators. No root required.
 
-- Connection, Configuration, Logs, Proxies, and Sessions tabs with swipe navigation.
+- Connection, Proxies, Configuration, Logs, and Sessions tabs with swipe navigation.
 - Live memory use, TCP/UDP session counts and traffic totals; outbound probe latency, QUIC RTT and packet loss; selector controls and an active session list.
+- All five tabs share a light/dark atlas interface, with compact landscape layouts, clear actions, and readable configuration and diagnostic workspaces.
 - Import local files or download remote YAML configs, then edit, validate, save, and export them.
 - Keep multiple named configurations, switch profiles, or create, duplicate, rename, and delete them in the Configuration tab.
 - TCP/UDP forwarding over IPv4 and IPv6, with ShadowQUIC's outbound protocols and Lua routing.
@@ -61,7 +62,7 @@ Software graphics (`-gpu swiftshader`) are the default; use `SQUIRREL_EMULATOR_G
 
 If the launcher reports interrupted encryption, Android cannot mount the AVD's data partition. Restarting cannot repair that condition. Stop the emulator, move both its `.ini` file and `.avd` directory into a backup directory outside `~/.android/avd`, then rerun the launcher to create a fresh profile. Keep the backup for recovery; the new profile starts with empty app data. The launcher never automatically wipes an AVD.
 
-1. Install the APK and open Squirrel. Tap a tab or swipe horizontally between **Connection**, **Configuration**, **Logs**, **Proxies**, and **Sessions**.
+1. Install the APK and open Squirrel. Tap a tab or swipe horizontally between **Connection**, **Proxies**, **Configuration**, **Logs**, and **Sessions**.
 2. In **Configuration**, choose **Import file**, **Download URL**, or **Proxy template**. Replace the template's server, credentials, and TLS server name as needed.
 3. For a remote config, paste its HTTP/HTTPS URL and tap **Download**. The app downloads and validates it before replacing the editor contents. A failed download preserves the editor. Tap **Save**, or go to **Connection** and tap **Connect**, to apply it.
 4. **Connect** validates and saves the editor contents, then requests Android VPN consent. Allow notifications to see the disconnect control.
@@ -70,6 +71,10 @@ If the launcher reports interrupted encryption, Android cannot mount the AVD's d
 **VPN active** means the local packet engine is running. ShadowQUIC opens remote connections when traffic arrives; authentication or remote availability failures appear in the core log.
 
 The **Connection** tab displays jemalloc memory statistics, current TCP/UDP session counts, and cumulative upload/download bytes. **Proxies** lists configured outbounds with cached QUIC RTT and packet-loss samples, plus the latest probe latency. Add a `type: selector` outbound to switch among its configured members; the bundled Proxy template includes a selector for the proxy and direct outbounds. Probe buttons accept an HTTP URL. **Sessions** lists currently alive TCP and UDP flows with their destination and byte totals. These screens update while connected.
+
+Filter **Proxies** by outbound tag. In **Sessions**, filter by destination, address, port, or route, and combine that text filter with **All**, **TCP**, or **UDP**. Filters survive activity recreation, and live list updates preserve scroll position. Missing measurements use a dash; disconnected and unavailable states clear live values rather than retaining figures from an earlier connection.
+
+**Configuration** keeps the profile picker, management, import, download, and Save controls above the YAML editor. **More** contains configuration export, Proxy template, and Direct test. Short keyboard viewports collapse the redundant heading; landscape places the controls beside the editor. **Logs** supports a text filter and a **Live updates** switch: turn it off to read a fixed snapshot. Filtering and pausing affect only the displayed tail; **Export logs** still exports all retained service and core log files. New lines follow the tail only when the viewer was already at the bottom.
 
 The built-in **Direct test** profile exercises the packet engine without a remote server. It forwards directly and does not provide an encrypted remote tunnel. ICMP/ping is not supported by the core's TCP/UDP stack.
 
@@ -113,6 +118,10 @@ python3 scripts/test-run-emulator.py -v
 ```
 
 Host tests cover config normalization, private database paths, legacy imports, routing validation, DNS validation, bundled examples, log rotation, and logger filtering. Instrumentation tests load the real JNI library, send a raw UDP packet through a simulated TUN to a local echo server, verify its reply, stop/restart the runtime, check Java descriptor ownership, and reject invalid imports. Database tests load a saved config with relative paths, download Geosite data from a local HTTP server into private storage, reopen it after restart with the source offline, and verify that saved YAML and DNS settings are preserved. UI and download tests cover swipe/tab navigation, draft retention across recreation, redirects, HTTP failures, UTF-8 and size validation, and replacing the editor only after config validation. Profile tests cover legacy migration, separate YAML files, durable selection, management dialogs, per-profile drafts, and rejected operations. The tests do not require VPN consent.
+
+Diagnostic tests cover metric aggregation and clearing, unknown measurements, combined session filters, filter restoration, stable outbound rows and scroll position, and rejection of results from another tab or a previous connection. Review captures use explicitly labeled synthetic data in the real native views. Only the instrumentation harness temporarily permits screenshots of those fixture screens; the shipped activity retains `FLAG_SECURE`.
+
+Workspace tests cover log filtering, paused snapshots, read-error recovery, filter focus during updates, editor space with the software keyboard open, and secondary configuration actions preserving the draft. Their configuration, log, menu, and dialog captures contain synthetic fixtures; no review operation saves that fixture over a stored profile.
 
 Validated locally: both Android ABIs built; Android lint passed; all 11 host tests, 15 API 36 emulator instrumentation tests, and 8 core TUN tests passed (the desktop kernel-adapter test was skipped). A real Android VPN service session also forwarded a TCP HTTP request from the shell UID through the TUN; Android reported the app UID excluded from the VPN ranges. A remote ShadowQUIC server was not supplied, so remote authentication and transport were not tested.
 

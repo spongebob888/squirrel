@@ -13,4 +13,29 @@
     <item name="download_config" type="id" />
     <item name="remote_url" type="id" />
     <item name="log_text" type="id" />
+    <item name="connect_vpn" type="id" />
+    <item name="connection_state" type="id" />
+    <item name="connection_profile" type="id" />
+    <item name="connection_metrics_notice" type="id" />
+    <item name="upload_total" type="id" />
+    <item name="download_total" type="id" />
+    <item name="tcp_metric" type="id" />
+    <item name="udp_metric" type="id" />
+    <item name="resident_metric" type="id" />
+    <item name="allocated_metric" type="id" />
+    <item name="proxy_filter" type="id" />
+    <item name="proxy_summary" type="id" />
+    <item name="proxy_empty" type="id" />
+    <item name="proxy_rows" type="id" />
+    <item name="session_filter" type="id" />
+    <item name="protocol_filter" type="id" />
+    <item name="session_summary" type="id" />
+    <item name="session_empty" type="id" />
+    <item name="session_rows" type="id" />
+    <item name="configuration_page" type="id" />
+    <item name="config_more" type="id" />
+    <item name="log_filter" type="id" />
+    <item name="log_live" type="id" />
+    <item name="log_status" type="id" />
+    <item name="log_scroll" type="id" />
 </resources>

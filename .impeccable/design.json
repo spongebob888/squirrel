@@ -1,0 +1,571 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-17T22:04:03.069175+00:00",
+  "title": "Design System: Squirrel",
+  "extensions": {
+    "colorMeta": {
+      "primary-light": {
+        "role": "primary",
+        "displayName": "Atlas Violet — light",
+        "tonalRamp": [
+          "oklch(15% 0.10240 282.74)",
+          "oklch(26% 0.10240 282.74)",
+          "oklch(38% 0.10240 282.74)",
+          "oklch(49% 0.10240 282.74)",
+          "oklch(61% 0.10240 282.74)",
+          "oklch(72% 0.10240 282.74)",
+          "oklch(84% 0.10240 282.74)",
+          "oklch(95% 0.10240 282.74)"
+        ]
+      },
+      "primary-dark": {
+        "role": "primary",
+        "displayName": "Atlas Violet — dark",
+        "tonalRamp": [
+          "oklch(15% 0.09351 289.65)",
+          "oklch(26% 0.09351 289.65)",
+          "oklch(38% 0.09351 289.65)",
+          "oklch(49% 0.09351 289.65)",
+          "oklch(61% 0.09351 289.65)",
+          "oklch(72% 0.09351 289.65)",
+          "oklch(84% 0.09351 289.65)",
+          "oklch(95% 0.09351 289.65)"
+        ]
+      },
+      "on-primary-light": {
+        "role": "primary",
+        "displayName": "Action Contrast — light",
+        "tonalRamp": [
+          "oklch(15% 0.00000 0.00)",
+          "oklch(26% 0.00000 0.00)",
+          "oklch(38% 0.00000 0.00)",
+          "oklch(49% 0.00000 0.00)",
+          "oklch(61% 0.00000 0.00)",
+          "oklch(72% 0.00000 0.00)",
+          "oklch(84% 0.00000 0.00)",
+          "oklch(95% 0.00000 0.00)"
+        ]
+      },
+      "on-primary-dark": {
+        "role": "primary",
+        "displayName": "Action Contrast — dark",
+        "tonalRamp": [
+          "oklch(15% 0.08765 285.84)",
+          "oklch(26% 0.08765 285.84)",
+          "oklch(38% 0.08765 285.84)",
+          "oklch(49% 0.08765 285.84)",
+          "oklch(61% 0.08765 285.84)",
+          "oklch(72% 0.08765 285.84)",
+          "oklch(84% 0.08765 285.84)",
+          "oklch(95% 0.08765 285.84)"
+        ]
+      },
+      "surface-light": {
+        "role": "neutral",
+        "displayName": "Work Paper — light",
+        "tonalRamp": [
+          "oklch(15% 0.00264 286.35)",
+          "oklch(26% 0.00264 286.35)",
+          "oklch(38% 0.00264 286.35)",
+          "oklch(49% 0.00264 286.35)",
+          "oklch(61% 0.00264 286.35)",
+          "oklch(72% 0.00264 286.35)",
+          "oklch(84% 0.00264 286.35)",
+          "oklch(95% 0.00264 286.35)"
+        ]
+      },
+      "surface-dark": {
+        "role": "neutral",
+        "displayName": "Work Paper — dark",
+        "tonalRamp": [
+          "oklch(15% 0.02751 290.36)",
+          "oklch(26% 0.02751 290.36)",
+          "oklch(38% 0.02751 290.36)",
+          "oklch(49% 0.02751 290.36)",
+          "oklch(61% 0.02751 290.36)",
+          "oklch(72% 0.02751 290.36)",
+          "oklch(84% 0.02751 290.36)",
+          "oklch(95% 0.02751 290.36)"
+        ]
+      },
+      "ink-light": {
+        "role": "neutral",
+        "displayName": "Violet Ink — light",
+        "tonalRamp": [
+          "oklch(15% 0.05122 289.06)",
+          "oklch(26% 0.05122 289.06)",
+          "oklch(38% 0.05122 289.06)",
+          "oklch(49% 0.05122 289.06)",
+          "oklch(61% 0.05122 289.06)",
+          "oklch(72% 0.05122 289.06)",
+          "oklch(84% 0.05122 289.06)",
+          "oklch(95% 0.05122 289.06)"
+        ]
+      },
+      "ink-dark": {
+        "role": "neutral",
+        "displayName": "Violet Ink — dark",
+        "tonalRamp": [
+          "oklch(15% 0.02186 297.41)",
+          "oklch(26% 0.02186 297.41)",
+          "oklch(38% 0.02186 297.41)",
+          "oklch(49% 0.02186 297.41)",
+          "oklch(61% 0.02186 297.41)",
+          "oklch(72% 0.02186 297.41)",
+          "oklch(84% 0.02186 297.41)",
+          "oklch(95% 0.02186 297.41)"
+        ]
+      },
+      "secondary-light": {
+        "role": "neutral",
+        "displayName": "Quiet Ink — light",
+        "tonalRamp": [
+          "oklch(15% 0.04200 291.72)",
+          "oklch(26% 0.04200 291.72)",
+          "oklch(38% 0.04200 291.72)",
+          "oklch(49% 0.04200 291.72)",
+          "oklch(61% 0.04200 291.72)",
+          "oklch(72% 0.04200 291.72)",
+          "oklch(84% 0.04200 291.72)",
+          "oklch(95% 0.04200 291.72)"
+        ]
+      },
+      "secondary-dark": {
+        "role": "neutral",
+        "displayName": "Quiet Ink — dark",
+        "tonalRamp": [
+          "oklch(15% 0.03270 297.59)",
+          "oklch(26% 0.03270 297.59)",
+          "oklch(38% 0.03270 297.59)",
+          "oklch(49% 0.03270 297.59)",
+          "oklch(61% 0.03270 297.59)",
+          "oklch(72% 0.03270 297.59)",
+          "oklch(84% 0.03270 297.59)",
+          "oklch(95% 0.03270 297.59)"
+        ]
+      },
+      "container-light": {
+        "role": "neutral",
+        "displayName": "Lavender Support — light",
+        "tonalRamp": [
+          "oklch(15% 0.01472 290.30)",
+          "oklch(26% 0.01472 290.30)",
+          "oklch(38% 0.01472 290.30)",
+          "oklch(49% 0.01472 290.30)",
+          "oklch(61% 0.01472 290.30)",
+          "oklch(72% 0.01472 290.30)",
+          "oklch(84% 0.01472 290.30)",
+          "oklch(95% 0.01472 290.30)"
+        ]
+      },
+      "container-dark": {
+        "role": "neutral",
+        "displayName": "Lavender Support — dark",
+        "tonalRamp": [
+          "oklch(15% 0.04817 291.81)",
+          "oklch(26% 0.04817 291.81)",
+          "oklch(38% 0.04817 291.81)",
+          "oklch(49% 0.04817 291.81)",
+          "oklch(61% 0.04817 291.81)",
+          "oklch(72% 0.04817 291.81)",
+          "oklch(84% 0.04817 291.81)",
+          "oklch(95% 0.04817 291.81)"
+        ]
+      },
+      "outline-light": {
+        "role": "neutral",
+        "displayName": "Fine Rule — light",
+        "tonalRamp": [
+          "oklch(15% 0.01913 292.57)",
+          "oklch(26% 0.01913 292.57)",
+          "oklch(38% 0.01913 292.57)",
+          "oklch(49% 0.01913 292.57)",
+          "oklch(61% 0.01913 292.57)",
+          "oklch(72% 0.01913 292.57)",
+          "oklch(84% 0.01913 292.57)",
+          "oklch(95% 0.01913 292.57)"
+        ]
+      },
+      "outline-dark": {
+        "role": "neutral",
+        "displayName": "Fine Rule — dark",
+        "tonalRamp": [
+          "oklch(15% 0.04208 295.46)",
+          "oklch(26% 0.04208 295.46)",
+          "oklch(38% 0.04208 295.46)",
+          "oklch(49% 0.04208 295.46)",
+          "oklch(61% 0.04208 295.46)",
+          "oklch(72% 0.04208 295.46)",
+          "oklch(84% 0.04208 295.46)",
+          "oklch(95% 0.04208 295.46)"
+        ]
+      },
+      "success-light": {
+        "role": "secondary",
+        "displayName": "Engine Teal — light",
+        "tonalRamp": [
+          "oklch(15% 0.08673 168.88)",
+          "oklch(26% 0.08673 168.88)",
+          "oklch(38% 0.08673 168.88)",
+          "oklch(49% 0.08673 168.88)",
+          "oklch(61% 0.08673 168.88)",
+          "oklch(72% 0.08673 168.88)",
+          "oklch(84% 0.08673 168.88)",
+          "oklch(95% 0.08673 168.88)"
+        ]
+      },
+      "success-dark": {
+        "role": "secondary",
+        "displayName": "Engine Teal — dark",
+        "tonalRamp": [
+          "oklch(15% 0.08847 167.93)",
+          "oklch(26% 0.08847 167.93)",
+          "oklch(38% 0.08847 167.93)",
+          "oklch(49% 0.08847 167.93)",
+          "oklch(61% 0.08847 167.93)",
+          "oklch(72% 0.08847 167.93)",
+          "oklch(84% 0.08847 167.93)",
+          "oklch(95% 0.08847 167.93)"
+        ]
+      },
+      "error-light": {
+        "role": "secondary",
+        "displayName": "Failure Red — light",
+        "tonalRamp": [
+          "oklch(15% 0.15931 19.89)",
+          "oklch(26% 0.15931 19.89)",
+          "oklch(38% 0.15931 19.89)",
+          "oklch(49% 0.15931 19.89)",
+          "oklch(61% 0.15931 19.89)",
+          "oklch(72% 0.15931 19.89)",
+          "oklch(84% 0.15931 19.89)",
+          "oklch(95% 0.15931 19.89)"
+        ]
+      },
+      "error-dark": {
+        "role": "secondary",
+        "displayName": "Failure Red — dark",
+        "tonalRamp": [
+          "oklch(15% 0.09178 11.62)",
+          "oklch(26% 0.09178 11.62)",
+          "oklch(38% 0.09178 11.62)",
+          "oklch(49% 0.09178 11.62)",
+          "oklch(61% 0.09178 11.62)",
+          "oklch(72% 0.09178 11.62)",
+          "oklch(84% 0.09178 11.62)",
+          "oklch(95% 0.09178 11.62)"
+        ]
+      },
+      "download-light": {
+        "role": "secondary",
+        "displayName": "Download Teal — light",
+        "tonalRamp": [
+          "oklch(15% 0.07752 184.20)",
+          "oklch(26% 0.07752 184.20)",
+          "oklch(38% 0.07752 184.20)",
+          "oklch(49% 0.07752 184.20)",
+          "oklch(61% 0.07752 184.20)",
+          "oklch(72% 0.07752 184.20)",
+          "oklch(84% 0.07752 184.20)",
+          "oklch(95% 0.07752 184.20)"
+        ]
+      },
+      "download-dark": {
+        "role": "secondary",
+        "displayName": "Download Teal — dark",
+        "tonalRamp": [
+          "oklch(15% 0.07497 182.97)",
+          "oklch(26% 0.07497 182.97)",
+          "oklch(38% 0.07497 182.97)",
+          "oklch(49% 0.07497 182.97)",
+          "oklch(61% 0.07497 182.97)",
+          "oklch(72% 0.07497 182.97)",
+          "oklch(84% 0.07497 182.97)",
+          "oklch(95% 0.07497 182.97)"
+        ]
+      },
+      "chrome-mark": {
+        "role": "primary",
+        "displayName": "Core Lavender",
+        "tonalRamp": [
+          "oklch(15% 0.03674 292.46)",
+          "oklch(26% 0.03674 292.46)",
+          "oklch(38% 0.03674 292.46)",
+          "oklch(49% 0.03674 292.46)",
+          "oklch(61% 0.03674 292.46)",
+          "oklch(72% 0.03674 292.46)",
+          "oklch(84% 0.03674 292.46)",
+          "oklch(95% 0.03674 292.46)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "headline": {
+        "displayName": "Screen heading",
+        "purpose": "Native screen title across all five destinations; sp-scaled system sans."
+      },
+      "headline-compact": {
+        "displayName": "Compact screen heading",
+        "purpose": "Screen heading below the available-height threshold."
+      },
+      "brand": {
+        "displayName": "Squirrel brand",
+        "purpose": "Native app name in the header."
+      },
+      "section": {
+        "displayName": "Section heading",
+        "purpose": "Live engine subsection."
+      },
+      "title": {
+        "displayName": "Record or state title",
+        "purpose": "Connection state, outbound and session identities."
+      },
+      "body": {
+        "displayName": "Native body",
+        "purpose": "Copy, actions, filters, radio labels and engine labels."
+      },
+      "support": {
+        "displayName": "Supporting text",
+        "purpose": "Notices, summaries, tabs and timing."
+      },
+      "route": {
+        "displayName": "Keyed route label",
+        "purpose": "Bold route and supporting strip labels."
+      },
+      "caption": {
+        "displayName": "Caption",
+        "purpose": "Metric labels, packet loss, duration and caveats."
+      },
+      "total": {
+        "displayName": "Transfer total",
+        "purpose": "Prominent tabular upload/download total."
+      },
+      "measurement": {
+        "displayName": "Measurement",
+        "purpose": "Smaller tabular values, pairs and end-aligned engine figures."
+      },
+      "core-mark": {
+        "displayName": "Core identity",
+        "purpose": "Small tracked SHADOWQUIC header label."
+      },
+      "yaml": {
+        "displayName": "YAML source",
+        "purpose": "Native monospace configuration editing; line spacing extends platform metrics."
+      },
+      "log": {
+        "displayName": "Log source",
+        "purpose": "Selectable native monospace log content; line spacing extends platform metrics."
+      }
+    },
+    "shadows": [],
+    "motion": [],
+    "breakpoints": [
+      {
+        "name": "compact-native-height",
+        "value": "screenHeightDp < 480",
+        "purpose": "Short viewport layout; configuration height in Android dp, not CSS width."
+      },
+      {
+        "name": "workspace-wide",
+        "value": "screenWidthDp >= 600",
+        "purpose": "Configuration sidebar/editor layout and inline live log switch."
+      },
+      {
+        "name": "editor-short-measured-height",
+        "value": "!wide && measured page height < 500dp",
+        "purpose": "Hide Configuration heading and profile label; reduce top padding for IME space."
+      },
+      {
+        "name": "logs-short-measured-height",
+        "value": "measured page height < 450dp",
+        "purpose": "Hide Logs heading to preserve viewer height."
+      }
+    ],
+    "native": {
+      "platform": "Android Views",
+      "spacingUnits": "dp",
+      "fontUnits": "sp",
+      "lineMetrics": "Default Android font metrics; YAML adds 2dp and log output adds 3dp with line-spacing multiplier 1. No fixed line-height scale.",
+      "focus": "Native EditText cursor, selection and keyboard behavior; filters have no drawn focus border. The YAML editor changes from a 1dp outline-role resting stroke to a 2dp primary-role focused stroke. Actions and tabs retain native RippleDrawable feedback without a custom focus ring. Log refresh leaves filter focus intact.",
+      "feedback": "Button elevation is 0; state-list elevation animator is removed. RecyclerView item animator is disabled. ViewPager2 and platform dialogs retain native behavior.",
+      "controlMinimumHeight": "48dp",
+      "separatorThickness": "1dp",
+      "tabIndicatorThickness": "3dp",
+      "fixedHeaderColorRef": "colors.primary-light",
+      "previewPolicy": "Self-contained HTML/CSS component translations approximate Android at default density and font scale; browser native focus is retained. Previews are not native shipping code or a pixel reproduction contract.",
+      "rampPolicy": "Tonal ramps are synthesized OKLCH visualization metadata, dark to light at source chroma/hue. They are not shipped Android resource values or an expanded authorized palette.",
+      "scope": "All five destinations, shared navigation chrome and app-owned native menus/dialogs use the Technical atlas in day/night modes.",
+      "evidence": [
+        "app/src/main/java/dev/squirrel/vpn/DiagnosticsUi.java",
+        "app/src/main/java/dev/squirrel/vpn/MainActivity.java",
+        "app/src/main/res/values/diagnostics.xml",
+        "app/src/main/res/values-night/diagnostics.xml",
+        ".impeccable/review/finish-review.md",
+        ".impeccable/review/phone.png",
+        ".impeccable/review/phone-dark.png",
+        ".impeccable/review/proxies.png",
+        ".impeccable/review/sessions-landscape.png",
+        ".impeccable/review/phone-large-text.png",
+        "app/src/main/java/dev/squirrel/vpn/WorkspaceUi.java",
+        "app/src/main/java/dev/squirrel/vpn/EditorScrollHost.java",
+        "app/src/main/res/drawable/ic_expand_more.xml",
+        ".impeccable/surfaces/in-java-dev-squirrel-vpn-workspaceui-java-5b466e8c.md",
+        ".impeccable/review/workspace/finish-review.md",
+        ".impeccable/review/workspace/packet.json",
+        ".impeccable/review/workspace/configuration.png",
+        ".impeccable/review/workspace/configuration-dark.png",
+        ".impeccable/review/workspace/configuration-keyboard.png",
+        ".impeccable/review/workspace/configuration-landscape.png",
+        ".impeccable/review/workspace/logs-error.png",
+        ".impeccable/review/workspace/logs-landscape.png",
+        ".impeccable/review/workspace/configuration-more.png"
+      ],
+      "workspace": {
+        "editorLineSpacing": {
+          "add": "2dp",
+          "multiplier": 1
+        },
+        "logLineSpacing": {
+          "add": "3dp",
+          "multiplier": 1
+        },
+        "editorOutline": {
+          "resting": "1dp {colors.outline-light|outline-dark}",
+          "focused": "2dp {colors.primary-light|primary-dark}"
+        },
+        "selectionHighlight": "Active primary RGB at alpha 0x33 for YAML and log text.",
+        "sidebarWidth": "min(360dp, screenWidthDp / 2 - 36dp), with 24dp end margin; scrollable controls.",
+        "profileChevron": "Native 24dp ic_expand_more vector, tinted primary, 8dp compound-drawable gap; not a raster or text glyph.",
+        "editorInput": "Native multiline horizontally scrolling EditText; no suggestions, extract UI, fullscreen IME or personalized learning requests. Native text selection and app draft restoration.",
+        "logSnapshot": "Pause retains last snapshot; initial read occurs without an existing snapshot. Read failures retain content and show error status. Unchanged text skips replacement; changed text follows the tail only when already at bottom, otherwise restores offset. Filter changes reset to top.",
+        "exportScope": "Configuration snapshots current editor contents. Log export reads all retained service/core logs independently of the displayed tail, filter or pause.",
+        "liveControl": "Native Switch, checked initially, platform theme tint; no custom thumb or track tokens.",
+        "assets": "No new shipping raster assets; profile chevron is native vector XML."
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Primary action",
+      "kind": "button",
+      "description": "Filled Connect/Disconnect or Save action; preview maps dp/sp to CSS pixels at default scale. Browser focus illustrates native activation rather than adding Android tokens.",
+      "html": "<button class=\"ds-action\">Connect</button>",
+      "css": ".ds-action{font:400 14px sans-serif;border:0;border-radius:24px;min-height:48px;padding:10px 12px;cursor:pointer;box-shadow:none;background:#35316E;color:#FFFFFF}.ds-action:hover:not(:disabled),.ds-action:active:not(:disabled){background-image:linear-gradient(#DAD8E644,#DAD8E644)}.ds-action:focus-visible{outline:auto}.ds-action:disabled{background:#EEEDF8;color:#59556F;cursor:default}",
+      "refersTo": "button-primary"
+    },
+    {
+      "name": "Outbound action",
+      "kind": "button",
+      "description": "Tonal Choose proxy / Probe latency action; disabled state represents a pending probe.",
+      "html": "<button class=\"ds-action\">Probe latency</button>",
+      "css": ".ds-action{font:400 14px sans-serif;border:0;border-radius:24px;min-height:48px;padding:10px 12px;cursor:pointer;box-shadow:none;background:#EEEDF8;color:#35316E}.ds-action:hover:not(:disabled),.ds-action:active:not(:disabled){background-image:linear-gradient(#DAD8E644,#DAD8E644)}.ds-action:focus-visible{outline:auto}.ds-action:disabled{background:#EEEDF8;color:#59556F;cursor:default}",
+      "refersTo": "button-tonal"
+    },
+    {
+      "name": "Native filter",
+      "kind": "input",
+      "description": "Shared single-line Proxies/Sessions/Logs filter form. No custom native focus border; browser keyboard focus is a preview affordance.",
+      "html": "<input class=\"ds-filter\" aria-label=\"Filter outbounds\" placeholder=\"Filter outbounds\">",
+      "css": ".ds-filter{font:400 14px sans-serif;color:#26223E;background:#EEEDF8;border:0;border-radius:12px;padding:8px 14px;min-height:48px}.ds-filter::placeholder{color:#59556F;opacity:1}.ds-filter:hover{background:#EEEDF8}.ds-filter:focus-visible{outline:auto}",
+      "refersTo": "filter"
+    },
+    {
+      "name": "Shared atlas tabs",
+      "kind": "nav",
+      "description": "All five destinations retain the same native tab strip and violet header; selected text and bottom indicator use primary.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Squirrel destinations\"><button class=\"ds-tab\" onclick=\"this.parentElement.querySelectorAll('.ds-tab').forEach(b=>b.removeAttribute('aria-current'));this.setAttribute('aria-current','page')\">Connection</button><button class=\"ds-tab\" onclick=\"this.parentElement.querySelectorAll('.ds-tab').forEach(b=>b.removeAttribute('aria-current'));this.setAttribute('aria-current','page')\">Proxies</button><button class=\"ds-tab\" aria-current=\"page\" onclick=\"this.parentElement.querySelectorAll('.ds-tab').forEach(b=>b.removeAttribute('aria-current'));this.setAttribute('aria-current','page')\">Configuration</button><button class=\"ds-tab\" onclick=\"this.parentElement.querySelectorAll('.ds-tab').forEach(b=>b.removeAttribute('aria-current'));this.setAttribute('aria-current','page')\">Logs</button><button class=\"ds-tab\" onclick=\"this.parentElement.querySelectorAll('.ds-tab').forEach(b=>b.removeAttribute('aria-current'));this.setAttribute('aria-current','page')\">Sessions</button></nav>",
+      "css": ".ds-nav{display:flex;overflow-x:auto;background:#EEEDF8;padding:0 10px}.ds-tab{font:400 13px sans-serif;background:transparent;color:#59556F;border:0;border-bottom:3px solid transparent;min-height:48px;padding:10px 12px;white-space:nowrap;cursor:pointer}.ds-tab[aria-current]{color:#35316E;border-bottom-color:#35316E}.ds-tab:hover,.ds-tab:active{background:#DAD8E644}.ds-tab:focus-visible{outline:auto}"
+    },
+    {
+      "name": "Upload and download pair",
+      "kind": "custom",
+      "description": "Supporting legend and repeated two-column grammar; unavailable uses an em dash.",
+      "html": "<div class=\"ds-legend\">Connection / live metrics</div><div class=\"ds-pair\"><div class=\"ds-up\"><span class=\"ds-label\">Uploaded</span><strong class=\"ds-number\">—</strong></div><div class=\"ds-down\"><span class=\"ds-label\">Downloaded</span><strong class=\"ds-number\">—</strong></div></div>",
+      "css": ".ds-pair{display:flex;gap:16px;background:#FAFAFC;font-family:sans-serif;padding:20px 0}.ds-up,.ds-down{flex:1;min-width:0}.ds-label{display:block;color:#59556F;font-size:12px;margin-bottom:4px}.ds-number{font-size:28px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ds-up{color:#35316E}.ds-down{color:#176B62}.ds-legend{font:700 13px sans-serif;background:#EEEDF8;color:#35316E;border-radius:8px;padding:12px 14px}"
+    },
+    {
+      "name": "Engine metric row",
+      "kind": "custom",
+      "description": "Flat keyed fact with an end-aligned tabular value and a fine divider.",
+      "html": "<div class=\"ds-engine\"><span class=\"ds-engine-label\">Resident memory</span><strong class=\"ds-engine-value\">—</strong></div>",
+      "css": ".ds-engine{display:flex;align-items:center;background:#FAFAFC;border-bottom:1px solid #DAD8E6;font:400 14px sans-serif;padding:13px 0}.ds-engine-label{flex:1;color:#59556F;padding-right:12px}.ds-engine-value{flex:1.4;text-align:right;color:#26223E;font-weight:700;font-variant-numeric:tabular-nums}"
+    },
+    {
+      "name": "Protocol choices",
+      "kind": "custom",
+      "description": "Native All/TCP/UDP radio semantics; checked state is conveyed independently of text color. Browser radios approximate platform glyphs.",
+      "html": "<div class=\"ds-protocol\"><label class=\"ds-radio\"><input type=\"radio\" name=\"ds-protocol\" checked> All</label><label class=\"ds-radio\"><input type=\"radio\" name=\"ds-protocol\"> TCP</label><label class=\"ds-radio\"><input type=\"radio\" name=\"ds-protocol\"> UDP</label></div>",
+      "css": ".ds-protocol{display:flex;background:#FAFAFC;color:#26223E;font:400 14px sans-serif}.ds-radio{display:flex;align-items:center;flex:1;min-height:48px;gap:6px;cursor:pointer}.ds-radio input{accent-color:#35316E}.ds-radio input:hover{cursor:pointer}.ds-radio input:focus-visible{outline:auto}"
+    },
+    {
+      "name": "Profile selector",
+      "kind": "button",
+      "refersTo": "button-tonal",
+      "description": "Single-line profile action with native vector chevron; opens a native single-choice dialog in the app. Preview retains the source vector shape.",
+      "html": "<button class=\"ds-profile\"><span class=\"ds-profile-name\">Selected profile</span><svg class=\"ds-chevron\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7,8.6L12,13.6L17,8.6L18.4,10L12,16.4L5.6,10Z\"/></svg></button>",
+      "css": ".ds-profile{display:flex;align-items:center;gap:8px;background:#EEEDF8;color:#35316E;border:0;border-radius:24px;padding:10px 12px;min-height:48px;font:400 14px sans-serif;cursor:pointer;max-width:100%}.ds-profile-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-chevron{width:24px;height:24px;fill:currentColor;flex:none}.ds-profile:hover,.ds-profile:active{background-image:linear-gradient(#DAD8E644,#DAD8E644)}.ds-profile:focus-visible{outline:auto}.ds-profile:disabled{color:#59556F;cursor:default}"
+    },
+    {
+      "name": "YAML editor",
+      "kind": "input",
+      "refersTo": "yaml-editor",
+      "description": "Multiline monospace editing pane with the observed resting/focused native stroke. Browser line metrics approximate Android font metrics plus the 2dp extension; not an exact IME or gesture reproduction.",
+      "html": "<textarea class=\"ds-yaml\" aria-label=\"YAML configuration editor\" wrap=\"off\" spellcheck=\"false\"># Synthetic documentation preview\noutbounds: []</textarea>",
+      "css": ".ds-yaml{display:block;min-height:180px;max-width:100%;font:400 13px monospace;line-height:calc(1.2em + 2px);color:#26223E;background:#EEEDF8;border:1px solid #DAD8E6;border-radius:12px;padding:14px;resize:vertical;white-space:pre;overflow:auto}.ds-yaml:hover{border-color:#DAD8E6}.ds-yaml:focus,.ds-yaml:focus-visible{border:2px solid #35316E;outline:none}.ds-yaml::selection{background:#35316E33}"
+    },
+    {
+      "name": "Log workspace",
+      "kind": "custom",
+      "refersTo": "log-viewer",
+      "description": "Selectable monospace snapshot and native live-switch semantics. Example content is synthetic. Browser line metrics approximate the 3dp extension; export scope remains all retained logs.",
+      "html": "<section class=\"ds-log-workspace\"><label class=\"ds-live\"><input type=\"checkbox\" checked role=\"switch\" onchange=\"this.closest('.ds-log-workspace').querySelector('.ds-log-status').textContent=(this.checked?'Live':'Paused')+' · 1 of 1 lines · service + core'\">Live updates</label><p class=\"ds-log-status\">Live · 1 of 1 lines · service + core</p><pre class=\"ds-log-pane\" tabindex=\"0\">— service.log —\nINFO Synthetic documentation preview</pre><p class=\"ds-log-caption\">Latest lines shown. Export includes all retained logs.</p></section>",
+      "css": ".ds-log-workspace{font:400 13px sans-serif;color:#26223E;background:#FAFAFC}.ds-live{display:flex;align-items:center;gap:12px;min-height:48px;cursor:pointer}.ds-live input{accent-color:#35316E}.ds-live input:hover{cursor:pointer}.ds-live input:focus-visible{outline:auto}.ds-log-status{color:#59556F;margin:6px 0 12px}.ds-log-pane{font:400 12px monospace;line-height:calc(1.2em + 3px);color:#26223E;background:#EEEDF8;border:1px solid #DAD8E6;border-radius:12px;padding:14px;white-space:pre-wrap;max-height:180px;overflow:auto;user-select:text}.ds-log-pane:focus-visible{outline:auto}.ds-log-pane::selection{background:#35316E33}.ds-log-caption{font-size:12px;color:#59556F;margin-top:10px}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Technical atlas",
+    "overview": "A scientific reference atlas expressed through native Android Views. Violet chrome, quiet work areas and aligned facts give technical ShadowQUIC users a readable view of the local engine. Familiar controls and repeated measurement labels carry the character; there is no illustration or ornamental material layer.\n\nThis system describes all five shipped destinations: Connection, Proxies, Configuration, Logs and Sessions, together with their shared navigation chrome and app-owned native dialogs. Configuration and Logs extend the same atlas with large YAML and log workspaces; all destinations retain the violet header and lavender tab treatment. The confirmed atlas selection supplies the metaphor; installed native Views supply the tokens and behavior.",
+    "keyCharacteristics": [
+      "Violet hierarchy with teal download and success roles.",
+      "Paired upload/download columns with explicit labels.",
+      "Flat native controls, thin separators and stable live lists.",
+      "Android system typography, tabular measurements and monospace source text.",
+      "Distinct local-engine, unavailable, empty and failure states."
+    ],
+    "rules": [
+      {
+        "name": "The Repeated Legend Rule",
+        "body": "Keep upload on the left in the primary violet role and download on the right in the download teal role. Repeat the words at each measurement group so color is never the sole key.",
+        "section": "colors"
+      },
+      {
+        "name": "The Figures Stay Put Rule",
+        "body": "Use tabular figures for changing measurements and preserve identity and alignment during refresh; do not add a decorative number font.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat Workbench Rule",
+        "body": "Keep workspaces flat on the shared work surface; use lavender fill for controls, keyed strips and source panes, and separators between diagnostic records.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "**Do** use matched light/dark semantic roles from Android resources and keep the header's fixed violet treatment.",
+      "**Do** repeat upload/download labels, left/right order and measurement colors at every pair.",
+      "**Do** retain tabular figures, native sp text scaling, dp spacing and a minimum 48dp control height.",
+      "**Do** distinguish local engine state, remote evidence, missing metrics, zero, empty results and failed requests.",
+      "**Do** preserve long destinations, IPv6 notation, filter state and reading position during live updates.",
+      "**Do** keep all five destinations and app-owned dialogs on the shared atlas, with monospace reserved for YAML and actual logs.",
+      "**Do** preserve editor focus/IME space and log snapshot, filter focus and reading offset during refresh.",
+      "**Do** distinguish configuration saving/application and displayed-log filtering/full retained-log export."
+    ],
+    "donts": [
+      "**Don't** reintroduce the former green/dark Configuration and Logs treatment or change chrome by destination.",
+      "**Don't** substitute color alone for text labels or report unavailable measurements as zero.",
+      "**Don't** add decorative cards, illustration or elevation to the flat diagnostic record system.",
+      "**Don't** treat synthetic review figures or fixture labels as production content or proof of remote connectivity.",
+      "**Don't** spread the editor's focus stroke to filters or invent hover animation and fixed line-height rules absent from the native implementation.",
+      "**Don't** discard a retained log snapshot on read failure or let filter/pause alter the full-export scope."
+    ]
+  }
+}

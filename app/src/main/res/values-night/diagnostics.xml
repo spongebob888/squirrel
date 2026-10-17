@@ -1,0 +1,12 @@
+<resources>
+    <color name="diagnostic_surface">#181624</color>
+    <color name="diagnostic_on_surface">#E9E5F5</color>
+    <color name="diagnostic_secondary">#C0BAD1</color>
+    <color name="diagnostic_primary">#C4BCFF</color>
+    <color name="diagnostic_on_primary">#282153</color>
+    <color name="diagnostic_container">#302B46</color>
+    <color name="diagnostic_outline">#4A445D</color>
+    <color name="diagnostic_success">#8DDBBD</color>
+    <color name="diagnostic_error">#FFB1BA</color>
+    <color name="diagnostic_download">#8DD6CA</color>
+</resources>

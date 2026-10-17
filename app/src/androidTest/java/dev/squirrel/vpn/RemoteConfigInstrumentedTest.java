@@ -55,16 +55,18 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
     public void testSwipesAndTabClicksPreserveDraftAcrossRecreation() throws Exception {
         launch();
         swipe(true);
-        awaitPage(1);
+        awaitPage(MainActivity.PROXIES);
+        swipe(true);
+        awaitPage(MainActivity.CONFIGURATION);
         String draft = "# Unsaved draft\noutbounds: []\n";
         onMain(() -> { editor().setText(draft); return null; });
         swipe(true);
-        awaitPage(2);
+        awaitPage(MainActivity.LOGS);
         swipe(false);
-        awaitPage(1);
+        awaitPage(MainActivity.CONFIGURATION);
         assertEquals(draft, onMain(() -> editor().getText().toString()));
         onMain(() -> { activity.findViewById(R.id.logs_tab).performClick(); return null; });
-        awaitPage(2);
+        awaitPage(MainActivity.LOGS);
         Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(MainActivity.class.getName(), null, false);
         onMain(() -> { activity.recreate(); return null; });
         MainActivity replacement = (MainActivity) getInstrumentation().waitForMonitorWithTimeout(monitor, 5000);
@@ -72,10 +74,10 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         assertNotNull("Activity was not recreated", replacement);
         activity = replacement;
         awaitReady();
-        awaitPage(2);
+        awaitPage(MainActivity.LOGS);
         assertEquals(draft, onMain(() -> editor().getText().toString()));
         onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
-        awaitPage(1);
+        awaitPage(MainActivity.CONFIGURATION);
     }
 
     public void testRemoteImportValidatesBeforeReplacingEditorAndDoesNotSave() throws Exception {
@@ -83,7 +85,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         String saved = ConfigStore.read(getInstrumentation().getTargetContext());
         try (Server server = new Server()) {
             onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
-            awaitPage(1);
+            awaitPage(MainActivity.CONFIGURATION);
             String draft = "# Existing draft\n";
             onMain(() -> { editor().setText(draft); return null; });
             importUrl(server.url("/invalid-yaml"));
@@ -109,7 +111,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
             ConfigProfiles.select(context, a);
             launch();
             onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
-            awaitPage(1);
+            awaitPage(MainActivity.CONFIGURATION);
             String draftA = "# Draft A\n" + CONFIG;
             String draftB = "# Draft B\n" + CONFIG;
             onMain(() -> { editor().setText(draftA); return null; });
@@ -146,7 +148,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
             String base = ConfigProfiles.create(context, prefix + "base", CONFIG).selectedId;
             launch();
             onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
-            awaitPage(1);
+            awaitPage(MainActivity.CONFIGURATION);
             String copy = "# Unsaved copy source\n" + CONFIG;
             onMain(() -> { editor().setText(copy); return null; });
             manageProfile("Duplicate current", prefix + "copy");
@@ -212,7 +214,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         long deadline = SystemClock.uptimeMillis() + 5000;
         while (SystemClock.uptimeMillis() < deadline) {
             if (onMain(() -> editor().isEnabled() && ((TextView) activity.findViewById(R.id.config_profile))
-                .getText().toString().equals(name + "  ▾"))) return;
+                .getText().toString().equals(name))) return;
             Thread.sleep(50);
         }
         fail("Profile did not switch to " + name);
