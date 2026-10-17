@@ -477,7 +477,9 @@ public final class MainActivity extends Activity {
             text.append(':').append(value(item, "dst_port")).append('\n')
                 .append("↑ ").append(formatBytes(item.optLong("upload_bytes")))
                 .append("   ↓ ").append(formatBytes(item.optLong("download_bytes")))
-                .append("   ").append(item.optLong("duration_ms") / 1000).append(" s\n\n");
+                .append("   ").append(item.optLong("duration_ms") / 1000).append(" s\n")
+                .append("First response  ").append(metric(item, "first_response_ms", " ms"))
+                .append("\n\n");
         }
         sessionList.setText(text.toString());
     }
