@@ -97,6 +97,127 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         }
     }
 
+    public void testProfileSwitchingPreservesSeparateDraftsAndRestoresSelection() throws Exception {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        String original = ConfigProfiles.list(context).selectedId;
+        String suffix = Long.toString(System.nanoTime());
+        String nameA = "Test A " + suffix, nameB = "Test B " + suffix;
+        String a = ConfigProfiles.create(context, nameA, CONFIG).selectedId;
+        String b = null;
+        try {
+            b = ConfigProfiles.create(context, nameB, "# B\n" + CONFIG).selectedId;
+            ConfigProfiles.select(context, a);
+            launch();
+            onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
+            awaitPage(1);
+            String draftA = "# Draft A\n" + CONFIG;
+            String draftB = "# Draft B\n" + CONFIG;
+            onMain(() -> { editor().setText(draftA); return null; });
+            switchProfile(nameB);
+            assertEquals("# B\n" + CONFIG, onMain(() -> editor().getText().toString()));
+            onMain(() -> { editor().setText(draftB); return null; });
+            switchProfile(nameA);
+            assertEquals(draftA, onMain(() -> editor().getText().toString()));
+            Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(MainActivity.class.getName(), null, false);
+            onMain(() -> { activity.recreate(); return null; });
+            activity = (MainActivity) getInstrumentation().waitForMonitorWithTimeout(monitor, 5000);
+            getInstrumentation().removeMonitor(monitor);
+            assertNotNull(activity);
+            awaitReady();
+            assertEquals(draftA, onMain(() -> editor().getText().toString()));
+            switchProfile(nameB);
+            assertEquals(draftB, onMain(() -> editor().getText().toString()));
+            assertEquals(b, ConfigProfiles.list(context).selectedId);
+            assertEquals(CONFIG, ConfigProfiles.read(context, a));
+            assertEquals("# B\n" + CONFIG, ConfigProfiles.read(context, b));
+        } finally {
+            if (activity != null) onMain(() -> { activity.finish(); activity = null; return null; });
+            ConfigProfiles.select(context, original);
+            ConfigProfiles.delete(context, a);
+            if (b != null) ConfigProfiles.delete(context, b);
+        }
+    }
+
+    public void testProfileManagementDialogsCreateDuplicateRenameAndDelete() throws Exception {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        String original = ConfigProfiles.list(context).selectedId;
+        String prefix = "UI " + System.nanoTime() + " ";
+        try {
+            String base = ConfigProfiles.create(context, prefix + "base", CONFIG).selectedId;
+            launch();
+            onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
+            awaitPage(1);
+            String copy = "# Unsaved copy source\n" + CONFIG;
+            onMain(() -> { editor().setText(copy); return null; });
+            manageProfile("Duplicate current", prefix + "copy");
+            String duplicate = ConfigProfiles.list(context).selectedId;
+            assertEquals(copy, ConfigProfiles.read(context, duplicate));
+            assertEquals(CONFIG, ConfigProfiles.read(context, base));
+            manageProfile("Rename", prefix + "renamed");
+            assertEquals(duplicate, ConfigProfiles.list(context).selectedId);
+            manageProfile("New configuration", prefix + "new");
+            String created = ConfigProfiles.list(context).selectedId;
+            assertEquals(ConfigStore.asset(context, "example.yaml"), ConfigProfiles.read(context, created));
+            onMain(() -> { activity.findViewById(R.id.manage_profiles).performClick(); return null; });
+            clickText("Delete");
+            clickAccessible("android:id/button1");
+            long deadline = SystemClock.uptimeMillis() + 5000;
+            while (ConfigProfiles.list(context).find(created) != null && SystemClock.uptimeMillis() < deadline) Thread.sleep(50);
+            assertNull(ConfigProfiles.list(context).find(created));
+            awaitReady();
+        } finally {
+            if (activity != null) onMain(() -> { activity.finish(); activity = null; return null; });
+            ConfigProfiles.select(context, original);
+            for (ConfigProfiles.Profile profile : ConfigProfiles.list(context).profiles) {
+                if (profile.name.startsWith(prefix)) ConfigProfiles.delete(context, profile.id);
+            }
+        }
+    }
+
+    private void manageProfile(String action, String name) throws Exception {
+        onMain(() -> { activity.findViewById(R.id.manage_profiles).performClick(); return null; });
+        clickText(action);
+        AccessibilityNodeInfo field = accessible("dev.squirrel.vpn:id/profile_name");
+        Bundle text = new Bundle();
+        text.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, name);
+        assertTrue(field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, text));
+        field.recycle();
+        clickAccessible("android:id/button1");
+        awaitProfile(name);
+    }
+
+    private void clickText(String text) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        while (SystemClock.uptimeMillis() < deadline) {
+            AccessibilityNodeInfo root = getInstrumentation().getUiAutomation().getRootInActiveWindow();
+            if (root != null) {
+                boolean clicked = false;
+                for (AccessibilityNodeInfo node : root.findAccessibilityNodeInfosByText(text)) {
+                    if (text.contentEquals(node.getText())) clicked |= node.performAction(AccessibilityNodeInfo.ACTION_CLICK);
+                    node.recycle();
+                }
+                root.recycle();
+                if (clicked) return;
+            }
+            Thread.sleep(50);
+        }
+        fail("Cannot click " + text);
+    }
+    private void switchProfile(String name) throws Exception {
+        onMain(() -> { activity.findViewById(R.id.config_profile).performClick(); return null; });
+        clickText(name);
+        awaitProfile(name);
+    }
+    private void awaitProfile(String name) throws Exception {
+        long deadline = SystemClock.uptimeMillis() + 5000;
+        while (SystemClock.uptimeMillis() < deadline) {
+            if (onMain(() -> editor().isEnabled() && ((TextView) activity.findViewById(R.id.config_profile))
+                .getText().toString().equals(name + "  ▾"))) return;
+            Thread.sleep(50);
+        }
+        fail("Profile did not switch to " + name);
+    }
+
     private void launch() throws Exception {
         Intent intent = new Intent(getInstrumentation().getTargetContext(), MainActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);

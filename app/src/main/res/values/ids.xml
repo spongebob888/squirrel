@@ -7,6 +7,9 @@
     <item name="logs_tab" type="id" />
     <item name="config_editor" type="id" />
     <item name="config_notice" type="id" />
+    <item name="config_profile" type="id" />
+    <item name="manage_profiles" type="id" />
+    <item name="profile_name" type="id" />
     <item name="download_config" type="id" />
     <item name="remote_url" type="id" />
     <item name="log_text" type="id" />

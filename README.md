@@ -5,6 +5,7 @@ An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 ph
 - Connection, Configuration, Logs, Proxies, and Sessions tabs with swipe navigation.
 - Live memory use, TCP/UDP session counts and traffic totals; outbound probe latency, QUIC RTT and packet loss; selector controls and an active session list.
 - Import local files or download remote YAML configs, then edit, validate, save, and export them.
+- Keep multiple named configurations, switch profiles, or create, duplicate, rename, and delete them in the Configuration tab.
 - TCP/UDP forwarding over IPv4 and IPv6, with ShadowQUIC's outbound protocols and Lua routing.
 - Persistent service and native core logs, a live log viewer, and export. Each log retains a current file and one rotated file at approximately 1 MiB each.
 - The VPN **always excludes its own package** (`dev.squirrel.vpn`) with `VpnService.Builder.addDisallowedApplication()` before establishing the interface. This bypass whitelist covers Rust upstream sockets and the app's DNS/network requests, preventing a routing loop. Failure to add the exclusion fails startup.
@@ -76,6 +77,10 @@ The built-in **Direct test** profile exercises the packet engine without a remot
 
 See [`examples/shadowquic.yaml`](examples/shadowquic.yaml) and [`examples/direct.yaml`](examples/direct.yaml). Standard ShadowQUIC configs are accepted. If a config has no TUN inbound, Squirrel adds one tagged `squirrel-tun` and preserves the other listeners. If you provide a TUN inbound, its addresses, MTU, session limits, and routing preference are used. Exactly one TUN is supported. The desktop TUN `name` is ignored on Android.
 
+Use the profile picker at the top of **Configuration** to switch saved configs. **Manage** offers **New configuration** (proxy template), **Duplicate current** (including editor changes), **Rename**, and **Delete**. Imports, downloads, Save, and Export apply to the selected profile. The selection persists across app restarts and supplies the next VPN connection; switching while connected takes effect after reconnecting. Unsaved drafts and URL fields stay separate for each profile while the activity is open and survive rotation. Save drafts before closing the app. At least one profile is kept.
+
+On upgrade, the previous `config.yaml` is copied unchanged into the **Default** profile and retained as a migration backup. Profiles live in private `configs/<id>.yaml` files with an atomic `profiles.json` index; profile names never become file paths.
+
 The optional app-specific section controls the DNS addresses advertised to Android:
 
 ```yaml
@@ -107,12 +112,12 @@ shellcheck scripts/*.sh
 python3 scripts/test-run-emulator.py -v
 ```
 
-Host tests cover config normalization, private database paths, legacy imports, routing validation, DNS validation, bundled examples, and log rotation. Instrumentation tests load the real JNI library, send a raw UDP packet through a simulated TUN to a local echo server, verify its reply, stop/restart the runtime, check Java descriptor ownership, and reject invalid imports. Database tests load a saved config with relative paths, download Geosite data from a local HTTP server into private storage, reopen it after restart with the source offline, and verify that saved YAML and DNS settings are preserved. UI and download tests cover swipe/tab navigation, draft retention across recreation, redirects, HTTP failures, UTF-8 and size validation, and replacing the editor only after config validation. The tests do not require VPN consent.
+Host tests cover config normalization, private database paths, legacy imports, routing validation, DNS validation, bundled examples, log rotation, and logger filtering. Instrumentation tests load the real JNI library, send a raw UDP packet through a simulated TUN to a local echo server, verify its reply, stop/restart the runtime, check Java descriptor ownership, and reject invalid imports. Database tests load a saved config with relative paths, download Geosite data from a local HTTP server into private storage, reopen it after restart with the source offline, and verify that saved YAML and DNS settings are preserved. UI and download tests cover swipe/tab navigation, draft retention across recreation, redirects, HTTP failures, UTF-8 and size validation, and replacing the editor only after config validation. Profile tests cover legacy migration, separate YAML files, durable selection, management dialogs, per-profile drafts, and rejected operations. The tests do not require VPN consent.
 
-Validated locally: both Android ABIs built; Android lint passed; all 10 host tests, 9 API 36 emulator instrumentation tests, and 8 core TUN tests passed (the desktop kernel-adapter test was skipped). A real Android VPN service session also forwarded a TCP HTTP request from the shell UID through the TUN; Android reported the app UID excluded from the VPN ranges. A remote ShadowQUIC server was not supplied, so remote authentication and transport were not tested.
+Validated locally: both Android ABIs built; Android lint passed; all 11 host tests, 15 API 36 emulator instrumentation tests, and 8 core TUN tests passed (the desktop kernel-adapter test was skipped). A real Android VPN service session also forwarded a TCP HTTP request from the shell UID through the TUN; Android reported the app UID excluded from the VPN ranges. A remote ShadowQUIC server was not supplied, so remote authentication and transport were not tested.
 
 For the proxy, memory, traffic, and session screens, the current revision builds both Android ABIs and passes Android lint. Live API behavior against a remote ShadowQUIC server has not been exercised in this environment.
 
-The Nix environment was also used to rebuild both ABIs, run lint and all 9 API 36 instrumentation tests, and verify fresh AVD creation, visible app launch, emulator persistence after the launcher exits, reuse, and a cold restart retaining a file in app-private storage. Launcher regression tests use an isolated fake SDK to check AVD directory matching, offline reconnection/restart, reopening a headless instance, and interrupted-encryption diagnostics without touching real AVDs. Flake formatting and ShellCheck pass.
+The Nix environment was also used to rebuild both ABIs, run lint and all 15 API 36 instrumentation tests, and verify fresh AVD creation, visible app launch, emulator persistence after the launcher exits, reuse, and a cold restart retaining a file in app-private storage. Launcher regression tests use an isolated fake SDK to check AVD directory matching, offline reconnection/restart, reopening a headless instance, and interrupted-encryption diagnostics without touching real AVDs. Flake formatting and ShellCheck pass.
 
 Android VPN integration follows the [Android VPN guide](https://developer.android.com/develop/connectivity/vpn).

@@ -32,6 +32,7 @@ import android.widget.Toast;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,17 +52,22 @@ public final class MainActivity extends Activity {
     private final AtomicBoolean logRead = new AtomicBoolean(), apiRead = new AtomicBoolean();
     private TextView status, detail, logs, configNotice, networkStats, proxyNotice, sessionList;
     private EditText editor;
-    private Button connect, connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton;
-    private LinearLayout configActions, configSamples, proxyList;
+    private Button connect, connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton, profileButton;
+    private LinearLayout configActions, configSamples, proxyList, profileActions;
     private HorizontalScrollView tabScroll;
     private ViewPager2 pager;
     private boolean showingLogs, preparing, loadingConfig = true, downloading;
     private String exportedConfig, remoteUrl = "";
+    private ConfigProfiles.State profileState;
+    private String profileId;
+    private final HashMap<String, String> profileDrafts = new HashMap<>(), profileUrls = new HashMap<>();
 
     private static final class Draft {
-        final String text, url;
+        final HashMap<String, String> texts, urls;
         final int page;
-        Draft(String text, String url, int page) { this.text = text; this.url = url; this.page = page; }
+        Draft(HashMap<String, String> texts, HashMap<String, String> urls, int page) {
+            this.texts = new HashMap<>(texts); this.urls = new HashMap<>(urls); this.page = page;
+        }
     }
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
@@ -129,20 +135,11 @@ public final class MainActivity extends Activity {
         Object retained = getLastNonConfigurationInstance();
         if (retained instanceof Draft) {
             Draft draft = (Draft) retained;
-            editor.setText(draft.text);
-            remoteUrl = draft.url;
+            profileDrafts.putAll(draft.texts);
+            profileUrls.putAll(draft.urls);
             page = draft.page;
-            loadingConfig = false;
-        } else {
-            io.execute(() -> {
-                try {
-                    String config = ConfigStore.read(this);
-                    post(() -> { editor.setText(config); loadingConfig = false; renderStatus(); });
-                } catch (Exception e) {
-                    post(() -> { loadingConfig = false; renderStatus(); showError(e); });
-                }
-            });
         }
+        loadProfile(() -> ConfigProfiles.list(this), null);
         if (page < 0 || page >= pages.length) page = CONNECTION;
         pager.setCurrentItem(page, false);
         selectTab(page);
@@ -191,6 +188,14 @@ public final class MainActivity extends Activity {
         LinearLayout page = column();
         page.setFocusableInTouchMode(true);
         page.addView(heading("Configuration"));
+        profileActions = row();
+        profileButton = button("Loading profiles…", this::chooseProfile);
+        profileButton.setId(R.id.config_profile);
+        profileActions.addView(profileButton, new LinearLayout.LayoutParams(0, -2, 2));
+        Button manageProfiles = button("Manage", this::manageProfiles);
+        manageProfiles.setId(R.id.manage_profiles);
+        profileActions.addView(manageProfiles, weight());
+        page.addView(profileActions);
         configNotice = text("Import a file, download a URL, or edit YAML below. Save or Connect to apply.", 12, MUTED);
         configNotice.setId(R.id.config_notice);
         configNotice.setPadding(0, dp(6), 0, dp(8));
@@ -321,12 +326,110 @@ public final class MainActivity extends Activity {
         }
         detail.setText(state.detail);
         connect.setText(preparing ? "Checking configuration…" : state.busy() ? "Disconnect" : "Connect");
-        boolean ready = !loadingConfig && !downloading && !preparing;
+        boolean ready = !loadingConfig && !downloading && !preparing && profileId != null;
         connect.setEnabled(state.phase != AppState.Phase.STOPPING && (state.busy() || ready));
         editor.setEnabled(ready);
         enableActions(configActions, ready);
         enableActions(configSamples, ready);
+        enableActions(profileActions, ready && profileState != null);
         downloadButton.setText(downloading ? "Downloading…" : "Download URL");
+    }
+
+    private interface ProfileOperation { ConfigProfiles.State run() throws Exception; }
+
+    private void rememberDraft() {
+        if (profileId != null) {
+            profileDrafts.put(profileId, editor.getText().toString());
+            profileUrls.put(profileId, remoteUrl);
+        }
+    }
+
+    private void loadProfile(ProfileOperation operation, String deletedId) {
+        rememberDraft();
+        loadingConfig = true;
+        renderStatus();
+        io.execute(() -> {
+            try {
+                ConfigProfiles.State state = operation.run();
+                String config = ConfigProfiles.read(this, state.selectedId);
+                post(() -> {
+                    if (deletedId != null) { profileDrafts.remove(deletedId); profileUrls.remove(deletedId); }
+                    profileState = state;
+                    profileId = state.selectedId;
+                    editor.setText(profileDrafts.containsKey(profileId) ? profileDrafts.get(profileId) : config);
+                    remoteUrl = profileUrls.containsKey(profileId) ? profileUrls.get(profileId) : "";
+                    profileButton.setText(state.selected().name + "  ▾");
+                    configNotice.setText("Editing " + state.selected().name + ". Save or Connect to apply. Switching keeps drafts until the app closes.");
+                    loadingConfig = false;
+                    renderStatus();
+                });
+            } catch (Exception error) {
+                post(() -> { loadingConfig = false; renderStatus(); showError(error); });
+            }
+        });
+    }
+
+    private void chooseProfile() {
+        if (profileState == null || loadingConfig || preparing || downloading) return;
+        ConfigProfiles.State state = profileState;
+        String[] names = new String[state.profiles.size()];
+        int selected = 0;
+        for (int i = 0; i < names.length; i++) {
+            ConfigProfiles.Profile profile = state.profiles.get(i);
+            names[i] = profile.name;
+            if (profile.id.equals(profileId)) selected = i;
+        }
+        new AlertDialog.Builder(this).setTitle("Configurations").setSingleChoiceItems(names, selected, (dialog, which) -> {
+            dialog.dismiss();
+            String id = state.profiles.get(which).id;
+            if (!id.equals(profileId)) loadProfile(() -> ConfigProfiles.select(this, id), null);
+        }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void manageProfiles() {
+        if (profileState == null || loadingConfig || preparing || downloading) return;
+        String[] actions = profileState.profiles.size() > 1
+            ? new String[]{"New configuration", "Duplicate current", "Rename", "Delete"}
+            : new String[]{"New configuration", "Duplicate current", "Rename"};
+        new AlertDialog.Builder(this).setTitle("Manage configurations").setItems(actions, (dialog, which) -> {
+            if (which < 3) nameProfile(which);
+            else {
+                String id = profileId;
+                new AlertDialog.Builder(this).setTitle("Delete " + profileState.selected().name + "?")
+                    .setMessage("This removes the saved configuration and its draft. An active VPN keeps running until you disconnect.")
+                    .setNegativeButton("Cancel", null).setPositiveButton("Delete", (confirm, button) ->
+                        loadProfile(() -> ConfigProfiles.delete(this, id), id)).show();
+            }
+        }).show();
+    }
+
+    private void nameProfile(int action) {
+        EditText name = new EditText(this);
+        name.setId(R.id.profile_name);
+        name.setSingleLine(true);
+        name.setHint("Configuration name");
+        name.setText(action == 2 ? profileState.selected().name : action == 1
+            ? profileState.selected().name + " copy" : "Configuration " + (profileState.profiles.size() + 1));
+        name.selectAll();
+        String title = action == 2 ? "Rename configuration" : action == 1 ? "Duplicate configuration" : "New configuration";
+        AlertDialog dialog = new AlertDialog.Builder(this).setTitle(title).setView(name)
+            .setMessage(action == 0 ? "Start with the proxy template, then edit, import, or download your configuration." : null)
+            .setNegativeButton("Cancel", null).setPositiveButton(action == 2 ? "Rename" : "Create", null).create();
+        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String label = name.getText().toString().trim();
+            if (label.isEmpty() || label.length() > 64) { name.setError("Use a name of 1–64 characters"); return; }
+            for (ConfigProfiles.Profile profile : profileState.profiles) {
+                if ((action != 2 || !profile.id.equals(profileId)) && profile.name.equalsIgnoreCase(label)) {
+                    name.setError("That configuration name already exists"); return;
+                }
+            }
+            String id = profileId;
+            String copy = editor.getText().toString();
+            dialog.dismiss();
+            loadProfile(() -> action == 2 ? ConfigProfiles.rename(this, id, label)
+                : ConfigProfiles.create(this, label, action == 1 ? copy : ConfigStore.asset(this, "example.yaml")), null);
+        }));
+        dialog.show();
     }
 
     private void refreshApi() {
@@ -508,14 +611,15 @@ public final class MainActivity extends Activity {
         save(true);
     }
     private void save(boolean start) {
-        if (preparing || downloading || loadingConfig) return;
+        if (preparing || downloading || loadingConfig || profileId == null) return;
         preparing = true;
         renderStatus();
         String config = editor.getText().toString();
+        String id = profileId;
         io.execute(() -> {
             try {
                 NativeBridge.validate(ConfigStore.forRuntime(this, config));
-                ConfigStore.save(this, config);
+                ConfigProfiles.save(this, id, config);
                 post(() -> {
                     preparing = false;
                     configNotice.setText("Saved and validated. Changes apply on the next connection.");
@@ -613,14 +717,26 @@ public final class MainActivity extends Activity {
             .addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE, name), request);
     }
     private void loadExample(String name) {
+        if (preparing || downloading || loadingConfig) return;
         new AlertDialog.Builder(this).setTitle("Load " + (name.equals("direct.yaml") ? "direct test" : "proxy template") + "?")
             .setMessage("This replaces the text in the editor. Your saved configuration stays available until you save or connect.")
-            .setNegativeButton("Cancel", null).setPositiveButton("Load", (dialog, which) -> io.execute(() -> {
-                try {
-                    String text = ConfigStore.asset(this, name);
-                    post(() -> { editor.setText(text); configNotice.setText("Example loaded. Edit, then save or connect."); });
-                } catch (Exception e) { post(() -> showError(e)); }
-            })).show();
+            .setNegativeButton("Cancel", null).setPositiveButton("Load", (dialog, which) -> {
+                loadingConfig = true;
+                renderStatus();
+                io.execute(() -> {
+                    try {
+                        String text = ConfigStore.asset(this, name);
+                        post(() -> {
+                            editor.setText(text);
+                            configNotice.setText("Example loaded. Edit, then save or connect.");
+                            loadingConfig = false;
+                            renderStatus();
+                        });
+                    } catch (Exception e) {
+                        post(() -> { loadingConfig = false; renderStatus(); showError(e); });
+                    }
+                });
+            }).show();
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
@@ -632,6 +748,7 @@ public final class MainActivity extends Activity {
         if (result != RESULT_OK || data == null || data.getData() == null) return;
         Uri uri = data.getData();
         String configCopy = exportedConfig != null ? exportedConfig : editor.getText().toString();
+        if (request == IMPORT) { loadingConfig = true; renderStatus(); }
         io.execute(() -> {
             try {
                 if (request == IMPORT) {
@@ -640,6 +757,8 @@ public final class MainActivity extends Activity {
                     post(() -> {
                         editor.setText(text);
                         configNotice.setText("Imported into editor. Save or connect to validate and use this file.");
+                        loadingConfig = false;
+                        renderStatus();
                         showPage(CONFIGURATION);
                     });
                 } else if (request == EXPORT_LOG || request == EXPORT_CONFIG) {
@@ -651,7 +770,12 @@ public final class MainActivity extends Activity {
                     }
                     post(() -> Toast.makeText(this, "Exported", Toast.LENGTH_SHORT).show());
                 }
-            } catch (Exception e) { post(() -> showError(e)); }
+            } catch (Exception e) {
+                post(() -> {
+                    if (request == IMPORT) { loadingConfig = false; renderStatus(); }
+                    showError(e);
+                });
+            }
         });
     }
     @Override protected void onResume() { super.onResume(); main.post(refresh); }
@@ -670,7 +794,8 @@ public final class MainActivity extends Activity {
         super.onDestroy();
     }
     @Override public Object onRetainNonConfigurationInstance() {
-        return new Draft(editor.getText().toString(), remoteUrl, pager.getCurrentItem());
+        rememberDraft();
+        return new Draft(profileDrafts, profileUrls, pager.getCurrentItem());
     }
     private void post(Runnable action) {
         main.post(() -> { if (!isFinishing() && !isDestroyed()) action.run(); });
