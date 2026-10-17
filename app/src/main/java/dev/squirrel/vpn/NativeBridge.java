@@ -6,6 +6,7 @@ public final class NativeBridge {
     static { System.loadLibrary("squirrel"); }
     private NativeBridge() {}
     public static native String normalizeDatabasePaths(String config, String privateRoot) throws IOException;
+    public static native String prepareConfig(String config, String privateRoot, String apiSecret) throws IOException;
     public static native String validate(String config) throws IOException;
     public static native void start(int tunFd, String config, String logPath) throws IOException;
     public static native void stop() throws IOException;

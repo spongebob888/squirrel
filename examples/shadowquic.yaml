@@ -7,6 +7,10 @@ inbounds:
     ipv6: fdfe:dcba:9876::1/126
     mtu: 1400
 outbounds:
+  - type: selector
+    tag: choice
+    outbounds: [proxy, direct]
+    selected: proxy
   - type: shadowquic
     tag: proxy
     addr: "YOUR_SERVER:443"
@@ -17,8 +21,10 @@ outbounds:
     congestion-control: bbr
     zero-rtt: true
     over-stream: false
+  - type: direct
+    tag: direct
 router:
-  default-outbound: proxy
+  default-outbound: choice
 android:
   # These DNS requests travel through the VPN's selected outbound.
   dns-servers: [1.1.1.1, 1.0.0.1]

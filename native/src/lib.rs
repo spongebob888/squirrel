@@ -45,10 +45,7 @@ fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
         }
     }
     {
-        logging::setup(
-            log_path.into(),
-            &format!("{:?}", cfg.log_level).to_lowercase(),
-        )?;
+        logging::setup(log_path.into(), cfg.log_level.as_tracing_level())?;
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .enable_all()
@@ -62,16 +59,16 @@ fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
         })?;
         let (stop, stopped) = oneshot::channel();
         let task = runtime.spawn(async move {
-            tracing::info!("ShadowQUIC VPN core started; application UID bypass is active");
+            tracing::info!(target: "shadowquic::android", "ShadowQUIC VPN core started; application UID bypass is active");
             if let Err(error) = manager
                 .run_until(async {
                     let _ = stopped.await;
                 })
                 .await
             {
-                tracing::error!(%error, "VPN core failed");
+                tracing::error!(target: "shadowquic::android", %error, "VPN core failed");
             }
-            tracing::info!("VPN core stopped");
+            tracing::info!(target: "shadowquic::android", "VPN core stopped");
         });
         *slot = Some(Session {
             runtime,
@@ -147,6 +144,27 @@ pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_normalizeDatabasePaths
         let normalized =
             config::normalize_database_paths(&text, std::path::Path::new(&private_root))?;
         env.new_string(normalized)
+            .map(|s| s.into_raw())
+            .map_err(|e| e.to_string())
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_prepareConfig(
+    mut env: JNIEnv,
+    _: JClass,
+    text: JString,
+    private_root: JString,
+    api_secret: JString,
+) -> jstring {
+    guarded(&mut env, |env| {
+        let prepared = config::prepare_android_config(
+            &string(env, text)?,
+            std::path::Path::new(&string(env, private_root)?),
+            &string(env, api_secret)?,
+        )?;
+        env.new_string(prepared)
             .map(|s| s.into_raw())
             .map_err(|e| e.to_string())
     })

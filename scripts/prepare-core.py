@@ -33,6 +33,16 @@ if not marker.exists() or marker.read_text() != stamp:
         ["patch", "--batch", "--force", "--reverse", "--dry-run", "-p1", "-i", str(patch)],
         cwd=destination, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
     ).returncode == 0
+    # The upstream checkout can contain later Android-specific refactors that
+    # preserve the patch's behavior but no longer match its exact diff context.
+    if not already_patched:
+        config = (destination / "shadowquic/src/tun/config.rs").read_text()
+        tun = (destination / "shadowquic/src/tun/mod.rs").read_text()
+        already_patched = (
+            "pub android_fd: Option<std::sync::Arc<std::os::fd::OwnedFd>>" in config
+            and '#[cfg(target_os = "android")]' in tun
+            and ".android_fd" in tun
+        )
     if not already_patched:
         subprocess.run(["patch", "--batch", "--forward", "-p1", "-i", str(patch)],
                        cwd=destination, check=True)

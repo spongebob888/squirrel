@@ -4,8 +4,9 @@ use std::{
     path::PathBuf,
     sync::{Mutex, OnceLock},
 };
+use tracing::Level;
 use tracing_subscriber::{
-    EnvFilter, Registry, layer::SubscriberExt, reload, util::SubscriberInitExt,
+    Registry, filter::Targets, layer::SubscriberExt, reload, util::SubscriberInitExt,
 };
 
 const MAX_LOG: u64 = 1024 * 1024;
@@ -15,7 +16,13 @@ struct LogFile {
     size: u64,
 }
 static LOG: Mutex<Option<LogFile>> = Mutex::new(None);
-static FILTER: OnceLock<reload::Handle<EnvFilter, Registry>> = OnceLock::new();
+static FILTER: OnceLock<reload::Handle<Targets, Registry>> = OnceLock::new();
+
+fn filter(level: Level) -> Targets {
+    Targets::new()
+        .with_target("shadowquic", level)
+        .with_target("quinn", std::cmp::min(Level::WARN, level))
+}
 
 struct Writer;
 impl Write for Writer {
@@ -41,7 +48,7 @@ impl Write for Writer {
     }
 }
 
-pub fn setup(path: PathBuf, level: &str) -> Result<(), String> {
+pub fn setup(path: PathBuf, level: Level) -> Result<(), String> {
     let file = OpenOptions::new()
         .create(true)
         .append(true)
@@ -50,11 +57,9 @@ pub fn setup(path: PathBuf, level: &str) -> Result<(), String> {
     let size = file.metadata().map_err(|e| e.to_string())?.len();
     *LOG.lock().unwrap_or_else(|p| p.into_inner()) = Some(LogFile { path, file, size });
     if let Some(handle) = FILTER.get() {
-        handle
-            .reload(EnvFilter::new(level))
-            .map_err(|e| e.to_string())?;
+        handle.reload(filter(level)).map_err(|e| e.to_string())?;
     } else {
-        let (filter, handle) = reload::Layer::new(EnvFilter::new(level));
+        let (filter, handle) = reload::Layer::new(filter(level));
         tracing_subscriber::registry()
             .with(filter)
             .with(
@@ -72,10 +77,37 @@ pub fn setup(path: PathBuf, level: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn matches_shadowquic_target_filter_at_every_configured_level() {
+        let levels = [
+            Level::ERROR,
+            Level::WARN,
+            Level::INFO,
+            Level::DEBUG,
+            Level::TRACE,
+        ];
+        for configured in levels {
+            let filter = filter(configured);
+            for event in levels {
+                assert_eq!(
+                    filter.would_enable("shadowquic::android", &event),
+                    event <= configured
+                );
+                assert_eq!(
+                    filter.would_enable("quinn::connection", &event),
+                    event <= std::cmp::min(Level::WARN, configured)
+                );
+                assert!(!filter.would_enable("hyper::client", &event));
+                assert!(!filter.would_enable("rustls", &event));
+            }
+        }
+    }
+
     #[test]
     fn rotates_and_caps_core_log() {
         let path = std::env::temp_dir().join(format!("squirrel-log-{}.log", std::process::id()));
-        setup(path.clone(), "info").unwrap();
+        setup(path.clone(), Level::INFO).unwrap();
         let block = vec![b'x'; 65536];
         for _ in 0..20 {
             Writer.write_all(&block).unwrap();

@@ -52,6 +52,23 @@ pub fn normalize_database_paths(text: &str, private_root: &Path) -> Result<Strin
     serde_json::to_string(&document).map_err(|error| error.to_string())
 }
 
+pub fn prepare_android_config(
+    text: &str,
+    private_root: &Path,
+    api_secret: &str,
+) -> Result<String, String> {
+    if api_secret.is_empty() {
+        return Err("Android API secret must not be empty".into());
+    }
+    let normalized = normalize_database_paths(text, private_root)?;
+    let mut document = document(&normalized)?;
+    document["restful-api"] = json!({
+        "bind-addr": "127.0.0.1:19090",
+        "secret": api_secret,
+    });
+    serde_json::to_string(&document).map_err(|error| error.to_string())
+}
+
 pub fn parse(text: &str) -> Result<(Config, Value), String> {
     let mut document = document(text)?;
     let root = document

@@ -2,6 +2,7 @@ package dev.squirrel.vpn;
 
 import android.content.Context;
 import android.util.AtomicFile;
+import android.util.Base64;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,12 +13,25 @@ import java.nio.ByteBuffer;
 import java.nio.charset.CharacterCodingException;
 import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 
 final class ConfigStore {
     static final int MAX_BYTES = 1024 * 1024;
     static File file(Context context) { return new File(context.getFilesDir(), "config.yaml"); }
     static String forRuntime(Context context, String text) throws IOException {
-        return NativeBridge.normalizeDatabasePaths(text, context.getFilesDir().getAbsolutePath());
+        return NativeBridge.prepareConfig(text, context.getFilesDir().getAbsolutePath(), apiSecret(context));
+    }
+    private static String apiSecret(Context context) {
+        final String key = "local_api_secret";
+        android.content.SharedPreferences preferences = context.getSharedPreferences("runtime", Context.MODE_PRIVATE);
+        String secret = preferences.getString(key, null);
+        if (secret == null) {
+            byte[] bytes = new byte[32];
+            new SecureRandom().nextBytes(bytes);
+            secret = Base64.encodeToString(bytes, Base64.URL_SAFE | Base64.NO_WRAP | Base64.NO_PADDING);
+            preferences.edit().putString(key, secret).apply();
+        }
+        return secret;
     }
     static String readForVpn(Context context) throws IOException {
         return forRuntime(context, read(context));

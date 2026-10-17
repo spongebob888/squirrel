@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import android.view.WindowManager;
@@ -34,20 +35,25 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
     private static final int IMPORT = 10, EXPORT_LOG = 11, VPN_PERMISSION = 12, EXPORT_CONFIG = 13;
-    private static final int CONNECTION = 0, CONFIGURATION = 1, LOGS = 2;
+    private static final int CONNECTION = 0, CONFIGURATION = 1, LOGS = 2, PROXIES = 3, SESSIONS = 4;
     private static final int GREEN = 0xFFB7E88C, MUTED = 0xFFA9B4A5, WHITE = 0xFFE7EDE2;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService network = Executors.newSingleThreadExecutor();
+    private final ExecutorService apiExecutor = Executors.newSingleThreadExecutor();
+    private final ExecutorService apiActionExecutor = Executors.newSingleThreadExecutor();
     private ConfigDownloader downloader;
-    private final AtomicBoolean logRead = new AtomicBoolean();
-    private TextView status, detail, logs, configNotice;
+    private final AtomicBoolean logRead = new AtomicBoolean(), apiRead = new AtomicBoolean();
+    private TextView status, detail, logs, configNotice, networkStats, proxyNotice, sessionList;
     private EditText editor;
-    private Button connect, connectionTab, configTab, logsTab, downloadButton;
-    private LinearLayout configActions, configSamples;
+    private Button connect, connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton;
+    private LinearLayout configActions, configSamples, proxyList;
+    private HorizontalScrollView tabScroll;
     private ViewPager2 pager;
     private boolean showingLogs, preparing, loadingConfig = true, downloading;
     private String exportedConfig, remoteUrl = "";
@@ -60,6 +66,7 @@ public final class MainActivity extends Activity {
     private final Runnable refresh = new Runnable() {
         @Override public void run() {
             renderStatus();
+            refreshApi();
             if (showingLogs && logRead.compareAndSet(false, true)) {
                 io.execute(() -> {
                     try {
@@ -87,23 +94,32 @@ public final class MainActivity extends Activity {
         TextView brand = text("SQUIRREL  /  SHADOWQUIC", 12, GREEN);
         brand.setLetterSpacing(0.16f);
         root.addView(brand);
+        tabScroll = new HorizontalScrollView(this);
+        tabScroll.setHorizontalScrollBarEnabled(false);
+        tabScroll.setFillViewport(true);
         LinearLayout tabs = row();
         tabs.setPadding(0, dp(12), 0, dp(10));
         connectionTab = button("Connection", () -> showPage(CONNECTION));
         configTab = button("Configuration", () -> showPage(CONFIGURATION));
+        proxyTab = button("Proxies", () -> showPage(PROXIES));
+        sessionsTab = button("Sessions", () -> showPage(SESSIONS));
         logsTab = button("Logs", () -> showPage(LOGS));
         connectionTab.setId(R.id.connection_tab);
         configTab.setId(R.id.configuration_tab);
+        proxyTab.setId(R.id.proxies_tab);
+        sessionsTab.setId(R.id.sessions_tab);
         logsTab.setId(R.id.logs_tab);
-        tabs.addView(connectionTab, weight());
-        tabs.addView(configTab, weight());
-        tabs.addView(logsTab, weight());
-        root.addView(tabs);
+        for (Button tab : new Button[]{connectionTab, configTab, logsTab, proxyTab, sessionsTab}) {
+            tab.setPadding(dp(9), 0, dp(9), 0);
+            tabs.addView(tab);
+        }
+        tabScroll.addView(tabs);
+        root.addView(tabScroll);
 
         pager = new ViewPager2(this);
         pager.setId(R.id.pages);
-        pager.setOffscreenPageLimit(2);
-        View[] pages = {connectionPage(), configurationPage(), logsPage()};
+        pager.setOffscreenPageLimit(4);
+        View[] pages = {connectionPage(), configurationPage(), logsPage(), proxiesPage(), sessionsPage()};
         pager.setAdapter(new PageAdapter(pages));
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override public void onPageSelected(int page) { selectTab(page); }
@@ -127,6 +143,7 @@ public final class MainActivity extends Activity {
                 }
             });
         }
+        if (page < 0 || page >= pages.length) page = CONNECTION;
         pager.setCurrentItem(page, false);
         selectTab(page);
         renderStatus();
@@ -156,6 +173,9 @@ public final class MainActivity extends Activity {
         bypass.setPadding(0, dp(14), 0, 0);
         card.addView(bypass);
         page.addView(card);
+        networkStats = text("Live traffic and memory appear while connected.", 13, MUTED);
+        networkStats.setPadding(dp(2), dp(16), dp(2), dp(8));
+        page.addView(networkStats);
         TextView help = text("Add your configuration in the next tab, then connect here. Swipe between tabs to edit your config or follow the live logs.", 14, MUTED);
         help.setPadding(0, dp(24), 0, dp(20));
         page.addView(help);
@@ -229,6 +249,32 @@ public final class MainActivity extends Activity {
         return page;
     }
 
+    private LinearLayout proxiesPage() {
+        LinearLayout page = column();
+        page.setFocusableInTouchMode(true);
+        page.addView(heading("Proxies"));
+        proxyNotice = text("Connect the VPN to load outbound quality and selector state.", 12, MUTED);
+        proxyNotice.setPadding(0, dp(5), 0, dp(8));
+        page.addView(proxyNotice);
+        ScrollView scroll = new ScrollView(this);
+        proxyList = column();
+        scroll.addView(proxyList);
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        return page;
+    }
+
+    private LinearLayout sessionsPage() {
+        LinearLayout page = column();
+        page.setFocusableInTouchMode(true);
+        page.addView(heading("Alive sessions"));
+        sessionList = text("Connect the VPN to view active TCP and UDP sessions.", 13, MUTED);
+        sessionList.setTypeface(Typeface.MONOSPACE);
+        ScrollView scroll = new ScrollView(this);
+        scroll.addView(sessionList);
+        page.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1));
+        return page;
+    }
+
     private static final class PageAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         private final View[] pages;
         PageAdapter(View[] pages) { this.pages = pages; }
@@ -250,13 +296,14 @@ public final class MainActivity extends Activity {
     private void showPage(int page) { pager.setCurrentItem(page, true); }
     private void selectTab(int page) {
         showingLogs = page == LOGS;
-        Button[] tabs = {connectionTab, configTab, logsTab};
+        Button[] tabs = {connectionTab, configTab, logsTab, proxyTab, sessionsTab};
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = i == page;
             tabs[i].setSelected(selected);
             tabs[i].setTextColor(selected ? GREEN : MUTED);
             tabs[i].setBackgroundTintList(android.content.res.ColorStateList.valueOf(selected ? 0xFF283A25 : 0xFF182018));
         }
+        tabs[page].post(() -> tabScroll.smoothScrollTo(tabs[page].getLeft(), 0));
         if (page != CONFIGURATION) {
             editor.clearFocus();
             getSystemService(InputMethodManager.class).hideSoftInputFromWindow(editor.getWindowToken(), 0);
@@ -280,6 +327,176 @@ public final class MainActivity extends Activity {
         enableActions(configActions, ready);
         enableActions(configSamples, ready);
         downloadButton.setText(downloading ? "Downloading…" : "Download URL");
+    }
+
+    private void refreshApi() {
+        if (pager == null || AppState.get().phase != AppState.Phase.CONNECTED) return;
+        int page = pager.getCurrentItem();
+        if (page != CONNECTION && page != PROXIES && page != SESSIONS) return;
+        if (!apiRead.compareAndSet(false, true)) return;
+        apiExecutor.execute(() -> {
+            try {
+                ShadowQuicApi api = new ShadowQuicApi(this);
+                JSONObject value = page == CONNECTION
+                    ? new JSONObject().put("memory", api.get("/memory"))
+                        .put("traffic", api.get("/traffic"))
+                    : api.get(page == PROXIES ? "/outbounds" : "/connections");
+                post(() -> {
+                    if (pager.getCurrentItem() != page) return;
+                    if (page == CONNECTION) renderNetworkStats(value);
+                    else if (page == PROXIES) renderOutbounds(value.optJSONArray("outbounds"));
+                    else renderSessions(value.optJSONArray("connections"));
+                });
+            } catch (Exception error) {
+                post(() -> {
+                    if (pager.getCurrentItem() != page) return;
+                    String message = "Stats unavailable: " + SquirrelVpnService.message(error);
+                    if (page == CONNECTION) networkStats.setText(message);
+                    else if (page == PROXIES) proxyNotice.setText(message);
+                    else sessionList.setText(message);
+                });
+            } finally { apiRead.set(false); }
+        });
+    }
+
+    private void renderNetworkStats(JSONObject response) {
+        JSONObject memory = response.optJSONObject("memory");
+        JSONObject traffic = response.optJSONObject("traffic");
+        long tcp = 0, udp = 0, tcpUp = 0, tcpDown = 0, udpUp = 0, udpDown = 0;
+        JSONArray inbounds = traffic == null ? null : traffic.optJSONArray("inbounds");
+        if (inbounds != null) for (int i = 0; i < inbounds.length(); i++) {
+            JSONObject item = inbounds.optJSONObject(i);
+            if (item == null) continue;
+            tcp += item.optLong("tcp_conns"); udp += item.optLong("udp_conns");
+            tcpUp += item.optLong("tcp_upload_bytes"); tcpDown += item.optLong("tcp_download_bytes");
+            udpUp += item.optLong("udp_upload_bytes"); udpDown += item.optLong("udp_download_bytes");
+        }
+        String memoryText = memory == null ? "Unavailable" : formatBytes(memory.optLong("resident_bytes"))
+            + " resident · " + formatBytes(memory.optLong("allocated_bytes")) + " allocated";
+        networkStats.setText("MEMORY\n" + memoryText + "\n\nTCP  " + tcp + " sessions   ↑ "
+            + formatBytes(tcpUp) + "   ↓ " + formatBytes(tcpDown) + "\nUDP  " + udp
+            + " sessions   ↑ " + formatBytes(udpUp) + "   ↓ " + formatBytes(udpDown));
+    }
+
+    private void renderOutbounds(JSONArray outbounds) {
+        proxyList.removeAllViews();
+        if (outbounds == null || outbounds.length() == 0) {
+            proxyNotice.setText("No outbounds are configured.");
+            return;
+        }
+        proxyNotice.setText("Select a member on selector outbounds. Probe latency measures an HTTP request through that outbound.");
+        for (int i = 0; i < outbounds.length(); i++) {
+            JSONObject item = outbounds.optJSONObject(i);
+            if (item == null) continue;
+            String tag = item.optString("tag", "outbound");
+            JSONObject quality = item.optJSONObject("quality");
+            JSONObject sample = quality == null ? null : quality.optJSONObject("sq_conn_stats");
+            JSONObject probe = quality == null ? null : quality.optJSONObject("probe");
+            JSONObject uplink = sample == null ? null : sample.optJSONObject("uplink");
+            JSONObject downlink = sample == null ? null : sample.optJSONObject("downlink");
+            String probeLatency = probe == null ? "Not probed" : probe.optString("status", "unknown").equals("ok")
+                ? probe.optLong("latency_ms") + " ms" : "Unavailable";
+            String stats = "Probe latency  " + probeLatency + "\n"
+                + "RTT  ↑ " + metric(uplink, "rtt", " ms") + "   ↓ " + metric(downlink, "rtt", " ms") + "\n"
+                + "Packet loss  ↑ " + loss(uplink) + "   ↓ " + loss(downlink);
+            LinearLayout card = column();
+            card.setPadding(dp(14), dp(12), dp(14), dp(12));
+            card.setBackground(background(0xFF202C20, 14));
+            LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(-1, -2);
+            cardParams.bottomMargin = dp(10);
+            TextView title = text(tag, 17, WHITE);
+            title.setTypeface(null, Typeface.BOLD);
+            card.addView(title);
+            JSONObject selector = item.optJSONObject("selector");
+            if (selector != null) {
+                String selected = selector.optString("selected", "");
+                TextView selectedView = text("Selected: " + selected, 13, GREEN);
+                selectedView.setPadding(0, dp(5), 0, dp(3));
+                card.addView(selectedView);
+                card.addView(button("Choose proxy", () -> chooseOutbound(tag, selector)));
+            }
+            TextView details = text(stats, 12, MUTED);
+            details.setPadding(0, dp(8), 0, dp(4));
+            card.addView(details);
+            card.addView(button("Probe latency", () -> probeOutbound(tag)));
+            proxyList.addView(card, cardParams);
+        }
+    }
+
+    private void chooseOutbound(String selectorTag, JSONObject selector) {
+        JSONArray options = selector.optJSONArray("outbounds");
+        if (options == null || options.length() == 0) return;
+        String[] labels = new String[options.length()];
+        for (int i = 0; i < options.length(); i++) labels[i] = options.optString(i);
+        new AlertDialog.Builder(this).setTitle("Select outbound")
+            .setItems(labels, (dialog, which) -> apiActionExecutor.execute(() -> {
+                try {
+                    new ShadowQuicApi(this).put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
+                        new JSONObject().put("selected", labels[which]));
+                    post(() -> proxyNotice.setText("Selected " + labels[which] + " for new sessions."));
+                    post(this::refreshApi);
+                } catch (Exception error) { post(() -> proxyNotice.setText("Selection failed: " + SquirrelVpnService.message(error))); }
+            })).setNegativeButton("Cancel", null).show();
+    }
+
+    private void probeOutbound(String tag) {
+        EditText url = new EditText(this);
+        url.setSingleLine(true);
+        url.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        url.setText("http://example.com/");
+        new AlertDialog.Builder(this).setTitle("Probe " + tag).setMessage("HTTP URL used to measure latency")
+            .setView(url).setNegativeButton("Cancel", null).setPositiveButton("Probe", (dialog, which) -> {
+                String target = url.getText().toString().trim();
+                apiActionExecutor.execute(() -> {
+                    try {
+                        new ShadowQuicApi(this).post("/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
+                            new JSONObject().put("url", target).put("timeout_ms", 10000));
+                        post(() -> proxyNotice.setText("Probe completed for " + tag + "."));
+                        post(this::refreshApi);
+                    } catch (Exception error) { post(() -> proxyNotice.setText("Probe failed: " + SquirrelVpnService.message(error))); }
+                });
+            }).show();
+    }
+
+    private void renderSessions(JSONArray connections) {
+        if (connections == null || connections.length() == 0) {
+            sessionList.setText("No active TCP or UDP sessions.");
+            return;
+        }
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < connections.length(); i++) {
+            JSONObject item = connections.optJSONObject(i);
+            if (item == null) continue;
+            String protocol = item.optString("protocol", "?").toUpperCase(java.util.Locale.ROOT);
+            String domain = item.isNull("dst_domain") ? "" : item.optString("dst_domain", "").trim();
+            String destination = domain.isEmpty() ? value(item, "dst_ip") : domain;
+            if (domain.isEmpty() && destination.contains(":")) destination = "[" + destination + "]";
+            text.append(protocol).append("  ").append(value(item, "inbound"))
+                .append(" → ").append(value(item, "outbound")).append('\n')
+                .append(destination);
+            text.append(':').append(value(item, "dst_port")).append('\n')
+                .append("↑ ").append(formatBytes(item.optLong("upload_bytes")))
+                .append("   ↓ ").append(formatBytes(item.optLong("download_bytes")))
+                .append("   ").append(item.optLong("duration_ms") / 1000).append(" s\n\n");
+        }
+        sessionList.setText(text.toString());
+    }
+
+    private static String value(JSONObject object, String key) {
+        return object.isNull(key) ? "—" : object.optString(key, "—");
+    }
+    private static String metric(JSONObject stats, String key, String suffix) {
+        return stats == null || stats.isNull(key) ? "—" : stats.optString(key) + suffix;
+    }
+    private static String loss(JSONObject stats) {
+        if (stats == null || stats.optLong("sent_packets") == 0) return "—";
+        return String.format(java.util.Locale.ROOT, "%.2f%%", 100.0 * stats.optLong("lost_packets") / stats.optLong("sent_packets"));
+    }
+    private static String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        if (bytes < 1024 * 1024) return String.format(java.util.Locale.ROOT, "%.1f KiB", bytes / 1024.0);
+        if (bytes < 1024L * 1024 * 1024) return String.format(java.util.Locale.ROOT, "%.1f MiB", bytes / (1024.0 * 1024));
+        return String.format(java.util.Locale.ROOT, "%.2f GiB", bytes / (1024.0 * 1024 * 1024));
     }
     private void toggleVpn() {
         if (AppState.get().busy()) {
@@ -445,6 +662,8 @@ public final class MainActivity extends Activity {
         if (downloader != null) downloader.cancel();
         main.removeCallbacksAndMessages(null);
         network.shutdownNow();
+        apiExecutor.shutdownNow();
+        apiActionExecutor.shutdownNow();
         io.shutdown();
         super.onDestroy();
     }

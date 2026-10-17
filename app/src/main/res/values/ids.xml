@@ -2,6 +2,8 @@
     <item name="pages" type="id" />
     <item name="connection_tab" type="id" />
     <item name="configuration_tab" type="id" />
+    <item name="proxies_tab" type="id" />
+    <item name="sessions_tab" type="id" />
     <item name="logs_tab" type="id" />
     <item name="config_editor" type="id" />
     <item name="config_notice" type="id" />

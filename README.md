@@ -2,7 +2,8 @@
 
 An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 phones and x86_64 emulators. No root required.
 
-- Separate Connection, Configuration, and Logs tabs with swipe navigation.
+- Connection, Configuration, Logs, Proxies, and Sessions tabs with swipe navigation.
+- Live memory use, TCP/UDP session counts and traffic totals; outbound probe latency, QUIC RTT and packet loss; selector controls and an active session list.
 - Import local files or download remote YAML configs, then edit, validate, save, and export them.
 - TCP/UDP forwarding over IPv4 and IPv6, with ShadowQUIC's outbound protocols and Lua routing.
 - Persistent service and native core logs, a live log viewer, and export. Each log retains a current file and one rotated file at approximately 1 MiB each.
@@ -59,13 +60,15 @@ Software graphics (`-gpu swiftshader`) are the default; use `SQUIRREL_EMULATOR_G
 
 If the launcher reports interrupted encryption, Android cannot mount the AVD's data partition. Restarting cannot repair that condition. Stop the emulator, move both its `.ini` file and `.avd` directory into a backup directory outside `~/.android/avd`, then rerun the launcher to create a fresh profile. Keep the backup for recovery; the new profile starts with empty app data. The launcher never automatically wipes an AVD.
 
-1. Install the APK and open Squirrel. Tap a tab or swipe horizontally between **Connection**, **Configuration**, and **Logs**.
+1. Install the APK and open Squirrel. Tap a tab or swipe horizontally between **Connection**, **Configuration**, **Logs**, **Proxies**, and **Sessions**.
 2. In **Configuration**, choose **Import file**, **Download URL**, or **Proxy template**. Replace the template's server, credentials, and TLS server name as needed.
 3. For a remote config, paste its HTTP/HTTPS URL and tap **Download**. The app downloads and validates it before replacing the editor contents. A failed download preserves the editor. Tap **Save**, or go to **Connection** and tap **Connect**, to apply it.
 4. **Connect** validates and saves the editor contents, then requests Android VPN consent. Allow notifications to see the disconnect control.
 5. Open **Logs** to view live service/core output or export logs. Set `log-level: debug` or `trace` in the configuration for more detail, then reconnect.
 
 **VPN active** means the local packet engine is running. ShadowQUIC opens remote connections when traffic arrives; authentication or remote availability failures appear in the core log.
+
+The **Connection** tab displays jemalloc memory statistics, current TCP/UDP session counts, and cumulative upload/download bytes. **Proxies** lists configured outbounds with cached QUIC RTT and packet-loss samples, plus the latest probe latency. Add a `type: selector` outbound to switch among its configured members; the bundled Proxy template includes a selector for the proxy and direct outbounds. Probe buttons accept an HTTP URL. **Sessions** lists currently alive TCP and UDP flows with their destination and byte totals. These screens update while connected.
 
 The built-in **Direct test** profile exercises the packet engine without a remote server. It forwards directly and does not provide an encrypted remote tunnel. ICMP/ping is not supported by the core's TCP/UDP stack.
 
@@ -79,6 +82,8 @@ The optional app-specific section controls the DNS addresses advertised to Andro
 android:
   dns-servers: [1.1.1.1, 1.0.0.1]
 ```
+
+Squirrel replaces any `restful-api` entry in the runtime-only config with a private listener at `127.0.0.1:19090` for the live screens. It generates and stores a random bearer token in private app preferences. Exported and saved YAML is unchanged.
 
 Both default routes (`0.0.0.0/0`, `::/0`) enter the VPN. DNS packets to these addresses follow the configured outbound/router, just like other UDP/TCP traffic. Defaults are the two addresses above. For local fake-IP DNS, use the core's inline Lua routing to send port 53 traffic to the configured DNS service. Imported `protect-path` values are cleared because UID bypass handles socket protection here.
 
@@ -105,6 +110,8 @@ python3 scripts/test-run-emulator.py -v
 Host tests cover config normalization, private database paths, legacy imports, routing validation, DNS validation, bundled examples, and log rotation. Instrumentation tests load the real JNI library, send a raw UDP packet through a simulated TUN to a local echo server, verify its reply, stop/restart the runtime, check Java descriptor ownership, and reject invalid imports. Database tests load a saved config with relative paths, download Geosite data from a local HTTP server into private storage, reopen it after restart with the source offline, and verify that saved YAML and DNS settings are preserved. UI and download tests cover swipe/tab navigation, draft retention across recreation, redirects, HTTP failures, UTF-8 and size validation, and replacing the editor only after config validation. The tests do not require VPN consent.
 
 Validated locally: both Android ABIs built; Android lint passed; all 10 host tests, 9 API 36 emulator instrumentation tests, and 8 core TUN tests passed (the desktop kernel-adapter test was skipped). A real Android VPN service session also forwarded a TCP HTTP request from the shell UID through the TUN; Android reported the app UID excluded from the VPN ranges. A remote ShadowQUIC server was not supplied, so remote authentication and transport were not tested.
+
+For the proxy, memory, traffic, and session screens, the current revision builds both Android ABIs and passes Android lint. Live API behavior against a remote ShadowQUIC server has not been exercised in this environment.
 
 The Nix environment was also used to rebuild both ABIs, run lint and all 9 API 36 instrumentation tests, and verify fresh AVD creation, visible app launch, emulator persistence after the launcher exits, reuse, and a cold restart retaining a file in app-private storage. Launcher regression tests use an isolated fake SDK to check AVD directory matching, offline reconnection/restart, reopening a headless instance, and interrupted-encryption diagnostics without touching real AVDs. Flake formatting and ShellCheck pass.
 
