@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 python3 scripts/prepare-core.py
-shadowquic_dir="${SHADOWQUIC_DIR:-../shadowquic}"
+shadowquic_dir="${SHADOWQUIC_DIR:-.build/shadowquic-upstream}"
 cargo_config="$shadowquic_dir/.cargo/config.toml"
 if [[ ! -f "$cargo_config" ]]; then
   echo "ShadowQUIC Cargo config missing: $cargo_config. Check SHADOWQUIC_DIR." >&2

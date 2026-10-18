@@ -16,30 +16,35 @@ An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 ph
 
 Use the pinned Nix development environment on **x86_64 Linux**, following the Android SDK composition used by Homesick. `nix/flake.nix` and `nix/flake.lock` supply JDK 21, Rust with both Android targets, Python, native build tools, Android SDK/build tools 36, NDK **28.2.13676358**, and the emulator with a Google APIs x86_64 system image. A separate Android Studio installation, mutable SDK, or `steam-run` is not required. The composition accepts the Android SDK licenses through Nixpkgs configuration.
 
-Put ShadowQUIC at `../shadowquic`, or set `SHADOWQUIC_DIR` to its workspace root:
+By default, each native build fetches the latest `main` branch from
+[ShadowQUIC on GitHub](https://github.com/spongebob888/shadowquic) into the ignored
+`.build/shadowquic-upstream/` cache. Git and network access are required; fetch
+failures stop the build instead of silently using an older revision. Preparation
+prints the resolved commit.
 
 ```sh
 nix develop ./nix
-# Only needed if the core is not at ../shadowquic:
-export SHADOWQUIC_DIR=/path/to/shadowquic
 ./gradlew assembleDebug
 ```
 
 For a single command without entering an interactive shell:
 
 ```sh
-SHADOWQUIC_DIR=/path/to/shadowquic nix develop ./nix --command ./gradlew assembleDebug
+nix develop ./nix --command ./gradlew assembleDebug
 ```
 
 The flake lives in `nix/` so Nix excludes changing build artifacts even in a source archive without Git metadata. Nix pins the development tools; Gradle and Cargo still fetch their locked project dependencies on first use. The shell sets the SDK/NDK/Java paths and overrides Gradle's AAPT2 with the Nix-packaged executable. Update tool inputs deliberately with `(cd nix && nix flake update)`; use `nixfmt nix/flake.nix`, `nix flake check ./nix`, and `shellcheck scripts/*.sh` to check the environment and shell scripts. The Android SDK setup follows the [Nixpkgs Android documentation](https://nixos.org/manual/nixpkgs/unstable/#android).
 
 The installable APK is `app/build/outputs/apk/debug/app-debug.apk`. Gradle builds and packages the actual Rust library for both supported ABIs. To build only one architecture, use `ANDROID_ABIS=arm64-v8a ./gradlew assembleDebug` or `ANDROID_ABIS=x86_64 ./gradlew assembleDebug`. Native ELF segments are aligned for 16 KiB Android pages.
 
-In the current workspace the source checkout is `/home/liu/ws/shadowquic`, so use `SHADOWQUIC_DIR=/home/liu/ws/shadowquic`.
+To use a local checkout instead, set `SHADOWQUIC_DIR=/path/to/shadowquic` (for example,
+`SHADOWQUIC_DIR=/home/liu/ws/shadowquic nix develop ./nix --command ./gradlew assembleDebug`).
+This skips GitHub fetching and leaves that checkout untouched. Unset the variable
+to return to GitHub `main`.
 
-Native builds explicitly load `$SHADOWQUIC_DIR/.cargo/config.toml` (or `../shadowquic/.cargo/config.toml` with the default source location). This preserves upstream target settings, including Android ARM64's `-C default-linker-libraries`. The build appends its 16 KiB page-alignment flag through Cargo configuration array merging. Changes to the upstream config take effect on the next build without copying it into Squirrel. See [Cargo configuration](https://doc.rust-lang.org/cargo/reference/config.html).
+Native builds explicitly load `$SHADOWQUIC_DIR/.cargo/config.toml` (or `.build/shadowquic-upstream/.cargo/config.toml` by default). This preserves upstream target settings, including Android ARM64's `-C default-linker-libraries`. The build appends its 16 KiB page-alignment flag through Cargo configuration array merging. Changes to the upstream config take effect on the next build without copying it into Squirrel. See [Cargo configuration](https://doc.rust-lang.org/cargo/reference/config.html).
 
-The Android TUN changes are applied directly in `/home/liu/ws/shadowquic`. They enable Android TUN and fake-IP restoration, and accept an owned `VpnService` descriptor instead of creating a desktop adapter. `scripts/prepare-core.py` copies the checkout into the ignored `.build/shadowquic/` directory for configurable Cargo path dependencies. It recognizes the applied changes and copies them without applying the patch again. For an unpatched checkout based on ShadowQUIC `8ba1f5c07eca6c46c280e8e9a97a60c5c30f73f9` (0.4.4), it can still apply `patches/android-tun.patch` to the build copy; the preparation script never edits its source checkout. The Rust dependency lockfile is checked in. Incompatible core changes fail patching/building explicitly.
+The Android TUN changes enable Android TUN and fake-IP restoration, and accept an owned `VpnService` descriptor instead of creating a desktop adapter. `scripts/prepare-core.py` copies the checkout into the ignored `.build/shadowquic/` directory for configurable Cargo path dependencies. It recognizes the applied changes and copies them without applying the patch again. For an unpatched checkout based on ShadowQUIC `8ba1f5c07eca6c46c280e8e9a97a60c5c30f73f9` (0.4.4), it can still apply `patches/android-tun.patch` to the build copy; the preparation script never edits its source checkout. The Rust dependency lockfile is checked in. Incompatible core changes fail patching/building explicitly.
 
 ## Use
 

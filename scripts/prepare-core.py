@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Copy ShadowQUIC for builds, accepting checkouts with Android support applied."""
+"""Fetch ShadowQUIC main (or use a local override) and prepare a build copy."""
 import hashlib
 import os
 from pathlib import Path
@@ -7,7 +7,22 @@ import shutil
 import subprocess
 
 ROOT = Path(__file__).resolve().parent.parent
-source = Path(os.environ.get("SHADOWQUIC_DIR", ROOT.parent / "shadowquic")).resolve()
+UPSTREAM = "https://github.com/spongebob888/shadowquic.git"
+override = os.environ.get("SHADOWQUIC_DIR")
+source = Path(override).resolve() if override else ROOT / ".build/shadowquic-upstream"
+if not override:
+    # This disposable cache is separate from user checkouts and the build copy.
+    # Fetch every time so native builds follow GitHub main.
+    source.parent.mkdir(parents=True, exist_ok=True)
+    if not (source / ".git").exists():
+        subprocess.run(["git", "init", str(source)], check=True)
+    subprocess.run(["git", "-C", str(source), "fetch", "--depth=1", UPSTREAM,
+                    "refs/heads/main"], check=True)
+    subprocess.run(["git", "-C", str(source), "checkout", "--detach", "--force",
+                    "FETCH_HEAD"], check=True)
+    revision = subprocess.check_output(
+        ["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+    print(f"ShadowQUIC main: {revision}", flush=True)
 if not (source / "shadowquic/Cargo.toml").is_file():
     raise SystemExit(f"ShadowQUIC not found at {source}. Set SHADOWQUIC_DIR to its workspace root.")
 destination = ROOT / ".build/shadowquic"
