@@ -241,7 +241,7 @@ components:
 
 Squirrelboard’s precise dashboard language expressed through native Android Views. A cool gray canvas supports white outlined panels, slate text, periwinkle selection and teal transfer accents. Charcoal day/night counterparts preserve the same hierarchy. The local reference is `../squirrelboard`; the native implementation owns the values recorded here, including stronger light-mode text accents for contrast.
 
-The same materials cover Connection, Proxies, Configuration, Logs, Sessions, API tools and app-owned dialogs. Technical detail remains visible through labeled measurements, native text scaling and large source panes. The reference squirrel mark is retained as a native vector. Android system sans replaces the reference’s web font, while YAML, logs and protocol/JSON results use native monospace.
+The same materials cover Connection, Proxies, Configuration, Logs, Sessions, API tools and app-owned dialogs. Technical detail remains visible through labeled measurements, native text scaling and large source panes. The header displays the Squirrel wordmark without an adjacent icon; the reference vector asset remains available. Android system sans replaces the reference’s web font, while YAML, logs and protocol/JSON results use native monospace.
 
 **Key Characteristics:**
 - Cool gray canvas, white or charcoal panels and thin outlines.
@@ -299,7 +299,7 @@ The palette is cool and restrained, with accents reserved for actions, selected 
 
 ## Layout
 
-The native shell has a panel-colored brand header, adaptive navigation and a ViewPager2 body with five destinations. System insets preserve status, side and navigation-bar space. Header horizontal padding is (22dp), vertical padding (6dp) plus the status inset; overflow and Back targets are (48dp). The main mark is (36dp), with a (10dp) brand gap. A horizontal separator is not required between header and canvas.
+The native shell has a panel-colored brand header, adaptive navigation and a ViewPager2 body with five destinations. System insets preserve status, side and navigation-bar space. Header horizontal padding is (22dp), vertical padding (6dp) plus the status inset; overflow and Back targets are (48dp). The Squirrel wordmark is text only, with no adjacent icon or icon gap. A horizontal separator is not required between header and canvas.
 
 Navigation follows available Android configuration size: below **600dp width**, five equal bottom destinations use icons above (11sp) labels and “Config” as the short visible label, with a full Configuration accessibility name. At **840dp width or more and 480dp height or more**, a (184dp) left rail displays icon-and-label rows. Remaining sizes use horizontal scrolling tabs under the header. Regular tabs/rail labels are (13sp). All retain swipe navigation and native selected states. A short, wide landscape viewport uses horizontal tabs rather than the rail.
 

@@ -471,7 +471,6 @@
       "minimumActionAndFilterHeight": "48dp",
       "iconSize": "18dp",
       "iconLabelGap": "8dp",
-      "brandSize": "36dp",
       "navigationRailWidth": "184dp",
       "headerPadding": "6dp 22dp plus top system inset",
       "pagePadding": "24dp 22dp 12dp; compact top 12dp",
@@ -611,7 +610,7 @@
   ],
   "narrative": {
     "northStar": "Squirrelboard native dashboard",
-    "overview": "Squirrelboard’s precise dashboard language expressed through native Android Views. A cool gray canvas supports white outlined panels, slate text, periwinkle selection and teal transfer accents. Charcoal day/night counterparts preserve the same hierarchy. The local reference is `../squirrelboard`; the native implementation owns the values recorded here, including stronger light-mode text accents for contrast.\n\nThe same materials cover Connection, Proxies, Configuration, Logs, Sessions, API tools and app-owned dialogs. Technical detail remains visible through labeled measurements, native text scaling and large source panes. The reference squirrel mark is retained as a native vector. Android system sans replaces the reference’s web font, while YAML, logs and protocol/JSON results use native monospace.",
+    "overview": "Squirrelboard’s precise dashboard language expressed through native Android Views. A cool gray canvas supports white outlined panels, slate text, periwinkle selection and teal transfer accents. Charcoal day/night counterparts preserve the same hierarchy. The local reference is `../squirrelboard`; the native implementation owns the values recorded here, including stronger light-mode text accents for contrast.\n\nThe same materials cover Connection, Proxies, Configuration, Logs, Sessions, API tools and app-owned dialogs. Technical detail remains visible through labeled measurements, native text scaling and large source panes. The header displays the Squirrel wordmark without an adjacent icon; the reference vector asset remains available. Android system sans replaces the reference’s web font, while YAML, logs and protocol/JSON results use native monospace.",
     "keyCharacteristics": [
       "Cool gray canvas, white or charcoal panels and thin outlines.",
       "Periwinkle selection and download roles; teal upload and green local-engine status.",

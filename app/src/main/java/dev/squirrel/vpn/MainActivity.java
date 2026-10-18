@@ -112,9 +112,6 @@ public final class MainActivity extends Activity {
         });
         setContentView(root);
         brand = text("Squirrel", 20, diagnostics.ink);
-        android.graphics.drawable.Drawable logo = getDrawable(R.drawable.ic_squirrelboard);
-        brand.setCompoundDrawablesRelativeWithIntrinsicBounds(logo, null, null, null);
-        brand.setCompoundDrawablePadding(dp(10));
         brand.setTypeface(null, Typeface.BOLD);
         appHeader.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
         TextView core = text("SHADOWQUIC", 9, diagnostics.secondary);
