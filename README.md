@@ -46,6 +46,52 @@ Native builds explicitly load `$SHADOWQUIC_DIR/.cargo/config.toml` (or `.build/s
 
 The Android TUN changes enable Android TUN and fake-IP restoration, and accept an owned `VpnService` descriptor instead of creating a desktop adapter. `scripts/prepare-core.py` copies the checkout into the ignored `.build/shadowquic/` directory for configurable Cargo path dependencies. It recognizes the applied changes and copies them without applying the patch again. For an unpatched checkout based on ShadowQUIC `8ba1f5c07eca6c46c280e8e9a97a60c5c30f73f9` (0.4.4), it can still apply `patches/android-tun.patch` to the build copy; the preparation script never edits its source checkout. The Rust dependency lockfile is checked in. Incompatible core changes fail patching/building explicitly.
 
+## Continuous integration and alpha releases
+
+Every push to `main` runs `.github/workflows/alpha.yml` on GitHub Actions using
+`nix develop ./nix`. It fetches ShadowQUIC `main` once, checks Rust formatting,
+runs Rust unit tests, and builds/lints the universal ARM64/x86_64 release APK, then signs and verifies it.
+Successful runs publish an `alpha-<run-number>-<attempt>` GitHub prerelease with
+an APK, SHA-256 checksums, and both source commit IDs. Each push runs independently;
+failed checks prevent publication. Device tests remain a local validation step.
+
+The workflow uses the automatic `GITHUB_TOKEN` with `contents: write` for publishing.
+Configure these repository Actions secrets before pushing:
+
+- `ANDROID_KEYSTORE_BASE64`: base64-encoded release keystore.
+- `ANDROID_KEYSTORE_PASSWORD`: keystore password.
+- `ANDROID_KEY_ALIAS`: signing key alias.
+- `ANDROID_KEY_PASSWORD`: private key password.
+
+Use an existing app signing key if one has already been published. To generate a
+new key, enter `nix develop ./nix` and run the following interactive command
+(passwords are prompted, not embedded in the command):
+
+```sh
+keytool -genkeypair -keystore "$HOME/squirrel-release.jks" -storetype JKS \
+  -alias squirrel -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 "$HOME/squirrel-release.jks" | gh secret set ANDROID_KEYSTORE_BASE64
+gh secret set ANDROID_KEYSTORE_PASSWORD
+gh secret set ANDROID_KEY_ALIAS --body squirrel
+gh secret set ANDROID_KEY_PASSWORD
+```
+
+Run the `gh` commands from this repository with GitHub authentication configured.
+Back up the keystore and passwords privately; keep the same key for future updates.
+Missing secrets stop CI before building. Signing uses a temporary keystore that is
+removed on exit, and `apksigner verify` must pass before publication.
+The workflow sets version code to its run number and version name to
+`0.1.0-alpha.<run-number>.<attempt>`; reruns retain the same version code.
+
+For local signing, export the same four variables, build with
+`nix develop ./nix --command ./gradlew assembleRelease lintRelease`, then run
+`nix develop ./nix --command bash scripts/sign-release.sh`. The signed APK is
+`app/build/outputs/apk/release/app-release.apk`.
+
+Release-signed alphas can update previous alphas signed with the same key.
+Switching from a debug build requires uninstalling it once; export configurations
+first because uninstalling removes app data.
+
 ## Use
 
 Start an emulator, install the existing debug APK, and open the app with:
