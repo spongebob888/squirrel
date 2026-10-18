@@ -61,8 +61,10 @@ security, anonymity, or reliability claims have been established.
   the editor contents; successful downloads enter the editor for review.
 - IPv4 and IPv6 TCP/UDP forwarding uses ShadowQUIC outbounds and Lua routing.
   Exactly one TUN interface is supported. ICMP/ping is unsupported.
-- Connection information includes memory, traffic totals, and TCP/UDP session
-  counts. Proxy tools expose outbound selection, HTTP probe latency, QUIC RTT,
+- Connection information includes memory, traffic totals, TCP/UDP session
+  counts, and the Tokio runtime alive-task count from `/api/v1/tokio_metric`.
+  Missing runtime metrics stay unknown while other available metrics remain
+  visible. Proxy tools expose outbound selection, HTTP probe latency, QUIC RTT,
   and packet loss. Sessions and persistent, exportable logs aid diagnosis. The
   log viewer supports text filtering and pausing its live display; exports
   include all retained logs independently of those display controls.
@@ -73,7 +75,7 @@ security, anonymity, or reliability claims have been established.
   statistics and counter resets. Single-user and all-user statistics scopes are
   explicit. These operations do not require starting the VPN. Mutations confirm
   the target and are not automatically replayed after activity recreation.
-- The tools page also exposes all bundled local REST operations while connected.
+- The tools page also exposes local REST operations while connected.
   Remote control-plane operations and local engine snapshots have separate scope.
   Submitted passwords are not persisted in form state or shown in results.
 - The Direct test profile forwards traffic directly; it does not provide an

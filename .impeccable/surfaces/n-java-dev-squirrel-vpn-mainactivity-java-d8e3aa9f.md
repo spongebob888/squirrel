@@ -27,3 +27,11 @@ redundant Network status heading. Order its children as state, primary action,
 wrapping detail, then profile. Keep the action at its full minimum 48dp height
 and ahead of copy that can wrap. Controls and measurements use 1:1.5 widths
 with a 16dp gap. The direction contract above remains unchanged.
+
+## Alive tasks
+
+Live engine includes an Alive tasks measurement row using the existing label/value
+geometry and tabular number role. It reads `num_alive_tasks` from `/api/v1/tokio_metric`
+on the Connection refresh. Zero is a valid count; missing or invalid values show a
+dash. Disconnect, a new engine run, and a failed metrics refresh clear the value.
+An unavailable Tokio endpoint leaves traffic and memory visible and retries normally.

@@ -404,8 +404,7 @@ public final class MainActivity extends Activity {
             try {
                 ShadowQuicApi api = new ShadowQuicApi(this);
                 JSONObject value = page == CONNECTION
-                    ? new JSONObject().put("memory", api.get("/memory"))
-                        .put("traffic", api.get("/traffic"))
+                    ? api.connectionStats()
                     : api.get(page == PROXIES ? "/outbounds" : "/connections");
                 post(() -> {
                     if (!acceptApiResult(connection, page)) return;

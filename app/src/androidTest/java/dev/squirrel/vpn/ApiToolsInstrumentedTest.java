@@ -207,6 +207,11 @@ public final class ApiToolsInstrumentedTest extends InstrumentationTestCase {
             }
             assertTrue(ready);
             for (String path : new String[]{"/outbounds", "/connections", "/traffic", "/memory"}) assertNotNull(api.get(path));
+            JSONObject engine = api.connectionStats();
+            assertTrue(engine.getJSONObject("tokio_metric").getLong("num_alive_tasks") > 0);
+            assertTrue(engine.getJSONObject("tokio_metric").getLong("num_workers") > 0);
+            assertNotNull(engine.getJSONObject("memory"));
+            assertNotNull(engine.getJSONObject("traffic"));
             String selection = "/outbounds/" + ShadowQuicApi.segment(" choice / one ") + "/selection";
             assertEquals("direct", api.get(selection).getString("selected"));
             assertEquals("direct", api.put(selection, new JSONObject().put("selected", "direct")).getString("selected"));

@@ -21,6 +21,7 @@
     <item name="download_total" type="id" />
     <item name="tcp_metric" type="id" />
     <item name="udp_metric" type="id" />
+    <item name="alive_tasks_metric" type="id" />
     <item name="resident_metric" type="id" />
     <item name="allocated_metric" type="id" />
     <item name="proxy_filter" type="id" />

@@ -36,7 +36,7 @@ final class DiagnosticsUi {
     final int surface, ink, secondary, primary, onPrimary, container, outline, success, error, download, panel, header;
     private final boolean compact;
     final Button connect;
-    private final TextView state, detail, profile, uploaded, downloaded, tcp, udp, resident, allocated;
+    private final TextView state, detail, profile, uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated;
     private final TextView connectionNotice;
     private final LinearLayout connection;
     private final RuntimeList proxies, sessions;
@@ -135,6 +135,7 @@ final class DiagnosticsUi {
         add(engine, engineTitle, 0, 8);
         tcp = metricRow(engine, "TCP sessions", R.id.tcp_metric);
         udp = metricRow(engine, "UDP sessions", R.id.udp_metric);
+        aliveTasks = metricRow(engine, "Alive tasks", R.id.alive_tasks_metric);
         resident = metricRow(engine, "Resident memory", R.id.resident_metric);
         allocated = metricRow(engine, "Allocated memory", R.id.allocated_metric);
         connectionNotice = text("Connect to load live traffic and memory.", 12, secondary, false);
@@ -228,9 +229,11 @@ final class DiagnosticsUi {
         }
         set(resident, byteMetric(memory, "resident_bytes"));
         set(allocated, byteMetric(memory, "allocated_bytes"));
-        notice(connectionNotice, memory == null || inbounds == null
+        set(aliveTasks, countMetric(response.optJSONObject("tokio_metric"), "num_alive_tasks"));
+        boolean incomplete = memory == null || inbounds == null || "—".contentEquals(aliveTasks.getText());
+        notice(connectionNotice, incomplete
             ? "Some metrics are unavailable. Retrying automatically."
-            : "Live totals for this engine run. Updates every second.", memory == null || inbounds == null);
+            : "Live totals for this engine run. Updates every second.", incomplete);
     }
 
     void renderOutbounds(JSONArray items) { proxies.update(items); }
@@ -255,7 +258,7 @@ final class DiagnosticsUi {
     }
 
     private void clearMetrics() {
-        for (TextView view : new TextView[]{uploaded, downloaded, tcp, udp, resident, allocated}) set(view, "—");
+        for (TextView view : new TextView[]{uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated}) set(view, "—");
     }
 
     private final class RuntimeList {
@@ -685,6 +688,14 @@ final class DiagnosticsUi {
 
     private static String byteMetric(JSONObject item, String key) {
         return item == null || item.isNull(key) ? "—" : bytes(item.optLong(key));
+    }
+
+    private static String countMetric(JSONObject item, String key) {
+        Object value = item == null ? null : item.opt(key);
+        if (!(value instanceof Number)) return "—";
+        Number number = (Number) value;
+        long count = number.longValue();
+        return count >= 0 && number.doubleValue() == count ? Long.toString(count) : "—";
     }
 
     private static String loss(JSONObject item) {

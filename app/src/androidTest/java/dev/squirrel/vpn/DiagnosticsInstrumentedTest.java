@@ -39,18 +39,45 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             assertEquals("28.4 MiB", label(R.id.upload_total));
             assertEquals("194.8 MiB", label(R.id.download_total));
             assertTrue(label(R.id.tcp_metric).startsWith("24\n"));
+            assertEquals("32", label(R.id.alive_tasks_metric));
             ui.renderNetworkStats(new JSONObject().put("traffic", new JSONObject().put("inbounds", new JSONArray())));
             assertEquals("0 B", label(R.id.upload_total));
             assertEquals("—", label(R.id.resident_metric));
+            assertEquals("—", label(R.id.alive_tasks_metric));
             ui.renderNetworkStats(metrics());
             ui.renderState(new AppState.Snapshot(AppState.Phase.DISCONNECTED, "Synthetic review data"), false, "Synthetic fixture");
             for (int id : new int[]{R.id.upload_total, R.id.download_total, R.id.tcp_metric, R.id.udp_metric,
-                    R.id.resident_metric, R.id.allocated_metric}) assertEquals("—", label(id));
+                    R.id.alive_tasks_metric, R.id.resident_metric, R.id.allocated_metric}) assertEquals("—", label(id));
             ui.renderState(connected(), false, "Synthetic fixture");
             ui.renderNetworkStats(metrics());
             ui.unavailable(MainActivity.CONNECTION, "Synthetic unavailable response.");
             assertEquals("—", label(R.id.upload_total));
+            assertEquals("—", label(R.id.alive_tasks_metric));
             assertTrue(label(R.id.connection_metrics_notice).contains("Retrying"));
+            return null;
+        });
+    }
+
+    public void testAliveTasksDistinguishesZeroFromMissingAndInvalidCounts() throws Exception {
+        launch();
+        onMain(() -> {
+            ui.renderState(connected(), false, "Synthetic fixture");
+            for (Object value : new Object[]{0L, 71L, JSONObject.NULL, "invalid", -1L, 1.5}) {
+                JSONObject response = metrics().put("tokio_metric", new JSONObject().put("num_alive_tasks", value));
+                ui.renderNetworkStats(response);
+                assertEquals(value.equals(0L) ? "0" : value.equals(71L) ? "71" : "—", label(R.id.alive_tasks_metric));
+                assertEquals("28.4 MiB", label(R.id.upload_total));
+                assertEquals("42.6 MiB", label(R.id.resident_metric));
+            }
+            JSONObject response = metrics();
+            response.remove("tokio_metric");
+            ui.renderNetworkStats(response);
+            assertEquals("—", label(R.id.alive_tasks_metric));
+            assertEquals("28.4 MiB", label(R.id.upload_total));
+            assertTrue(label(R.id.connection_metrics_notice).contains("Some metrics"));
+            ui.renderNetworkStats(metrics());
+            assertEquals("32", label(R.id.alive_tasks_metric));
+            assertTrue(label(R.id.connection_metrics_notice).contains("Updates every second"));
             return null;
         });
     }
@@ -156,6 +183,21 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         capture("disconnected");
         onMain(() -> { ui.renderState(connected(), false, "Synthetic fixture"); ui.renderNetworkStats(metrics()); return null; });
         capture("phone");
+        android.widget.ScrollView connectionScroll = onMain(() -> {
+            View view = activity.findViewById(R.id.alive_tasks_metric);
+            while (!(view instanceof android.widget.ScrollView)) view = (View) view.getParent();
+            android.widget.ScrollView scroll = (android.widget.ScrollView) view;
+            scroll.scrollTo(0, scroll.getChildAt(0).getHeight());
+            View value = activity.findViewById(R.id.alive_tasks_metric);
+            android.graphics.Rect rect = new android.graphics.Rect();
+            value.getDrawingRect(rect);
+            value.requestRectangleOnScreen(rect, true);
+            assertTrue(value.getGlobalVisibleRect(rect));
+            assertEquals(value.getHeight(), rect.height());
+            return scroll;
+        });
+        capture("engine");
+        onMain(() -> { connectionScroll.scrollTo(0, 0); return null; });
         page(MainActivity.PROXIES);
         onMain(() -> { ui.renderOutbounds(outbounds(3, "relay-a")); return null; });
         capture("proxies");
@@ -259,7 +301,7 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
     }
 
     private static JSONObject metrics() throws Exception {
-        return new JSONObject("{\"memory\":{\"resident_bytes\":44669337,\"allocated_bytes\":29884416},"
+        return new JSONObject("{\"tokio_metric\":{\"num_alive_tasks\":32},\"memory\":{\"resident_bytes\":44669337,\"allocated_bytes\":29884416},"
             + "\"traffic\":{\"inbounds\":[{\"tcp_conns\":24,\"udp_conns\":6,\"tcp_upload_bytes\":29360128,"
             + "\"udp_upload_bytes\":419430,\"tcp_download_bytes\":203423744,\"udp_download_bytes\":838860}]}}");
     }

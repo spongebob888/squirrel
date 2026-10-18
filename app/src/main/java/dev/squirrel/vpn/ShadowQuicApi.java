@@ -22,6 +22,15 @@ final class ShadowQuicApi {
     JSONObject put(String path, JSONObject body) throws Exception { return request("PUT", path, body); }
     JSONObject post(String path, JSONObject body) throws Exception { return request("POST", path, body); }
 
+    JSONObject connectionStats() throws Exception {
+        JSONObject response = new JSONObject().put("memory", get("/memory")).put("traffic", get("/traffic"));
+        try { response.put("tokio_metric", get("/tokio_metric")); }
+        catch (Exception ignored) {
+            // An unavailable runtime counter must not hide the other live engine metrics.
+        }
+        return response;
+    }
+
     private JSONObject request(String method, String path, JSONObject body) throws Exception {
         return request(method, path, body, 3000);
     }
