@@ -23,30 +23,35 @@ final class ShadowQuicApi {
     JSONObject post(String path, JSONObject body) throws Exception { return request("POST", path, body); }
 
     private JSONObject request(String method, String path, JSONObject body) throws Exception {
+        return request(method, path, body, 3000);
+    }
+
+    JSONObject request(String method, String path, JSONObject body, int timeoutMs) throws Exception {
         HttpURLConnection connection = (HttpURLConnection) new URL(BASE + path).openConnection();
-        connection.setRequestMethod(method);
-        connection.setConnectTimeout(1800);
-        connection.setReadTimeout(3000);
-        connection.setRequestProperty("Authorization", "Bearer " + secret);
-        connection.setRequestProperty("Accept", "application/json");
-        if (body != null) {
-            connection.setDoOutput(true);
-            connection.setRequestProperty("Content-Type", "application/json");
-            try (OutputStream output = connection.getOutputStream()) {
-                output.write(body.toString().getBytes(StandardCharsets.UTF_8));
+        try {
+            connection.setRequestMethod(method);
+            connection.setConnectTimeout(1800);
+            connection.setReadTimeout(timeoutMs);
+            connection.setRequestProperty("Authorization", "Bearer " + secret);
+            connection.setRequestProperty("Accept", "application/json");
+            if (body != null) {
+                connection.setDoOutput(true);
+                connection.setRequestProperty("Content-Type", "application/json");
+                try (OutputStream output = connection.getOutputStream()) {
+                    output.write(body.toString().getBytes(StandardCharsets.UTF_8));
+                }
             }
-        }
-        int status = connection.getResponseCode();
-        InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
-        String response = stream == null ? "{}" : read(stream);
-        connection.disconnect();
-        JSONObject json = new JSONObject(response);
-        if (status < 200 || status >= 300) {
-            JSONObject error = json.optJSONObject("error");
-            throw new IOException(error == null ? "ShadowQUIC API returned HTTP " + status
-                : error.optString("message", "ShadowQUIC API returned HTTP " + status));
-        }
-        return json;
+            int status = connection.getResponseCode();
+            InputStream stream = status >= 400 ? connection.getErrorStream() : connection.getInputStream();
+            String response = stream == null ? "{}" : read(stream);
+            JSONObject json = new JSONObject(response);
+            if (status < 200 || status >= 300) {
+                JSONObject error = json.optJSONObject("error");
+                throw new IOException(error == null ? "ShadowQUIC API returned HTTP " + status
+                    : error.optString("message", "ShadowQUIC API returned HTTP " + status));
+            }
+            return json;
+        } finally { connection.disconnect(); }
     }
 
     private static String read(InputStream stream) throws IOException {

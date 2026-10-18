@@ -14,6 +14,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity android:name=".ApiToolsActivity" android:exported="false"
+            android:windowSoftInputMode="adjustResize" />
         <service android:name=".SquirrelVpnService" android:exported="false"
             android:permission="android.permission.BIND_VPN_SERVICE"
             android:foregroundServiceType="specialUse">

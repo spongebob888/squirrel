@@ -38,4 +38,19 @@
     <item name="log_live" type="id" />
     <item name="log_status" type="id" />
     <item name="log_scroll" type="id" />
+    <item name="api_tools_menu" type="id" />
+    <item name="api_title" type="id" />
+    <item name="api_remote_mode" type="id" />
+    <item name="api_local_mode" type="id" />
+    <item name="api_profile" type="id" />
+    <item name="api_outbound" type="id" />
+    <item name="api_remote_operation" type="id" />
+    <item name="api_all_users" type="id" />
+    <item name="api_username" type="id" />
+    <item name="api_password" type="id" />
+    <item name="api_local_operation" type="id" />
+    <item name="api_local_tag" type="id" />
+    <item name="api_run" type="id" />
+    <item name="api_status" type="id" />
+    <item name="api_result" type="id" />
 </resources>

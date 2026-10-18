@@ -113,6 +113,22 @@ public final class MainActivity extends Activity {
         TextView core = text("SHADOWQUIC", 10, 0xFFE2DEF9);
         core.setLetterSpacing(0.08f);
         appHeader.addView(core);
+        android.widget.ImageButton tools = new android.widget.ImageButton(diagnostics.context);
+        tools.setId(R.id.api_tools_menu);
+        tools.setImageResource(R.drawable.ic_more_vert);
+        tools.setImageTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+        tools.setContentDescription("More options");
+        tools.setBackground(new android.graphics.drawable.RippleDrawable(
+            android.content.res.ColorStateList.valueOf(0x55FFFFFF), null, null));
+        tools.setOnClickListener(view -> {
+            android.widget.PopupMenu menu = new android.widget.PopupMenu(diagnostics.context, tools);
+            menu.getMenu().add("API tools").setOnMenuItemClickListener(item -> {
+                startActivity(new Intent(this, ApiToolsActivity.class));
+                return true;
+            });
+            menu.show();
+        });
+        appHeader.addView(tools, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(appHeader);
         tabScroll = new HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);

@@ -1,3 +1,4 @@
+mod admin;
 mod config;
 #[cfg(any(target_os = "android", test))]
 mod logging;
@@ -216,6 +217,46 @@ pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_status(
             _ => "ShadowQUIC core stopped. See the core log for details.",
         };
         env.new_string(status)
+            .map(|s| s.into_raw())
+            .map_err(|e| e.to_string())
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_adminOutbounds(
+    mut env: JNIEnv,
+    _: JClass,
+    text: JString,
+) -> jstring {
+    guarded(&mut env, |env| {
+        let value = admin::outbounds(&string(env, text)?)?;
+        env.new_string(value.to_string())
+            .map(|s| s.into_raw())
+            .map_err(|e| e.to_string())
+    })
+    .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_adminRequest(
+    mut env: JNIEnv,
+    _: JClass,
+    text: JString,
+    tag: JString,
+    operation: JString,
+    username: JString,
+    password: JString,
+) -> jstring {
+    guarded(&mut env, |env| {
+        let value = admin::request(
+            &string(env, text)?,
+            &string(env, tag)?,
+            &string(env, operation)?,
+            &string(env, username)?,
+            &string(env, password)?,
+        )?;
+        env.new_string(value.to_string())
             .map(|s| s.into_raw())
             .map_err(|e| e.to_string())
     })

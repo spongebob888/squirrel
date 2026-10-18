@@ -76,6 +76,29 @@ Filter **Proxies** by outbound tag. In **Sessions**, filter by destination, addr
 
 **Configuration** keeps the profile picker, management, import, download, and Save controls above the YAML editor. **More** contains configuration export, Proxy template, and Direct test. Short keyboard viewports collapse the redundant heading; landscape places the controls beside the editor. **Logs** supports a text filter and a **Live updates** switch: turn it off to read a fixed snapshot. Filtering and pausing affect only the displayed tail; **Export logs** still exports all retained service and core log files. New lines follow the tail only when the viewer was already at the bottom.
 
+### API tools
+
+Open **More options** in the app header, then **API tools**. This standalone page keeps infrequent administration outside the five tabs. Back returns to the previous tab and its draft.
+
+**Remote server** uses a snapshot of a saved profile; choose its ShadowQUIC or SunnyQUIC outbound. The configured login must begin with `admin`. Unsaved editor changes are not used. **Reload** reads saved changes. These are the real remote control-plane commands, independent of the VPN and the local REST API:
+
+| Operation | Scope and effect |
+| --- | --- |
+| `list-users` | List configured remote usernames. |
+| `add-user` | Add a username/password, or replace an existing user's password. |
+| `remove-user` | Delete a user and close their active connections. |
+| `kill-conn` | Close a user's QUIC connections; they can reconnect. |
+| `get-stats` | Traffic bytes and active QUIC/TCP/UDP counts for one user or **All users**. |
+| `clear-stats` | Reset traffic byte counters for one user or **All users**, keeping live connection counts. Requires a compatible server version. |
+
+Mutations ask for confirmation with the saved profile, outbound and user scope. A timed-out request may already have changed the server; inspect its state before retrying. Passwords are masked, cleared after submission/backgrounding, and excluded from saved form state and result text. Running requests survive rotation without replay. The page retains Android's secure-window protection.
+
+Usernames and outbound/member tags are exact keys; surrounding spaces are preserved. Fields preview whitespace as JSON escapes, such as `"\u0020alice\u0020"`, and confirmations/results use quoted identifiers. An empty username never implicitly selects all users in the form: use **All users** explicitly.
+
+Server connections use the outbound's transport, authentication, TLS and socket settings. A configured `addr-resolver` uses its DNS backend directly through a temporary loopback listener; it does not start the profile's listeners, router or VPN. Fake-IP address resolvers are rejected. Referenced certificates must already be readable on the Android device, as with the VPN profile.
+
+**Local runtime** requires the VPN engine to be running. It exposes every bundled REST operation: outbounds, connections, traffic, memory, selector get/set and outbound HTTP probing. Results are JSON snapshots. Selector changes require confirmation and apply to new sessions; restarting restores the configured selection. Probe timeouts accept 1–60000 ms, and the client waits for that interval. The existing Proxies tab remains the everyday selection/probe interface.
+
 The built-in **Direct test** profile exercises the packet engine without a remote server. It forwards directly and does not provide an encrypted remote tunnel. ICMP/ping is not supported by the core's TCP/UDP stack.
 
 ## Configuration
@@ -122,6 +145,8 @@ Host tests cover config normalization, private database paths, legacy imports, r
 Diagnostic tests cover metric aggregation and clearing, unknown measurements, combined session filters, filter restoration, stable outbound rows and scroll position, and rejection of results from another tab or a previous connection. Review captures use explicitly labeled synthetic data in the real native views. Only the instrumentation harness temporarily permits screenshots of those fixture screens; the shipped activity retains `FLAG_SECURE`.
 
 Workspace tests cover log filtering, paused snapshots, read-error recovery, filter focus during updates, editor space with the software keyboard open, and secondary configuration actions preserving the draft. Their configuration, log, menu, and dialog captures contain synthetic fixtures; no review operation saves that fixture over a stored profile.
+
+API tools tests cover standalone navigation, exact command/scope dispatch, confirmation cancellation, password redaction, invalid-profile recovery, and a pending mutation surviving recreation without replay. Real JNI/loopback REST checks exercise every local endpoint, including a probe lasting longer than the ordinary three-second read timeout. Native host tests run all six remote commands against loopback ShadowQUIC and certificate-verified SunnyQUIC servers; these are local protocol checks, not verification of a deployed server.
 
 Validated locally: both Android ABIs built; Android lint passed; all 11 host tests, 15 API 36 emulator instrumentation tests, and 8 core TUN tests passed (the desktop kernel-adapter test was skipped). A real Android VPN service session also forwarded a TCP HTTP request from the shell UID through the TUN; Android reported the app UID excluded from the VPN ranges. A remote ShadowQUIC server was not supplied, so remote authentication and transport were not tested.
 

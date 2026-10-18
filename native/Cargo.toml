@@ -31,6 +31,9 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 libc = "0.2"
 
+[dev-dependencies]
+rcgen = "0.14"
+
 [target.'cfg(target_os = "android")'.dependencies]
 shadowquic = { path = "../.build/shadowquic/shadowquic", features = ["jemalloc"] }
 

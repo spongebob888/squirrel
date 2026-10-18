@@ -36,6 +36,8 @@ security, anonymity, or reliability claims have been established.
   No root is required.
 - Five existing destinations: Connection, Proxies, Configuration, Logs, and
   Sessions, with tab and swipe navigation.
+- Infrequent API administration lives on a standalone API tools page reached
+  through the header overflow menu, rather than another main tab.
 - Users import a local file, download an HTTP/HTTPS YAML configuration, or start
   from a bundled template. Server details and credentials come from the user.
 - Users validate and save a profile, connect, inspect runtime information, and
@@ -62,6 +64,14 @@ security, anonymity, or reliability claims have been established.
   include all retained logs independently of those display controls.
 - "VPN active" indicates that the local packet engine is running. It does not
   establish successful remote authentication or server reachability.
+- API tools uses a saved profile's ShadowQUIC/SunnyQUIC admin outbound for remote
+  user listing, addition/password updates, removal, connection termination,
+  statistics and counter resets. Single-user and all-user statistics scopes are
+  explicit. These operations do not require starting the VPN. Mutations confirm
+  the target and are not automatically replayed after activity recreation.
+- The tools page also exposes all bundled local REST operations while connected.
+  Remote control-plane operations and local engine snapshots have separate scope.
+  Submitted passwords are not persisted in form state or shown in results.
 - The Direct test profile forwards traffic directly; it does not provide an
   encrypted remote tunnel.
 - The app package must bypass the VPN before the interface is established.
