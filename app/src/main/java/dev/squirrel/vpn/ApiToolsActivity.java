@@ -67,7 +67,7 @@ public final class ApiToolsActivity extends Activity {
             localOperation.setSelection(saved.getInt("localOperation"));
             username.setText(saved.getString("username", "")); allUsers.setChecked(saved.getBoolean("allUsers"));
             outboundTag.setText(saved.getString("tag", "")); selectedMember.setText(saved.getString("member", ""));
-            probeUrl.setText(saved.getString("url", "http://example.com/")); probeTimeout.setText(saved.getString("timeout", "10000"));
+            probeUrl.setText(saved.getString("url", AppSettings.probeUrl(this))); probeTimeout.setText(saved.getString("timeout", "10000"));
         }
         restoring = false;
         model.observe(this::render);
@@ -145,8 +145,8 @@ public final class ApiToolsActivity extends Activity {
         identifierPreview(localTagField, outboundTag, "Exact outbound tag");
         selectedMember = input("Member outbound tag", false); memberField = field(localForm, "Selected member", selectedMember);
         identifierPreview(memberField, selectedMember, "Exact member tag");
-        probeUrl = input("http://example.com/", false); probeUrl.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        probeUrl.setText("http://example.com/"); urlField = field(localForm, "HTTP probe URL", probeUrl);
+        probeUrl = input(AppSettings.DEFAULT_PROBE_URL, false); probeUrl.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
+        probeUrl.setText(AppSettings.probeUrl(this)); urlField = field(localForm, "HTTP probe URL", probeUrl);
         probeTimeout = input("10000", false); probeTimeout.setInputType(InputType.TYPE_CLASS_NUMBER); probeTimeout.setText("10000");
         timeoutField = field(localForm, "Probe timeout (ms, 1–60000)", probeTimeout);
         help = text("", 13, secondary, false); add(controls, help, 12);
@@ -286,10 +286,9 @@ public final class ApiToolsActivity extends Activity {
                 if (member.isEmpty()) { selectedMember.setError("Enter a member outbound tag"); return; }
                 body = new JSONObject().put("selected", member);
             } else if (op == 6) {
-                String url = probeUrl.getText().toString().trim(); android.net.Uri parsed = android.net.Uri.parse(url);
-                if (!"http".equalsIgnoreCase(parsed.getScheme()) || parsed.getHost() == null || parsed.getUserInfo() != null) {
-                    probeUrl.setError("Use an absolute HTTP URL without credentials"); return;
-                }
+                String url;
+                try { url = AppSettings.validateProbeUrl(probeUrl.getText().toString()); }
+                catch (IllegalArgumentException error) { probeUrl.setError(error.getMessage()); return; }
                 int milliseconds;
                 try { milliseconds = Integer.parseInt(probeTimeout.getText().toString()); } catch (NumberFormatException e) { milliseconds = 0; }
                 if (milliseconds < 1 || milliseconds > 60000) { probeTimeout.setError("Use 1–60000 milliseconds"); return; }

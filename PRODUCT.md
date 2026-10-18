@@ -38,6 +38,10 @@ security, anonymity, or reliability claims have been established.
   Sessions, with tab and swipe navigation.
 - Infrequent API administration lives on a standalone API tools page reached
   through the header overflow menu, rather than another main tab.
+- The same menu opens Settings for the app-wide default HTTP latency-probe URL.
+  Probe latency starts immediately with the latest saved URL; API tools prefills
+  it while retaining a per-request override. Settings validates and saves the URL
+  independently of VPN profiles; its unsaved draft survives activity recreation.
 - Users import a local file, download an HTTP/HTTPS YAML configuration, or start
   from a bundled template. Server details and credentials come from the user.
 - Users validate and save a profile, connect, inspect runtime information, and

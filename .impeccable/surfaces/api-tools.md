@@ -84,6 +84,16 @@ Tag path segments are URI-encoded without normalizing the key. Probe URLs reject
 embedded credentials; read timeout includes the requested probe interval plus
 three seconds. Local results are discarded if the engine session changes.
 
+The HTTP probe URL now prefills from the app-wide default saved in Settings
+(initially `http://example.com/`). API tools retains its editable per-request
+override and restores that draft across recreation; submitting an override does
+not save a new app-wide default. Settings and local API probes share absolute
+HTTP URL validation without embedded credentials. Main-page Probe latency uses
+the latest saved default immediately. This extension adds no visual tokens or
+changes to the API workspace layout; its source/capture evidence is recorded in
+the [Settings surface brief](settings.md) and
+[Settings packet](../review/settings/packet.json).
+
 An application-context worker retains in-flight work across rotation without
 replaying commands; pending controls disable duplicate submission. Results retain
 request identity when another operation is selected. After process recreation,

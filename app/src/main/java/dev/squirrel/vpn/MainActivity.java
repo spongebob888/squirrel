@@ -61,6 +61,7 @@ public final class MainActivity extends Activity {
     private String exportedConfig, remoteUrl = "";
     private ConfigProfiles.State profileState;
     private String profileId;
+    private final HashMap<String, AppState.Snapshot> pendingProbes = new HashMap<>();
     private final HashMap<String, String> profileDrafts = new HashMap<>(), profileUrls = new HashMap<>();
 
     private static final class Draft {
@@ -128,6 +129,10 @@ public final class MainActivity extends Activity {
             android.content.res.ColorStateList.valueOf(diagnostics.outline), null, null));
         tools.setOnClickListener(view -> {
             android.widget.PopupMenu menu = new android.widget.PopupMenu(diagnostics.context, tools);
+            menu.getMenu().add("Settings").setOnMenuItemClickListener(item -> {
+                startActivity(new Intent(this, SettingsActivity.class));
+                return true;
+            });
             menu.getMenu().add("API tools").setOnMenuItemClickListener(item -> {
                 startActivity(new Intent(this, ApiToolsActivity.class));
                 return true;
@@ -461,47 +466,32 @@ public final class MainActivity extends Activity {
 
     private void probeOutbound(String tag) {
         AppState.Snapshot connection = AppState.get();
-        if (connection.phase != AppState.Phase.CONNECTED) return;
-        EditText url = new EditText(diagnostics.context);
-        url.setSingleLine(true);
-        url.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_URI);
-        url.setText("http://example.com/");
-        url.setContentDescription("HTTP URL for latency probe");
-        LinearLayout content = new LinearLayout(diagnostics.context);
-        content.setPadding(dp(20), dp(8), dp(20), 0);
-        content.addView(url, new LinearLayout.LayoutParams(-1, -2));
-        AlertDialog dialog = new AlertDialog.Builder(diagnostics.context).setTitle("Probe " + tag)
-            .setMessage("Measure an HTTP request through this outbound.")
-            .setView(content).setNegativeButton("Cancel", null).setPositiveButton("Probe", null).create();
-        dialog.setOnShowListener(ignored -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
-            String target = url.getText().toString().trim();
-            Uri parsed = Uri.parse(target);
-            if (!("http".equalsIgnoreCase(parsed.getScheme()) || "https".equalsIgnoreCase(parsed.getScheme()))
-                    || parsed.getHost() == null) {
-                url.setError("Enter an HTTP or HTTPS URL");
-                return;
-            }
-            dialog.dismiss();
-            if (AppState.get() != connection) return;
-            diagnostics.probePending(tag, true);
-            diagnostics.outboundAction("Probing " + tag + "…", false);
-            apiActionExecutor.execute(() -> {
-                try {
+        if (connection.phase != AppState.Phase.CONNECTED || pendingProbes.get(tag) == connection) return;
+        String target = AppSettings.probeUrl(this);
+        pendingProbes.put(tag, connection);
+        diagnostics.probePending(tag, true);
+        diagnostics.outboundAction("Probing " + tag + "…", false);
+        apiActionExecutor.execute(() -> {
+            try {
+                if (AppState.get() != connection) return;
+                new ShadowQuicApi(this).request("POST", "/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
+                    new JSONObject().put("url", target).put("timeout_ms", AppSettings.PROBE_TIMEOUT_MS),
+                    AppSettings.PROBE_TIMEOUT_MS + 3000);
+                post(() -> {
                     if (AppState.get() != connection) return;
-                    new ShadowQuicApi(this).post("/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
-                        new JSONObject().put("url", target).put("timeout_ms", 10000));
-                    post(() -> {
-                        if (AppState.get() != connection) return;
-                        diagnostics.outboundAction("Probe completed for " + tag + ".", false);
-                        refreshApi();
-                    });
-                } catch (Exception error) {
-                    post(() -> { if (AppState.get() == connection)
-                        diagnostics.outboundAction("Probe failed: " + SquirrelVpnService.message(error), true); });
-                } finally { post(() -> { if (AppState.get() == connection) diagnostics.probePending(tag, false); }); }
-            });
-        }));
-        dialog.show();
+                    diagnostics.outboundAction("Probe completed for " + tag + ".", false);
+                    refreshApi();
+                });
+            } catch (Exception error) {
+                post(() -> { if (AppState.get() == connection)
+                    diagnostics.outboundAction("Probe failed: " + SquirrelVpnService.message(error), true); });
+            } finally {
+                post(() -> {
+                    if (pendingProbes.get(tag) == connection) pendingProbes.remove(tag);
+                    if (AppState.get() == connection) diagnostics.probePending(tag, false);
+                });
+            }
+        });
     }
 
     private void toggleVpn() {
