@@ -19,7 +19,7 @@ import android.widget.Switch;
 import android.widget.TextView;
 import java.util.Locale;
 
-/** Configuration and log workspaces sharing the app's native atlas components. */
+/** Configuration and log workspaces sharing the app's native dashboard components. */
 final class WorkspaceUi {
     final EditText editor, logFilter;
     final Button profileButton, downloadButton, more;
@@ -115,9 +115,9 @@ final class WorkspaceUi {
         editor.setLineSpacing(theme.dp(2), 1);
         editor.setHighlightColor((theme.primary & 0x00FFFFFF) | 0x33000000);
         StateListDrawable editorBackground = new StateListDrawable();
-        GradientDrawable focused = theme.shape(theme.container, 12);
+        GradientDrawable focused = theme.fieldBackground();
         focused.setStroke(theme.dp(2), theme.primary);
-        GradientDrawable resting = theme.shape(theme.container, 12);
+        GradientDrawable resting = theme.fieldBackground();
         resting.setStroke(theme.dp(1), theme.outline);
         editorBackground.addState(new int[]{android.R.attr.state_focused}, focused);
         editorBackground.addState(new int[]{}, resting);
@@ -156,7 +156,7 @@ final class WorkspaceUi {
         logFilter.setContentDescription("Filter displayed log lines");
         logFilter.setPadding(theme.dp(14), theme.dp(8), theme.dp(14), theme.dp(8));
         logFilter.setMinimumHeight(theme.dp(48));
-        logFilter.setBackground(theme.shape(theme.container, 12));
+        logFilter.setBackground(theme.fieldBackground());
         weighted(logActions, logFilter, 1, true);
         live = new Switch(theme.context);
         live.setId(R.id.log_live);
@@ -180,7 +180,7 @@ final class WorkspaceUi {
         logScroll = new ScrollView(theme.context);
         logScroll.setId(R.id.log_scroll);
         logScroll.setFillViewport(true);
-        GradientDrawable logBackground = theme.shape(theme.container, 12);
+        GradientDrawable logBackground = theme.fieldBackground();
         logBackground.setStroke(theme.dp(1), theme.outline);
         logScroll.setBackground(logBackground);
         logScroll.setClipToOutline(true);
@@ -306,7 +306,7 @@ final class WorkspaceUi {
 
     private TextView heading(String text) {
         boolean compact = theme.context.getResources().getConfiguration().screenHeightDp < 480;
-        TextView title = theme.text(text, compact ? 22 : 28, theme.ink, true);
+        TextView title = theme.text(text, compact ? 22 : 26, theme.ink, true);
         if (android.os.Build.VERSION.SDK_INT >= 28) title.setAccessibilityHeading(true);
         return title;
     }

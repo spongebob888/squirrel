@@ -40,7 +40,7 @@ public final class ApiToolsActivity extends Activity {
     Button profile, reload, outbound, run;
     TextView status, result, resultTitle, help, scope;
     private LinearLayout remoteForm, localForm, userField, passwordField, localTagField, memberField, urlField, timeoutField;
-    private int surface, ink, secondary, primary, onPrimary, container, outline, error;
+    private int surface, ink, secondary, primary, onPrimary, container, outline, error, panel;
     private boolean restoring;
     private AlertDialog confirmation;
 
@@ -49,11 +49,12 @@ public final class ApiToolsActivity extends Activity {
         setTheme(dark ? R.style.DiagnosticsTheme_Dark : R.style.DiagnosticsTheme);
         super.onCreate(saved);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        panel = getColor(R.color.diagnostic_panel);
         surface = getColor(R.color.diagnostic_surface); ink = getColor(R.color.diagnostic_on_surface);
         secondary = getColor(R.color.diagnostic_secondary); primary = getColor(R.color.diagnostic_primary);
         onPrimary = getColor(R.color.diagnostic_on_primary); container = getColor(R.color.diagnostic_container);
         outline = getColor(R.color.diagnostic_outline); error = getColor(R.color.diagnostic_error);
-        getWindow().setStatusBarColor(surface); getWindow().setNavigationBarColor(surface);
+        getWindow().setStatusBarColor(panel); getWindow().setNavigationBarColor(surface);
         getWindow().getDecorView().setSystemUiVisibility(dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
         build();
         Object retained = getLastNonConfigurationInstance();
@@ -87,7 +88,7 @@ public final class ApiToolsActivity extends Activity {
             return insets.consumeSystemWindowInsets();
         });
         setContentView(root);
-        LinearLayout header = row(); header.setPadding(dp(10), dp(4), dp(22), dp(4));
+        LinearLayout header = row(); header.setBackgroundColor(panel); header.setPadding(dp(10), dp(4), dp(22), dp(4));
         ImageButton back = new ImageButton(this); back.setImageResource(R.drawable.ic_arrow_back);
         back.setImageTintList(ColorStateList.valueOf(primary)); back.setContentDescription("Back");
         back.setBackground(new RippleDrawable(ColorStateList.valueOf(outline), null, null)); back.setOnClickListener(v -> finish());
@@ -157,7 +158,7 @@ public final class ApiToolsActivity extends Activity {
         add(output, resultTitle, wide ? 0 : 24);
         result = text("No request sent.", 12, ink, false); result.setId(R.id.api_result); result.setTypeface(Typeface.MONOSPACE);
         result.setTextIsSelectable(true); result.setSaveEnabled(false); result.setLineSpacing(dp(3), 1);
-        result.setPadding(dp(14), dp(14), dp(14), dp(14)); GradientDrawable pane = shape(container, 12); pane.setStroke(dp(1), outline);
+        result.setPadding(dp(14), dp(14), dp(14), dp(14)); GradientDrawable pane = fieldShape(); pane.setStroke(dp(1), outline);
         result.setBackground(pane); add(output, result, 12);
         mode.setOnCheckedChangeListener((group, id) -> {
             password.setText("");
@@ -341,7 +342,7 @@ public final class ApiToolsActivity extends Activity {
         field.setInputType(InputType.TYPE_CLASS_TEXT | (secret ? InputType.TYPE_TEXT_VARIATION_PASSWORD : InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS));
         field.setImeOptions(EditorInfo.IME_FLAG_NO_EXTRACT_UI | EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING);
         field.setSaveEnabled(false); field.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
-        field.setPadding(dp(14), dp(10), dp(14), dp(10)); field.setBackground(shape(container, 12)); return field;
+        field.setPadding(dp(14), dp(10), dp(14), dp(10)); field.setBackground(fieldShape()); return field;
     }
     private Spinner spinner(String[] labels) {
         Spinner spinner = new Spinner(this); spinner.setMinimumHeight(dp(48));
@@ -354,12 +355,12 @@ public final class ApiToolsActivity extends Activity {
         button.setCompoundDrawablePadding(dp(8));
     }
     private Button action(String label, Runnable action, boolean filled) {
-        Button button = new Button(this); button.setText(label); button.setAllCaps(false); button.setTextSize(14);
+        Button button = new Button(this); button.setText(label); button.setAllCaps(false); button.setTextSize(13);
         button.setMinWidth(0); button.setMinimumWidth(0); button.setMinHeight(dp(48)); button.setMinimumHeight(dp(48));
         button.setPadding(dp(14), dp(10), dp(14), dp(10)); button.setElevation(0); button.setStateListAnimator(null);
-        button.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}}, new int[]{secondary, filled ? onPrimary : primary}));
+        button.setTextColor(new ColorStateList(new int[][]{new int[]{-android.R.attr.state_enabled}, new int[]{}}, new int[]{secondary, filled ? onPrimary : ink}));
         android.graphics.drawable.StateListDrawable background = new android.graphics.drawable.StateListDrawable();
-        background.addState(new int[]{-android.R.attr.state_enabled}, shape(container, 24)); background.addState(new int[]{}, shape(filled ? primary : container, 24));
+        background.addState(new int[]{-android.R.attr.state_enabled}, shape(surface, 8)); background.addState(new int[]{}, buttonShape(filled));
         button.setBackgroundTintList(null); button.setBackground(new RippleDrawable(ColorStateList.valueOf(outline), background, null));
         button.setOnClickListener(v -> action.run()); return button;
     }
@@ -369,6 +370,8 @@ public final class ApiToolsActivity extends Activity {
     }
     private LinearLayout column() { LinearLayout view = new LinearLayout(this); view.setOrientation(LinearLayout.VERTICAL); return view; }
     private LinearLayout row() { LinearLayout view = column(); view.setOrientation(LinearLayout.HORIZONTAL); view.setGravity(Gravity.CENTER_VERTICAL); return view; }
+    private GradientDrawable fieldShape() { GradientDrawable background = shape(panel, 12); background.setStroke(dp(1), outline); return background; }
+    private GradientDrawable buttonShape(boolean filled) { GradientDrawable background = shape(filled ? primary : panel, 8); if (!filled) background.setStroke(dp(1), outline); return background; }
     private GradientDrawable shape(int color, int radius) { GradientDrawable shape = new GradientDrawable(); shape.setColor(color); shape.setCornerRadius(dp(radius)); return shape; }
     private void add(LinearLayout parent, View view, int top) { LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2); p.topMargin = dp(top); parent.addView(view, p); }
     private int dp(int value) { return Math.round(value * getResources().getDisplayMetrics().density); }

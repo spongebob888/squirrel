@@ -1,48 +1,65 @@
 ---
-name: Squirrel — Technical atlas
-description: Native Android workspaces with violet hierarchy, paired measurements and readable YAML and logs.
+name: Squirrel — Squirrelboard native dashboard
+description: Cool gray workspaces, outlined panels and periwinkle/teal diagnostics adapted from squirrelboard to
+  native Android.
 colors:
-  primary-light: "#35316E"
-  primary-dark: "#C4BCFF"
-  on-primary-light: "#FFFFFF"
-  on-primary-dark: "#282153"
-  surface-light: "#FAFAFC"
-  surface-dark: "#181624"
-  ink-light: "#26223E"
-  ink-dark: "#E9E5F5"
-  secondary-light: "#59556F"
-  secondary-dark: "#C0BAD1"
-  container-light: "#EEEDF8"
-  container-dark: "#302B46"
-  outline-light: "#DAD8E6"
-  outline-dark: "#4A445D"
-  success-light: "#176B53"
-  success-dark: "#8DDBBD"
-  error-light: "#A32735"
-  error-dark: "#FFB1BA"
-  download-light: "#176B62"
-  download-dark: "#8DD6CA"
-  chrome-mark: "#E2DEF9"
+  surface-light: '#F7F8FA'
+  ink-light: '#292E3D'
+  secondary-light: '#666E80'
+  primary-light: '#5366CA'
+  on-primary-light: '#FFFFFF'
+  container-light: '#EDF0FD'
+  outline-light: '#E3E7EF'
+  success-light: '#258161'
+  error-light: '#B83E4C'
+  download-light: '#237F77'
+  panel-light: '#FFFFFF'
+  sidebar-light: '#FCFCFD'
+  surface-dark: '#14171E'
+  ink-dark: '#E3E7F1'
+  secondary-dark: '#A2A9B9'
+  primary-dark: '#98A8FF'
+  on-primary-dark: '#171D32'
+  container-dark: '#2C3350'
+  outline-dark: '#2C3240'
+  success-dark: '#66C9A5'
+  error-dark: '#ED949A'
+  download-dark: '#65CBBD'
+  panel-dark: '#1C2029'
+  sidebar-dark: '#191C24'
+  brand-mark: '#5570E9'
 typography:
   headline:
     fontFamily: sans-serif
-    fontSize: 28sp
+    fontSize: 26sp
     fontWeight: 700
   headline-compact:
     fontFamily: sans-serif
     fontSize: 22sp
     fontWeight: 700
-  brand:
+  api-title:
     fontFamily: sans-serif
     fontSize: 23sp
     fontWeight: 700
-  section:
+  brand:
     fontFamily: sans-serif
-    fontSize: 19sp
+    fontSize: 20sp
     fontWeight: 700
-  title:
+  state:
+    fontFamily: sans-serif
+    fontSize: 20sp
+    fontWeight: 700
+  result-title:
     fontFamily: sans-serif
     fontSize: 18sp
+    fontWeight: 700
+  section:
+    fontFamily: sans-serif
+    fontSize: 16sp
+    fontWeight: 700
+  panel-title:
+    fontFamily: sans-serif
+    fontSize: 15sp
     fontWeight: 700
   body:
     fontFamily: sans-serif
@@ -52,6 +69,9 @@ typography:
     fontFamily: sans-serif
     fontSize: 13sp
     fontWeight: 400
+  action:
+    fontFamily: sans-serif
+    fontSize: 13sp
   route:
     fontFamily: sans-serif
     fontSize: 13sp
@@ -60,9 +80,13 @@ typography:
     fontFamily: sans-serif
     fontSize: 12sp
     fontWeight: 400
+  micro:
+    fontFamily: sans-serif
+    fontSize: 11sp
+    fontWeight: 400
   total:
     fontFamily: sans-serif
-    fontSize: 28sp
+    fontSize: 24sp
     fontWeight: 700
     fontFeature: tnum
   measurement:
@@ -72,7 +96,7 @@ typography:
     fontFeature: tnum
   core-mark:
     fontFamily: sans-serif
-    fontSize: 10sp
+    fontSize: 9sp
     fontWeight: 400
     letterSpacing: 0.08em
   yaml:
@@ -84,102 +108,128 @@ typography:
     fontSize: 12sp
     fontWeight: 400
 rounded:
-  strip: 8dp
-  field: 12dp
-  action: 24dp
+  action: 8dp
+  panel: 12dp
 spacing:
-  tight: 4dp
-  small: 6dp
-  pair: 8dp
-  control-vertical: 10dp
-  control-horizontal: 12dp
-  field-horizontal: 14dp
-  group: 16dp
-  row-top: 18dp
-  section: 20dp
-  page-horizontal: 22dp
-  page-top: 24dp
-  compact-columns: 28dp
+  '4': 4dp
+  '6': 6dp
+  '8': 8dp
+  '10': 10dp
+  '12': 12dp
+  '14': 14dp
+  '16': 16dp
+  '18': 18dp
+  '20': 20dp
+  '22': 22dp
+  '24': 24dp
 components:
   button-primary:
-    backgroundColor: "{colors.primary-light}"
-    textColor: "{colors.on-primary-light}"
-    typography: "{typography.body}"
-    rounded: "{rounded.action}"
+    backgroundColor: '{colors.primary-light}'
+    textColor: '{colors.on-primary-light}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
     padding: 10dp 12dp
-  button-primary-dark:
-    backgroundColor: "{colors.primary-dark}"
-    textColor: "{colors.on-primary-dark}"
-    typography: "{typography.body}"
-    rounded: "{rounded.action}"
-    padding: 10dp 12dp
-  button-tonal:
-    backgroundColor: "{colors.container-light}"
-    textColor: "{colors.primary-light}"
-    typography: "{typography.body}"
-    rounded: "{rounded.action}"
-    padding: 10dp 12dp
-  button-tonal-dark:
-    backgroundColor: "{colors.container-dark}"
-    textColor: "{colors.primary-dark}"
-    typography: "{typography.body}"
-    rounded: "{rounded.action}"
+  button-outline:
+    backgroundColor: '{colors.panel-light}'
+    textColor: '{colors.ink-light}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
     padding: 10dp 12dp
   button-disabled:
-    backgroundColor: "{colors.container-light}"
-    textColor: "{colors.secondary-light}"
-    rounded: "{rounded.action}"
-  button-disabled-dark:
-    backgroundColor: "{colors.container-dark}"
-    textColor: "{colors.secondary-dark}"
-    rounded: "{rounded.action}"
+    backgroundColor: '{colors.surface-light}'
+    textColor: '{colors.secondary-light}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
+    padding: 10dp 12dp
   filter:
-    backgroundColor: "{colors.container-light}"
-    textColor: "{colors.ink-light}"
-    typography: "{typography.body}"
-    rounded: "{rounded.field}"
+    backgroundColor: '{colors.panel-light}'
+    textColor: '{colors.ink-light}'
+    typography: '{typography.body}'
+    rounded: '{rounded.panel}'
     padding: 8dp 14dp
-  filter-dark:
-    backgroundColor: "{colors.container-dark}"
-    textColor: "{colors.ink-dark}"
-    typography: "{typography.body}"
-    rounded: "{rounded.field}"
-    padding: 8dp 14dp
-  legend:
-    backgroundColor: "{colors.container-light}"
-    textColor: "{colors.primary-light}"
-    typography: "{typography.route}"
-    rounded: "{rounded.strip}"
-    padding: 12dp 14dp
-  legend-dark:
-    backgroundColor: "{colors.container-dark}"
-    textColor: "{colors.primary-dark}"
-    typography: "{typography.route}"
-    rounded: "{rounded.strip}"
-    padding: 12dp 14dp
+  panel:
+    backgroundColor: '{colors.panel-light}'
+    textColor: '{colors.ink-light}'
+    typography: '{typography.body}'
+    rounded: '{rounded.panel}'
+    padding: 16dp
+  route-chip:
+    backgroundColor: '{colors.container-light}'
+    textColor: '{colors.primary-light}'
+    typography: '{typography.route}'
+    rounded: '{rounded.action}'
+    padding: 7dp 10dp
+  navigation-selected:
+    backgroundColor: '{colors.container-light}'
+    textColor: '{colors.primary-light}'
+    typography: '{typography.route}'
+    rounded: '{rounded.action}'
+    padding: 8dp 12dp
   yaml-editor:
-    backgroundColor: "{colors.container-light}"
-    textColor: "{colors.ink-light}"
-    typography: "{typography.yaml}"
-    rounded: "{rounded.field}"
-    padding: 14dp
-  yaml-editor-dark:
-    backgroundColor: "{colors.container-dark}"
-    textColor: "{colors.ink-dark}"
-    typography: "{typography.yaml}"
-    rounded: "{rounded.field}"
+    backgroundColor: '{colors.panel-light}'
+    textColor: '{colors.ink-light}'
+    typography: '{typography.yaml}'
+    rounded: '{rounded.panel}'
     padding: 14dp
   log-viewer:
-    backgroundColor: "{colors.container-light}"
-    textColor: "{colors.ink-light}"
-    typography: "{typography.log}"
-    rounded: "{rounded.field}"
+    backgroundColor: '{colors.panel-light}'
+    textColor: '{colors.ink-light}'
+    typography: '{typography.log}'
+    rounded: '{rounded.panel}'
+    padding: 14dp
+  button-primary-dark:
+    backgroundColor: '{colors.primary-dark}'
+    textColor: '{colors.on-primary-dark}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
+    padding: 10dp 12dp
+  button-outline-dark:
+    backgroundColor: '{colors.panel-dark}'
+    textColor: '{colors.ink-dark}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
+    padding: 10dp 12dp
+  button-disabled-dark:
+    backgroundColor: '{colors.surface-dark}'
+    textColor: '{colors.secondary-dark}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
+    padding: 10dp 12dp
+  filter-dark:
+    backgroundColor: '{colors.panel-dark}'
+    textColor: '{colors.ink-dark}'
+    typography: '{typography.body}'
+    rounded: '{rounded.panel}'
+    padding: 8dp 14dp
+  panel-dark:
+    backgroundColor: '{colors.panel-dark}'
+    textColor: '{colors.ink-dark}'
+    typography: '{typography.body}'
+    rounded: '{rounded.panel}'
+    padding: 16dp
+  route-chip-dark:
+    backgroundColor: '{colors.container-dark}'
+    textColor: '{colors.primary-dark}'
+    typography: '{typography.route}'
+    rounded: '{rounded.action}'
+    padding: 7dp 10dp
+  navigation-selected-dark:
+    backgroundColor: '{colors.container-dark}'
+    textColor: '{colors.primary-dark}'
+    typography: '{typography.route}'
+    rounded: '{rounded.action}'
+    padding: 8dp 12dp
+  yaml-editor-dark:
+    backgroundColor: '{colors.panel-dark}'
+    textColor: '{colors.ink-dark}'
+    typography: '{typography.yaml}'
+    rounded: '{rounded.panel}'
     padding: 14dp
   log-viewer-dark:
-    backgroundColor: "{colors.container-dark}"
-    textColor: "{colors.ink-dark}"
-    typography: "{typography.log}"
-    rounded: "{rounded.field}"
+    backgroundColor: '{colors.panel-dark}'
+    textColor: '{colors.ink-dark}'
+    typography: '{typography.log}'
+    rounded: '{rounded.panel}'
     padding: 14dp
 ---
 
@@ -187,158 +237,139 @@ components:
 
 ## Overview
 
-**Creative North Star: "Technical atlas"**
+**Creative North Star: "Squirrelboard native dashboard"**
 
-A scientific reference atlas expressed through native Android Views. Violet chrome, quiet work areas and aligned facts give technical ShadowQUIC users a readable view of the local engine. Familiar controls and repeated measurement labels carry the character; there is no illustration or ornamental material layer.
+Squirrelboard’s precise dashboard language expressed through native Android Views. A cool gray canvas supports white outlined panels, slate text, periwinkle selection and teal transfer accents. Charcoal day/night counterparts preserve the same hierarchy. The local reference is `../squirrelboard`; the native implementation owns the values recorded here, including stronger light-mode text accents for contrast.
 
-This system describes all five shipped destinations: Connection, Proxies, Configuration, Logs and Sessions, together with their shared navigation chrome and app-owned native dialogs. Configuration and Logs extend the same atlas with large YAML and log workspaces; all destinations retain the violet header and lavender tab treatment. The confirmed atlas selection supplies the metaphor; installed native Views supply the tokens and behavior.
+The same materials cover Connection, Proxies, Configuration, Logs, Sessions, API tools and app-owned dialogs. Technical detail remains visible through labeled measurements, native text scaling and large source panes. The reference squirrel mark is retained as a native vector. Android system sans replaces the reference’s web font, while YAML, logs and protocol/JSON results use native monospace.
 
 **Key Characteristics:**
-- Violet hierarchy with teal download and success roles.
-- Paired upload/download columns with explicit labels.
-- Flat native controls, thin separators and stable live lists.
-- Android system typography, tabular measurements and monospace source text.
-- Distinct local-engine, unavailable, empty and failure states.
+- Cool gray canvas, white or charcoal panels and thin outlines.
+- Periwinkle selection and download roles; teal upload and green local-engine status.
+- Small rounded actions, larger panel corners and flat native ripple feedback.
+- System sans, tabular measurements and monospace source data.
+- Adaptive bottom navigation, horizontal tabs and an expanded navigation rail.
 
 ## Colors
 
-The palette pairs violet ink and lavender support with a near-white work surface; night resources preserve these roles on a deep violet ground. Frontmatter owns exact values. Each light/dark suffix corresponds to Android day/night resource selection, not simultaneous accents.
+The palette is cool and restrained, with accents reserved for actions, selected destinations, transfer direction and explicit status. Frontmatter is normative. Light/dark pairs map to Android day/night resources; the fixed brand-mark color belongs only to the squirrel identity.
 
 ### Primary
 
-- **Atlas Violet** (`primary-light` / `primary-dark`): primary actions, selected tabs, routes, upload figures, focused editor stroke and native control accent.
-- **Action Contrast** (`on-primary-light` / `on-primary-dark`): filled action text. White is also the shared header's brand text.
-- **Chrome Violet**: the app header and status bar use `primary-light` in both modes; dark mode does not recolor this fixed header constant.
-- **Core Lavender** (`chrome-mark`): the small SHADOWQUIC identity in the production header. “SYNTHETIC DATA” appears only in review fixtures.
+- **Periwinkle** (`primary-light` / `primary-dark`): filled primary actions, selected navigation, route labels, section icons and download measurements.
+- **Action Contrast** (`on-primary-light` / `on-primary-dark`): text and icons on filled primary actions.
+- **Selection Wash** (`container-light` / `container-dark`): selected navigation backgrounds and outbound selection chips.
+- **Squirrel Blue** (`brand-mark`): the fixed vector mark; it is not another action color.
 
 ### Secondary
 
-- **Download Teal** (`download-light` / `download-dark`): the right-hand download figure in the repeated measurement pair.
-- **Engine Teal** (`success-light` / `success-dark`): the explicit “VPN active” state. A green state reports local engine operation, not remote verification.
-- **Failure Red** (`error-light` / `error-dark`): failed state and failed/unavailable notices.
+- **Transfer Teal** (`download-light` / `download-dark`): upload icons and row measurements. The resource name is inherited; the rendered semantic role is upload.
+- **Engine Green** (`success-light` / `success-dark`): the labeled local “VPN active” state.
+- **Failure Red** (`error-light` / `error-dark`): failed requests, unavailable notices and connection errors.
 
 ### Neutral
 
-- **Work Paper** (`surface-light` / `surface-dark`): all page and system navigation-bar grounds.
-- **Violet Ink** (`ink-light` / `ink-dark`): headings, outbound/destination names, ordinary state and engine values.
-- **Quiet Ink** (`secondary-light` / `secondary-dark`): body explanation, hints, metadata and disabled action text.
-- **Lavender Support** (`container-light` / `container-dark`): tab strip, filter fields, tonal actions, metric/selection strips and YAML/log panes.
-- **Fine Rule** (`outline-light` / `outline-dark`): dividers, resting workspace pane strokes and native action/tab ripple tint.
+- **Cool Canvas** (`surface-light` / `surface-dark`): page grounds, system navigation bars and disabled actions.
+- **Panel Paper / Charcoal** (`panel-light` / `panel-dark`): outlined panels, fields, source panes and header/status-bar grounds.
+- **Quiet Sidebar** (`sidebar-light` / `sidebar-dark`): adaptive navigation background.
+- **Slate Ink** (`ink-light` / `ink-dark`): headings, totals, state and ordinary text.
+- **Secondary Slate** (`secondary-light` / `secondary-dark`): explanatory copy, metadata, hints and disabled text.
+- **Fine Outline** (`outline-light` / `outline-dark`): panel/field/button strokes, engine dividers and native ripple tint.
 
-**The Repeated Legend Rule.** Keep upload on the left in the primary violet role and download on the right in the download teal role. Repeat the words at each measurement group so color is never the sole key.
+**The Labeled Direction Rule.** Use periwinkle for download and teal for upload, and retain the direction words. Connection tiles show Downloaded then Uploaded; row pairs show Upload then Download. Color never replaces the label.
 
 ## Typography
 
-**Display and Body Font:** Android system sans (`sans-serif`; theme family `sans`). The user-confirmed native system face is intentional. There is no custom display font or shipping font asset. Native `monospace` is reserved for editable YAML and actual log content; controls, notices and runtime diagnostics retain system sans.
+**Display and Body Font:** Android system sans (`sans-serif`; theme family `sans`). System sans is a deliberate native adaptation of the reference. There is no custom font asset. **Source Font:** native `monospace`, reserved for YAML, log content and API protocol/JSON results.
 
-**Character:** Direct, readable and compact. Weight and alignment establish hierarchy; measurement figures use the OpenType tabular-number feature (`tnum`). Sizes are Android scale-independent pixels (`sp`), spacing and shapes are density-independent pixels (`dp`). Default Android font metrics remain in force. YAML adds (2dp) and log text adds (3dp) to each native line with a multiplier of 1; no fixed line-height scale is established.
+**Character:** Compact, readable and technical. Bold weight separates headings and measurements; source text retains a normal weight. Android default font metrics remain in force. Frontmatter records observed sp roles, not a fixed line-height system. YAML adds (2dp) and logs/API results add (3dp) to each native line at multiplier 1. Action text inherits the native Button weight; no explicit custom weight is established.
 
 ### Hierarchy
 
-- **Headline / headline-compact:** screen titles; the Connection heading contains an intentional line break. Short viewports use the compact role.
-- **Brand / core-mark:** app name and the small core identity. The core mark alone has explicit tracking.
-- **Section / title:** “Live engine,” connection state, outbound names and session destinations.
-- **Body:** explanatory copy, filter text, radio options, action text and engine labels.
-- **Support / route / caption:** summaries, notices, route labels, secondary timing, packet loss and operational caveats. Tabs use the support size.
-- **Total / measurement:** prominent transfer totals and smaller paired or right-aligned engine measurements. Probe latency also enables tabular figures while retaining the support size and normal weight.
-- **YAML / log:** native normal-weight monospace for source editing and selectable log output. Pane padding is shared, while line-spacing additions remain specific to each role.
+- **Headline / headline-compact:** main destination titles, with a smaller role for configuration heights below (480dp).
+- **API title / result-title:** the standalone administration title and its result heading.
+- **Brand / core-mark:** the header’s Squirrel identity and small SHADOWQUIC identifier; the core mark alone uses explicit tracking.
+- **State / section / panel-title:** connection state, engine/outbound/session headings and the Network status panel title.
+- **Body / support / action / route:** ordinary copy and inputs, explanatory metadata, native action labels and bold selection/route labels. Regular navigation uses support-sized text; selected navigation is bold.
+- **Caption / micro:** operational caveats, measurement labels, tile captions and bottom-navigation labels. Selected bottom labels are bold.
+- **Total / measurement:** Connection’s transfer totals and smaller row/engine measurements. Probe latency also enables tabular figures at support size and normal weight.
+- **YAML / log:** multiline editor and selectable output. API results reuse the log role.
 
-**The Figures Stay Put Rule.** Use tabular figures for changing measurements and preserve identity and alignment during refresh; do not add a decorative number font.
+**The Figures Stay Put Rule.** Use tabular figures for changing measurements and preserve identity and alignment during refresh.
 
 ## Layout
 
-The native layout is a full-width app header, a horizontally scrollable tab strip and a ViewPager2 body. Insets add the status-bar height to the header and preserve side/bottom system insets. Tabs can scroll to reveal the active destination at enlarged text sizes; pages also support horizontal swiping.
+The native shell has a panel-colored brand header, adaptive navigation and a ViewPager2 body with five destinations. System insets preserve status, side and navigation-bar space. Header horizontal padding is (22dp), vertical padding (6dp) plus the status inset; overflow and Back targets are (48dp). The main mark is (36dp), with a (10dp) brand gap. A horizontal separator is not required between header and canvas.
 
-Diagnostic content shares the `page-horizontal` inset. Normal pages use `page-top` at the top; Connection ends with a control-horizontal bottom inset. Most relationships use the small/pair/group/section spacing steps rather than a web grid. Transfer pairs are equal-width columns separated by opposing pair insets. Engine rows allocate label:value widths of 1:1.4, align values to the end and use fine horizontal rules. Row label/value vertical padding is (13dp).
+Navigation follows available Android configuration size: below **600dp width**, five equal bottom destinations use icons above (11sp) labels and “Config” as the short visible label, with a full Configuration accessibility name. At **840dp width or more and 480dp height or more**, a (184dp) left rail displays icon-and-label rows. Remaining sizes use horizontal scrolling tabs under the header. Regular tabs/rail labels are (13sp). All retain swipe navigation and native selected states. A short, wide landscape viewport uses horizontal tabs rather than the rail.
 
-Connection scrolls vertically. Proxies and Sessions place their title, optional description, filters and summary above a RecyclerView that takes the remaining height. Rows wrap content and preserve long destination names; IPv6 destinations keep brackets. Native stable diff updates preserve reading position and avoid animated list churn.
+Page horizontal padding is (22dp). Normal diagnostic pages begin at (24dp), short pages at (12dp). Panel padding is normally (16dp); panel gaps are (12dp) or (16dp). The shared spacing scale is in frontmatter; values are Android dp rather than browser pixels. Engine label/value rows allocate widths 1:1.4, use (13dp) vertical padding and align values to the end. Lists use outlined, content-wrapping records with (12dp) gaps, preserving long names and bracketed IPv6 destinations. RecyclerView stable diff updates keep reading position without item animations.
 
-Compact adaptation is based on available configuration height (**screenHeightDp < 480**), not an orientation name or web width breakpoint. It reduces page top padding to control-horizontal, switches titles to headline-compact, omits list descriptions and reduces header vertical padding to pair. Connection puts controls and measurements side by side (weights 1:1.3) with a compact-columns gap. List rows separate identity and measurements with section gaps; proxy actions form a third vertical column (weights 1:1.3:0.8). Sessions places text filtering and protocol radios side by side (equal weights, group gap). Normal proxy actions share a horizontal row with a pair gap. Text scaling still uses native `sp`, wrapping and scrolling.
+Diagnostics compact mode is **screenHeightDp < 480**. Titles shrink, list descriptions disappear, and Connection puts controls beside measurements at widths 1:1.5 with a (16dp) gap. The compact control panel uses (12dp) padding, omits the redundant Network status heading and orders state, full-height action, detail, then profile. The action remains at least (48dp), ahead of wrapping copy. Proxy/session rows separate identity from measurements at 1:1.3; proxy actions add a 0.8-weight column. Compact Sessions places text filtering and protocol choices side by side. These are height adaptations, independent of navigation width thresholds.
 
-Configuration uses the same page-horizontal inset and reserves remaining height for its editor. Below (600dp) configuration width, profile/actions/notice stack above editor tools and the YAML pane. At **screenWidthDp >= 600**, controls move into a vertically scrollable sidebar, with width **min(360dp, screenWidthDp / 2 − 36dp)**, a page-top gap to the editor and a flexible editor column. This bounded native layout is observed in phone landscape; it does not establish tablet verification. Profile and Manage have weights 1.8:1; Import file, Download URL and Save have weights 1.05:1.3:0.75, with pair gaps. The More control is (88dp) wide.
+Configuration stacks controls above its flexible editor below **600dp width**. At or above that width, a scrollable control sidebar has width **min(360dp, screenWidthDp / 2 − 36dp)**, followed by a (24dp) gap and the flexible editor. Below **500dp measured page height**, a non-wide editor page hides the redundant heading/profile label and uses (12dp) top padding. Logs hides its heading below **450dp measured page height**, retaining filter/live/export controls and a flexible selectable viewer. These measured-height adaptations preserve editing space when the IME resizes the app.
 
-Workspace short-height behavior uses measured page height, independently of the diagnostic configuration-height rule. A non-wide Configuration page below **500dp measured height** hides its heading and Selected profile label and uses control-horizontal top padding, preserving editing space above the real IME. Wide Configuration always uses this reduced top padding and retains its sidebar heading. Logs hides its heading below **450dp measured height**. Its top padding is control-horizontal on wide configurations and page-top otherwise. At the same 600dp width threshold, Live updates joins filter and Export logs on one row; below it, the switch sits on its own row. The viewer takes remaining height above an export-scope caption. Source panes preserve native scrolling and selection rather than shrinking type to fit.
+API tools keeps its Back/title header outside a vertically scrolling body. Below **600dp width**, form and result stack; at or above it, columns use 1:1.2 widths and (24dp) form-end spacing. The entire body scrolls together. Scope choices, native Spinners and conditional fields retain their own Android behavior.
 
 ## Elevation & Depth
 
-App work surfaces are flat. Tonal support, whitespace, text hierarchy and fine rules create grouping. Action buttons explicitly set elevation to zero and remove their state-list elevation animator. Native ripples supply interaction feedback; no card shadow, gradient, blur or custom motion scale is established. Android system dialogs and the More popup retain their platform presentation and elevation; they are not redefined as flat custom panels.
+Ordinary panels, buttons and navigation are flat. Fill contrast and fine (1dp) outlines create grouping; buttons disable Android’s elevation animator and set elevation to zero. Focus in the YAML editor changes its outline to (2dp) periwinkle. Android owns dialog, popup, cursor, switch and error feedback; this system does not establish a custom shadow scale or motion duration. Native ripples use the outline role. Navigation uses ViewPager2 scrolling; live rows suppress decorative item animation.
 
-**The Flat Workbench Rule.** Keep workspaces flat on the shared work surface; use lavender fill for controls, keyed strips and source panes, and separators between diagnostic records.
+**The Outlined Panel Rule.** Separate work areas with panel fill and a thin outline; keep ordinary panels and actions flat.
 
 ## Shapes
 
-Three observed rounded forms recur: compact supporting strips (`strip`), filter fields and source panes (`field`), and pill-like actions (`action`). Main content and list rows have no enclosing rounded card. Separators are (1dp); the selected tab has a bottom indicator (3dp). The radius is native dp, not inferred from screenshot pixel dimensions.
+Actions, selected navigation backgrounds and route chips share small (8dp) corners. Panels, filters, source panes and API fields share larger (12dp) corners. Outlined actions use a (1dp) border; filled primary and disabled actions omit it. Panel strokes and keyed engine dividers use the fine outline role.
+
+The reference squirrel is copied as vector geometry in `ic_squirrelboard.xml`, including its blue rounded-square ground and white squirrel stroke; native line icons use vector XML, an (18dp) rendered size and an (8dp) label gap. Bottom navigation moves the icon above the label with a (4dp) gap. Do not substitute text glyphs for these icons. No shipping raster is introduced by this visual system.
 
 ## Components
 
 ### Buttons
 
-Quiet native actions with clear hierarchy. Filled actions identify Connect/Disconnect and Save; Choose proxy, Probe latency, profile controls, Import file, Download URL, More and exports use tonal variants. Both use the action radius, body typography, sentence case and explicit control padding. Minimum height is (48dp); this is a minimum, not a fixed height. There is no explicit minimum width. Disabled buttons use the container background and secondary text. Probing changes its label to “Probing…” and disables the action; stopping disables the Connection toggle.
+Compact rectangular actions with modest rounding. Primary actions use periwinkle and action-contrast text; secondary actions use panel fill, slate text and a thin outline. Both have (8dp) corners, (10dp 12dp) padding and a minimum (48dp) height. API actions locally use (14dp) horizontal padding. Native outline-tinted ripples provide pressed feedback; disabled actions use canvas fill and secondary text, with no elevation. Preserve pending labels and disabled controls during work.
 
-Action and tab backgrounds are native RippleDrawables tinted with Fine Rule. These actions and tabs have no custom hover treatment or drawn keyboard focus ring; the YAML editor has its own explicit focus stroke. Preserve native focus, accessibility and activation behavior; do not infer a shipped focus-ring token from documentation previews.
+### Chips
+
+Outbound selection is a textual chip, not a separate control: selection wash, bold route-colored text, (8dp) corners and (7dp 10dp) padding. The “Selected” wording carries the state independently of color. Sessions retain plain route text.
+
+### Cards / Containers
+
+Connection status, paired transfer totals, engine detail and proxy/session rows use panel fill with (12dp) corners and a (1dp) outline. Normal internal padding is (16dp). Runtime list records use (16dp 16dp 4dp) outer padding and manage bottom spacing inside. Compact Connection uses its documented smaller padding and control-first order.
 
 ### Inputs / Fields
 
-Filters are single-line native EditTexts on lavender support, with the field radius and body typography. Hints use Quiet Ink; text uses Violet Ink; minimum height is (48dp). Editing filters updates lists immediately. Native cursor, text selection and keyboard behavior remain; focusing does not select all text. Their custom background has no explicit focus or error border. Navigation away clears filter focus and dismisses the keyboard. Filter text and protocol choice survive activity recreation.
+Filters use panel fill, slate text, secondary hints, a fine outline, (12dp) corners, (8dp 14dp) padding and a minimum (48dp) height. API text fields locally use (10dp) vertical padding. Native cursor, error, selection and IME behavior remain. Only the YAML editor establishes an explicit (2dp) focused periwinkle stroke; other fields keep their native behavior.
 
 ### Navigation
 
-Horizontal sentence-case tabs use support typography, a (48dp) minimum height and (10dp vertical, 12dp horizontal) padding. Selected tabs use primary text and a bottom primary indicator; unselected tabs use Quiet Ink. The tab-strip ground is Lavender Support across all five destinations. Header, status bar and tab treatment remain shared as the active destination changes. Back and swipe remain native.
+All three layouts share quiet-sidebar fill, outlined-ripple feedback, selected periwinkle text/icons, selection-wash background and (8dp) corners. Selected labels are bold. Bottom destinations are equal width; horizontal tabs scroll to the selected destination; expanded rail rows are start-aligned. API tools remains in the header overflow with native Back navigation.
 
-### Supporting Strips
+### Transfer and engine measurements
 
-The Connection metric legend uses the strip radius and bold route typography. Outbound selection strips reuse this form with (7dp vertical, 10dp horizontal) padding. These are contextual labels, not interactive chips or cards. Session protocol and route remain plain text.
+Connection shows two equally sized outlined tiles, Downloaded first and Uploaded second, separated by (12dp). Totals use slate tabular figures, with periwinkle/teal direction icons and explicit labels. Proxy/session row pairs put upload left in teal and download right in periwinkle; labels are repeated. Engine rows use plain key/value alignment and thin dividers. Missing values use an em dash; zero remains an actual measurement.
 
-### Protocol Choices
+### Source workspaces
 
-Sessions uses a horizontal native RadioGroup for All, TCP and UDP. Each option has equal weight, body typography, ink text, primary button tint and a (48dp) minimum height. Selection is conveyed by the native checked radio state as well as its text.
+YAML is a multiline, horizontally scrolling native EditText with source-role typography, (14dp) padding, native selection, no suggestions and no fullscreen/extract editor. Per-profile drafts and editor focus survive supported recreation. Profile selection uses a native chevron action; Manage and More retain native dialogs/menus and all profile/template/export operations.
 
-### Measurement Pairs and Engine Rows
-
-Connection totals, proxy upload/download RTT and session byte counts repeat the same left/right semantic grammar. Proxy records retain probe latency and paired packet-loss values; sessions retain protocol/route, first response, duration and half-close state. Engine rows keep labels left and measurements right. Text labels and units remain visible alongside color. Byte counts use B, KiB, MiB or GiB; latency uses ms, duration uses s and loss uses percent. Missing data uses an em dash rather than invented zero.
-
-### Lists, Notices and Dialogs
-
-Records sit directly on the work ground with top spacing and a bottom rule. Titles can be selected. Runtime lists distinguish loading, disconnected, unavailable, truly empty and filtered-empty states, with a visible summary of matching and total records. Errors use Failure Red. State and action/empty notices use polite accessibility live regions; headings expose native accessibility heading semantics. Lifecycle changes clear old measurements. Failed requests explain automatic retries. The one-second refresh cadence is data behavior, not a visual animation token.
-
-Outbound selection, probes, profile selection/management/naming/deletion, configuration downloads, template confirmation and app error dialogs use the shared atlas light/dark context. Retain native dialog focus and IME behavior. Android document pickers remain platform-owned. No new raster assets were introduced by this system.
-
-### Profiles and Configuration Tools
-
-The current profile is a single-line tonal button with end ellipsis and a native vector chevron at the end (24dp drawable, primary tint, pair drawable gap). It opens the native single-choice profile dialog; Manage opens the profile-operation dialog. This is a real vector affordance, not a Unicode arrow. The small YAML · UTF-8 label identifies content format. More opens a native PopupMenu anchored to the tonal control, with Export configuration, Proxy template and Direct test. Configuration export snapshots the editor contents. Save validates and saves; its confirmation distinguishes saved changes from their application on the next connection. Imports and successful downloads enter the editor for review; notices expose outcomes without replacing the draft on failure.
-
-### YAML Editor
-
-A large native multiline EditText uses the YAML type role, field radius, lavender container and ink text, with field-horizontal padding on every side. The resting outline is (1dp) in Fine Rule; focus changes it to (2dp) in the active primary role. Selection highlight uses the primary RGB at alpha (0x33). Text starts at the top/start, preserves long source lines with horizontal scrolling and adds the YAML line-spacing extension. EditorScrollHost gives scrollable lines their horizontal drag before handing a drag at the text edge to page navigation; vertical editing gestures remain with the editor.
-
-Use the native IME and cursor/selection tools. The source disables suggestions, fullscreen/extract editing and personalized learning requests, and keeps editing inside the visible app pane. The measured-height adaptation above removes redundant labels when the keyboard shortens the pane. Draft restoration remains the app's existing per-profile mechanism rather than default View text saving; this visual system does not imply durable unsaved-draft storage.
-
-### Log Workspace
-
-Logs combines a single-line native filter, tonal Export logs action, native Live updates Switch and support-size status above a large selectable monospace viewer. The switch starts checked, uses ink text and a (48dp) minimum height with a control-horizontal switch gap; its native checked thumb/track follow the shared platform theme rather than a newly defined custom shape. The viewer has the field radius, lavender container, ink text, field-horizontal padding, a resting (1dp) outline and primary selection highlight at alpha (0x33). Its clipped ScrollView wraps long log lines and supplies vertical scrolling.
-
-Filtering matches displayed log lines case-insensitively and retains matching source-file headers. Status reports Live or Paused, matching/total content-line counts and service + core scope. A no-match view explains clearing the filter; an empty snapshot remains distinct from loading. Pausing retains the displayed snapshot; if none exists yet, the initial snapshot is still read. Read failure displays an error status while keeping the last successful snapshot visible, with retry when live. Returning to successful reads clears the error. Filter and live preference survive activity recreation.
-
-Live refresh does not rebuild the filter or steal its focus. Unchanged snapshots skip text replacement; a changed snapshot follows the tail only when already at the bottom, otherwise it restores the reading scroll offset. Changing the filter resets the viewer to the top. Export always reads all retained logs independently of the filter, paused state or displayed tail, and the caption says so. Preserve this display/export distinction when extending controls.
+Logs and API results use selectable monospace on outlined panel fill with (14dp) padding. Live logs retain a snapshot while paused or on read failure; refresh follows the tail only when already at the bottom. Filter changes return to the top. Export still includes all retained logs independently of filter/pause. API results keep explicit remote/local scope, target, operation and status; mutations use native confirmation and never replay after recreation. Credential masking and secure capture remain product requirements.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** use matched light/dark semantic roles from Android resources and keep the header's fixed violet treatment.
-- **Do** repeat upload/download labels, left/right order and measurement colors at every pair.
-- **Do** retain tabular figures, native sp text scaling, dp spacing and a minimum 48dp control height.
-- **Do** distinguish local engine state, remote evidence, missing metrics, zero, empty results and failed requests.
-- **Do** preserve long destinations, IPv6 notation, filter state and reading position during live updates.
-- **Do** keep all five destinations and app-owned dialogs on the shared atlas, with monospace reserved for YAML and actual logs.
-- **Do** preserve editor focus/IME space and log snapshot, filter focus and reading offset during refresh.
-- **Do** distinguish configuration saving/application and displayed-log filtering/full retained-log export.
+- **Do** use the matched day/night resource roles across all five destinations, API tools and app-owned dialogs.
+- **Do** retain direction labels, tabular numbers and explicit unavailable, empty, error and busy states.
+- **Do** use native sp scaling, dp geometry and at least 48dp for action and filter touch targets.
+- **Do** keep Connection’s primary action before wrapping detail/profile text in short viewports.
+- **Do** preserve long identifiers, filter state, editor drafts, secure-window behavior and live reading position.
+- **Do** distinguish local-engine state from remote reachability, saved configuration from drafts and visible log filtering from full retained-log export.
 
 ### Don't:
 
-- **Don't** reintroduce the former green/dark Configuration and Logs treatment or change chrome by destination.
-- **Don't** substitute color alone for text labels or report unavailable measurements as zero.
-- **Don't** add decorative cards, illustration or elevation to the flat diagnostic record system.
-- **Don't** treat synthetic review figures or fixture labels as production content or proof of remote connectivity.
-- **Don't** spread the editor's focus stroke to filters or invent hover animation and fixed line-height rules absent from the native implementation.
-- **Don't** discard a retained log snapshot on read failure or let filter/pause alter the full-export scope.
+- **Don’t** restore violet chrome, lavender-filled workspaces or capsule actions from the superseded Technical atlas.
+- **Don’t** shrink native controls to the reference website’s compact desktop dimensions.
+- **Don’t** invent chart data, traffic history, remote connectivity claims or production fixture labels.
+- **Don’t** apply the YAML focus border to every native field or replace native errors, selection and keyboard behavior.
+- **Don’t** add shadows or web hover motion to ordinary native panels and buttons.

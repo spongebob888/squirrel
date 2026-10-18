@@ -1,12 +1,14 @@
 <resources>
-    <color name="diagnostic_surface">#181624</color>
-    <color name="diagnostic_on_surface">#E9E5F5</color>
-    <color name="diagnostic_secondary">#C0BAD1</color>
-    <color name="diagnostic_primary">#C4BCFF</color>
-    <color name="diagnostic_on_primary">#282153</color>
-    <color name="diagnostic_container">#302B46</color>
-    <color name="diagnostic_outline">#4A445D</color>
-    <color name="diagnostic_success">#8DDBBD</color>
-    <color name="diagnostic_error">#FFB1BA</color>
-    <color name="diagnostic_download">#8DD6CA</color>
+    <color name="diagnostic_surface">#14171E</color>
+    <color name="diagnostic_on_surface">#E3E7F1</color>
+    <color name="diagnostic_secondary">#A2A9B9</color>
+    <color name="diagnostic_primary">#98A8FF</color>
+    <color name="diagnostic_on_primary">#171D32</color>
+    <color name="diagnostic_container">#2C3350</color>
+    <color name="diagnostic_outline">#2C3240</color>
+    <color name="diagnostic_success">#66C9A5</color>
+    <color name="diagnostic_error">#ED949A</color>
+    <color name="diagnostic_download">#65CBBD</color>
+    <color name="diagnostic_panel">#1C2029</color>
+    <color name="diagnostic_sidebar">#191C24</color>
 </resources>

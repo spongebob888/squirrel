@@ -51,6 +51,7 @@ public final class MainActivity extends Activity {
     private DiagnosticsUi diagnostics;
     private WorkspaceUi workspace;
     private LinearLayout root, appHeader;
+    private boolean expandedNavigation, bottomNavigation;
     private EditText editor;
     private Button connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton, profileButton;
     private LinearLayout configActions, configTools, profileActions;
@@ -95,31 +96,36 @@ public final class MainActivity extends Activity {
             this::importFile, this::downloadConfig, () -> save(false), this::exportConfig,
             () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
             () -> createDocument(EXPORT_LOG, "squirrel-logs.txt", "text/plain"));
+        expandedNavigation = getResources().getConfiguration().screenWidthDp >= 840
+            && getResources().getConfiguration().screenHeightDp >= 480;
+        bottomNavigation = getResources().getConfiguration().screenWidthDp < 600;
         root = column();
         appHeader = row();
         appHeader.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        boolean compact = getResources().getConfiguration().screenHeightDp < 480;
-        appHeader.setPadding(dp(22), dp(compact ? 8 : 16), dp(22), dp(compact ? 8 : 18));
+        appHeader.setPadding(dp(22), dp(6), dp(22), dp(6));
         root.setOnApplyWindowInsetsListener((view, insets) -> {
             view.setPadding(insets.getSystemWindowInsetLeft(), 0, insets.getSystemWindowInsetRight(),
                 insets.getSystemWindowInsetBottom());
-            appHeader.setPadding(dp(22), dp(compact ? 8 : 16) + insets.getSystemWindowInsetTop(), dp(22), dp(compact ? 8 : 18));
+            appHeader.setPadding(dp(22), dp(6) + insets.getSystemWindowInsetTop(), dp(22), dp(6));
             return insets.consumeSystemWindowInsets();
         });
         setContentView(root);
-        brand = text("Squirrel", 23, Color.WHITE);
+        brand = text("Squirrel", 20, diagnostics.ink);
+        android.graphics.drawable.Drawable logo = getDrawable(R.drawable.ic_squirrelboard);
+        brand.setCompoundDrawablesRelativeWithIntrinsicBounds(logo, null, null, null);
+        brand.setCompoundDrawablePadding(dp(10));
         brand.setTypeface(null, Typeface.BOLD);
         appHeader.addView(brand, new LinearLayout.LayoutParams(0, -2, 1));
-        TextView core = text("SHADOWQUIC", 10, 0xFFE2DEF9);
+        TextView core = text("SHADOWQUIC", 9, diagnostics.secondary);
         core.setLetterSpacing(0.08f);
         appHeader.addView(core);
         android.widget.ImageButton tools = new android.widget.ImageButton(diagnostics.context);
         tools.setId(R.id.api_tools_menu);
         tools.setImageResource(R.drawable.ic_more_vert);
-        tools.setImageTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+        tools.setImageTintList(android.content.res.ColorStateList.valueOf(diagnostics.secondary));
         tools.setContentDescription("More options");
         tools.setBackground(new android.graphics.drawable.RippleDrawable(
-            android.content.res.ColorStateList.valueOf(0x55FFFFFF), null, null));
+            android.content.res.ColorStateList.valueOf(diagnostics.outline), null, null));
         tools.setOnClickListener(view -> {
             android.widget.PopupMenu menu = new android.widget.PopupMenu(diagnostics.context, tools);
             menu.getMenu().add("API tools").setOnMenuItemClickListener(item -> {
@@ -133,10 +139,10 @@ public final class MainActivity extends Activity {
         tabScroll = new HorizontalScrollView(this);
         tabScroll.setHorizontalScrollBarEnabled(false);
         tabScroll.setFillViewport(true);
-        LinearLayout tabs = row();
-        tabs.setPadding(dp(10), 0, dp(10), 0);
+        LinearLayout tabs = expandedNavigation ? column() : row();
+        tabs.setPadding(dp(bottomNavigation ? 4 : 12), dp(6), dp(bottomNavigation ? 4 : 12), dp(6));
         connectionTab = button("Connection", () -> showPage(CONNECTION));
-        configTab = button("Configuration", () -> showPage(CONFIGURATION));
+        configTab = button(bottomNavigation ? "Config" : "Configuration", () -> showPage(CONFIGURATION));
         proxyTab = button("Proxies", () -> showPage(PROXIES));
         sessionsTab = button("Sessions", () -> showPage(SESSIONS));
         logsTab = button("Logs", () -> showPage(LOGS));
@@ -146,13 +152,31 @@ public final class MainActivity extends Activity {
         sessionsTab.setId(R.id.sessions_tab);
         logsTab.setId(R.id.logs_tab);
         for (Button tab : new Button[]{connectionTab, proxyTab, configTab, logsTab, sessionsTab}) {
-            tab.setPadding(dp(12), dp(10), dp(12), dp(10));
+            tab.setStateListAnimator(null);
+            tab.setElevation(0);
+            tab.setTextSize(bottomNavigation ? 11 : 13);
+            tab.setPadding(dp(bottomNavigation ? 2 : 12), dp(8), dp(bottomNavigation ? 2 : 12), dp(8));
             tab.setMinHeight(dp(48));
             tab.setMinimumHeight(dp(48));
-            tabs.addView(tab);
+            tab.setGravity(expandedNavigation ? android.view.Gravity.START | android.view.Gravity.CENTER_VERTICAL
+                : android.view.Gravity.CENTER);
+            LinearLayout.LayoutParams tabParams = new LinearLayout.LayoutParams(bottomNavigation ? 0 : expandedNavigation ? -1 : -2, -2, bottomNavigation ? 1 : 0);
+            if (expandedNavigation) tabParams.bottomMargin = dp(8);
+            else if (!bottomNavigation) tabParams.setMarginEnd(dp(4));
+            tabs.addView(tab, tabParams);
+        }
+        if (bottomNavigation) {
+            tabs.setLayoutParams(new android.widget.FrameLayout.LayoutParams(-1, -2));
+            configTab.setContentDescription("Configuration");
         }
         tabScroll.addView(tabs);
-        root.addView(tabScroll);
+        LinearLayout navigationBody = row();
+        if (expandedNavigation) {
+            tabScroll.setFillViewport(false);
+            navigationBody.setBackgroundColor(getColor(R.color.diagnostic_sidebar));
+            navigationBody.addView(tabScroll, new LinearLayout.LayoutParams(dp(184), -1));
+            root.addView(navigationBody, new LinearLayout.LayoutParams(-1, 0, 1));
+        } else if (!bottomNavigation) root.addView(tabScroll);
 
         pager = new ViewPager2(this);
         pager.setId(R.id.pages);
@@ -163,7 +187,9 @@ public final class MainActivity extends Activity {
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override public void onPageSelected(int page) { selectTab(page); }
         });
-        root.addView(pager, new LinearLayout.LayoutParams(-1, 0, 1));
+        if (expandedNavigation) navigationBody.addView(pager, new LinearLayout.LayoutParams(0, -1, 1));
+        else root.addView(pager, new LinearLayout.LayoutParams(-1, 0, 1));
+        if (bottomNavigation) root.addView(tabScroll);
         int page = saved == null ? CONNECTION : saved.getInt("selectedPage", CONNECTION);
         Object retained = getLastNonConfigurationInstance();
         if (retained instanceof Draft) {
@@ -216,30 +242,37 @@ public final class MainActivity extends Activity {
         showingLogs = page == LOGS;
         root.setBackgroundColor(diagnostics.surface);
         appHeader.setBackgroundColor(diagnostics.header);
-        brand.setTextColor(Color.WHITE);
-        tabScroll.setBackgroundColor(diagnostics.container);
+        brand.setTextColor(diagnostics.ink);
+        tabScroll.setBackgroundColor(getColor(R.color.diagnostic_sidebar));
         getWindow().setStatusBarColor(diagnostics.header);
         getWindow().setNavigationBarColor(diagnostics.surface);
         int visibility = getWindow().getDecorView().getSystemUiVisibility();
         boolean lightNavigation = (getResources().getConfiguration().uiMode
             & android.content.res.Configuration.UI_MODE_NIGHT_MASK) != android.content.res.Configuration.UI_MODE_NIGHT_YES;
         getWindow().getDecorView().setSystemUiVisibility(lightNavigation
-            ? visibility | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : visibility & ~View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+            ? visibility | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
+            : visibility & ~(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR));
         Button[] tabs = {connectionTab, proxyTab, configTab, logsTab, sessionsTab};
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = i == page;
             tabs[i].setSelected(selected);
             tabs[i].setTextColor(selected ? diagnostics.primary : diagnostics.secondary);
-            android.graphics.drawable.LayerDrawable background = new android.graphics.drawable.LayerDrawable(
-                new android.graphics.drawable.Drawable[]{new android.graphics.drawable.ColorDrawable(diagnostics.container),
-                    new android.graphics.drawable.ColorDrawable(selected ? diagnostics.primary : diagnostics.container)});
-            background.setLayerHeight(1, dp(3));
-            background.setLayerGravity(1, android.view.Gravity.BOTTOM);
+            android.graphics.drawable.GradientDrawable background = diagnostics.shape(
+                selected ? diagnostics.container : getColor(R.color.diagnostic_sidebar), 8);
             tabs[i].setBackgroundTintList(null);
+            tabs[i].setTypeface(null, selected ? Typeface.BOLD : Typeface.NORMAL);
             tabs[i].setBackground(new android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(diagnostics.outline), background, null));
+            int[] icons = {R.drawable.ic_overview, R.drawable.ic_proxies, R.drawable.ic_configuration,
+                R.drawable.ic_logs, R.drawable.ic_sessions};
+            diagnostics.icon(tabs[i], icons[i], selected ? diagnostics.primary : diagnostics.secondary);
+            if (bottomNavigation) {
+                android.graphics.drawable.Drawable icon = tabs[i].getCompoundDrawablesRelative()[0];
+                tabs[i].setCompoundDrawablesRelative(null, icon, null, null);
+                tabs[i].setCompoundDrawablePadding(dp(4));
+            }
         }
-        tabs[page].post(() -> tabScroll.smoothScrollTo(tabs[page].getLeft() - dp(10), 0));
+        if (!expandedNavigation && !bottomNavigation) tabs[page].post(() -> tabScroll.smoothScrollTo(tabs[page].getLeft() - dp(12), 0));
         if (page != LOGS) workspace.clearLogFilterFocus();
         if (page != CONFIGURATION) {
             editor.clearFocus();

@@ -1,14 +1,16 @@
 <resources>
-    <color name="diagnostic_surface">#FAFAFC</color>
-    <color name="diagnostic_on_surface">#26223E</color>
-    <color name="diagnostic_secondary">#59556F</color>
-    <color name="diagnostic_primary">#35316E</color>
+    <color name="diagnostic_surface">#F7F8FA</color>
+    <color name="diagnostic_on_surface">#292E3D</color>
+    <color name="diagnostic_secondary">#666E80</color>
+    <color name="diagnostic_primary">#5366CA</color>
     <color name="diagnostic_on_primary">#FFFFFF</color>
-    <color name="diagnostic_container">#EEEDF8</color>
-    <color name="diagnostic_outline">#DAD8E6</color>
-    <color name="diagnostic_success">#176B53</color>
-    <color name="diagnostic_error">#A32735</color>
-    <color name="diagnostic_download">#176B62</color>
+    <color name="diagnostic_container">#EDF0FD</color>
+    <color name="diagnostic_outline">#E3E7EF</color>
+    <color name="diagnostic_success">#258161</color>
+    <color name="diagnostic_error">#B83E4C</color>
+    <color name="diagnostic_download">#237F77</color>
+    <color name="diagnostic_panel">#FFFFFF</color>
+    <color name="diagnostic_sidebar">#FCFCFD</color>
     <style name="DiagnosticsTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/diagnostic_primary</item>

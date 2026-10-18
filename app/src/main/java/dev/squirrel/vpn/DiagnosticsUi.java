@@ -33,8 +33,7 @@ final class DiagnosticsUi {
     interface ChooseOutbound { void choose(String tag, JSONObject selector); }
 
     final Context context;
-    final int surface, ink, secondary, primary, onPrimary, container, outline, success, error, download;
-    final int header = 0xFF35316E;
+    final int surface, ink, secondary, primary, onPrimary, container, outline, success, error, download, panel, header;
     private final boolean compact;
     final Button connect;
     private final TextView state, detail, profile, uploaded, downloaded, tcp, udp, resident, allocated;
@@ -52,6 +51,8 @@ final class DiagnosticsUi {
         context = new ContextThemeWrapper(activity, dark ? R.style.DiagnosticsTheme_Dark : R.style.DiagnosticsTheme);
         compact = activity.getResources().getConfiguration().screenHeightDp < 480;
         surface = color(R.color.diagnostic_surface);
+        panel = color(R.color.diagnostic_panel);
+        header = panel;
         ink = color(R.color.diagnostic_on_surface);
         secondary = color(R.color.diagnostic_secondary);
         primary = color(R.color.diagnostic_primary);
@@ -64,59 +65,84 @@ final class DiagnosticsUi {
         this.choose = choose;
         this.probe = probe;
 
-        connection = compact ? row() : column();
-        LinearLayout controls = compact ? column() : connection;
-        LinearLayout measurements = compact ? column() : connection;
+        connection = column();
+        title(connection, "Connection");
+        if (!compact) add(connection, text("A little clarity for your network.", 14, secondary, false), 4, 18);
+        LinearLayout content = compact ? row() : column();
+        add(connection, content, compact ? 12 : 0, 0);
+        LinearLayout controls = panel();
+        LinearLayout measurements = column();
         if (compact) {
-            controls.setPadding(0, 0, dp(28), 0);
-            connection.addView(controls, new LinearLayout.LayoutParams(0, -2, 1));
-            connection.addView(measurements, new LinearLayout.LayoutParams(0, -2, 1.3f));
+            LinearLayout.LayoutParams left = new LinearLayout.LayoutParams(0, -2, 1);
+            left.setMarginEnd(dp(16));
+            content.addView(controls, left);
+            content.addView(measurements, new LinearLayout.LayoutParams(0, -2, 1.5f));
+        } else {
+            content.addView(controls, new LinearLayout.LayoutParams(-1, -2));
+            add(content, measurements, 16, 0);
         }
-        title(controls, "Your connection,\nin view.");
-        state = text("Disconnected", 18, secondary, true);
+        TextView networkTitle = text("Network status", 15, ink, true);
+        icon(networkTitle, R.drawable.ic_network, primary);
+        if (!compact) controls.addView(networkTitle);
+        if (compact) controls.setPadding(dp(12), dp(12), dp(12), dp(12));
+        state = text("Disconnected", 20, secondary, true);
         state.setId(R.id.connection_state);
         state.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        add(controls, state, 16, 0);
-        detail = text("Ready when you are", 14, secondary, false);
-        add(controls, detail, 6, 0);
+        add(controls, state, compact ? 0 : 16, 0);
+        detail = text("Ready when you are", 13, secondary, false);
+
         profile = text("Loading configuration…", 13, secondary, false);
         profile.setId(R.id.connection_profile);
-        add(controls, profile, 4, 8);
+        if (!compact) {
+            add(controls, detail, 4, 0);
+            add(controls, profile, 12, 0);
+        }
         connect = action("Connect", toggle, true);
         connect.setId(R.id.connect_vpn);
-        add(controls, connect, 6, 16);
+        icon(connect, R.drawable.ic_power, onPrimary);
+        // Keep the primary control above wrapping detail text in short viewports.
+        add(controls, connect, compact ? 8 : 16, 0);
+        if (compact) {
+            add(controls, detail, 8, 0);
+            add(controls, profile, 4, 0);
+        }
 
-        TextView legend = text("Connection / live metrics", 13, primary, true);
-        legend.setPadding(dp(14), dp(12), dp(14), dp(12));
-        legend.setBackground(shape(container, 8));
-        measurements.addView(legend);
         LinearLayout totals = row();
-        LinearLayout up = column(), down = column();
-        add(up, text("Uploaded", 12, secondary, false), 0, 4);
-        add(down, text("Downloaded", 12, secondary, false), 0, 4);
-        uploaded = number("—", 28, primary);
-        downloaded = number("—", 28, download);
+        LinearLayout down = panel(), up = panel();
+        TextView downLabel = text("Downloaded", 12, secondary, false);
+        TextView upLabel = text("Uploaded", 12, secondary, false);
+        icon(downLabel, R.drawable.ic_download, primary);
+        icon(upLabel, R.drawable.ic_upload, download);
+        add(down, downLabel, 0, 12);
+        add(up, upLabel, 0, 12);
+        uploaded = number("—", 24, ink);
+        downloaded = number("—", 24, ink);
         uploaded.setId(R.id.upload_total);
         downloaded.setId(R.id.download_total);
         up.addView(uploaded);
         down.addView(downloaded);
-        up.setPadding(0, 0, dp(8), 0);
-        down.setPadding(dp(8), 0, 0, 0);
+        add(up, text("Total uploaded", 11, secondary, false), 8, 0);
+        add(down, text("Total downloaded", 11, secondary, false), 8, 0);
+        LinearLayout.LayoutParams first = new LinearLayout.LayoutParams(0, -2, 1);
+        first.setMarginEnd(dp(12));
+        totals.addView(down, first);
         totals.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
-        totals.addView(down, new LinearLayout.LayoutParams(0, -2, 1));
-        add(measurements, totals, 20, 20);
-        divider(measurements);
-        add(measurements, text("Live engine", 19, ink, true), 24, 4);
-        tcp = metricRow(measurements, "TCP sessions", R.id.tcp_metric);
-        udp = metricRow(measurements, "UDP sessions", R.id.udp_metric);
-        resident = metricRow(measurements, "Resident memory", R.id.resident_metric);
-        allocated = metricRow(measurements, "Allocated memory", R.id.allocated_metric);
-        connectionNotice = text("Connect to load live traffic and memory.", 13, secondary, false);
+        measurements.addView(totals);
+        LinearLayout engine = panel();
+        add(measurements, engine, 16, 0);
+        TextView engineTitle = text("Live engine", 16, ink, true);
+        icon(engineTitle, R.drawable.ic_engine, primary);
+        add(engine, engineTitle, 0, 8);
+        tcp = metricRow(engine, "TCP sessions", R.id.tcp_metric);
+        udp = metricRow(engine, "UDP sessions", R.id.udp_metric);
+        resident = metricRow(engine, "Resident memory", R.id.resident_metric);
+        allocated = metricRow(engine, "Allocated memory", R.id.allocated_metric);
+        connectionNotice = text("Connect to load live traffic and memory.", 12, secondary, false);
         connectionNotice.setId(R.id.connection_metrics_notice);
-        add(measurements, connectionNotice, 18, 8);
-        add(measurements, text("VPN active reports the local engine state. Remote availability is verified by traffic and probes.",
-            12, secondary, false), 8, 0);
-        add(measurements, text("App bypass always enabled · TCP + UDP · IPv4 + IPv6", 12, secondary, false), 14, 20);
+        add(engine, connectionNotice, 12, 0);
+        add(connection, text("VPN active reports the local engine state. Remote availability is verified by traffic and probes.",
+            12, secondary, false), 16, 0);
+        add(connection, text("App bypass always enabled · TCP + UDP · IPv4 + IPv6", 12, secondary, false), 8, 16);
         proxies = new RuntimeList(false);
         sessions = new RuntimeList(true);
     }
@@ -265,7 +291,7 @@ final class DiagnosticsUi {
             filter.setContentDescription(isSessions ? "Filter sessions by destination, address, or route"
                 : "Filter outbounds by tag");
             filter.setPadding(dp(14), dp(8), dp(14), dp(8));
-            filter.setBackground(shape(container, 12));
+            filter.setBackground(fieldBackground());
             filter.setMinimumHeight(dp(48));
             if (compact && isSessions) {
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
@@ -285,7 +311,7 @@ final class DiagnosticsUi {
                     RadioButton button = new RadioButton(context);
                     button.setId(View.generateViewId());
                     button.setText(value);
-                    button.setTextSize(14);
+                    button.setTextSize(13);
                     button.setTextColor(ink);
                     button.setButtonTintList(ColorStateList.valueOf(primary));
                     button.setMinHeight(dp(48));
@@ -420,8 +446,11 @@ final class DiagnosticsUi {
             super(column());
             this.owner = owner;
             LinearLayout body = (LinearLayout) itemView;
-            body.setPadding(0, dp(18), 0, 0);
-            body.setLayoutParams(new RecyclerView.LayoutParams(-1, -2));
+            body.setPadding(dp(16), dp(16), dp(16), dp(4));
+            body.setBackground(fieldBackground());
+            RecyclerView.LayoutParams rowParams = new RecyclerView.LayoutParams(-1, -2);
+            rowParams.bottomMargin = dp(12);
+            body.setLayoutParams(rowParams);
             LinearLayout content = compact ? row() : body;
             LinearLayout identity = compact ? column() : body;
             LinearLayout measurements = compact ? column() : body;
@@ -432,7 +461,7 @@ final class DiagnosticsUi {
                 content.addView(measurements, new LinearLayout.LayoutParams(0, -2, 1.3f));
                 body.addView(content);
             }
-            title = text("", 18, ink, true);
+            title = text("", 16, ink, true);
             title.setTextIsSelectable(true);
             identity.addView(title);
             route = text("", 13, primary, true);
@@ -442,8 +471,8 @@ final class DiagnosticsUi {
                 route.setBackground(shape(container, 8));
             }
             LinearLayout pair = row();
-            up = number("", 14, primary);
-            down = number("", 14, download);
+            up = number("", 14, download);
+            down = number("", 14, primary);
             up.setPadding(0, dp(6), dp(8), dp(6));
             down.setPadding(dp(8), dp(6), 0, dp(6));
             pair.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
@@ -472,7 +501,6 @@ final class DiagnosticsUi {
                     add(body, actions, 0, 14);
                 }
             }
-            divider(body);
         }
 
         void bind(JSONObject item) {
@@ -519,7 +547,7 @@ final class DiagnosticsUi {
     Button action(String label, Runnable action, boolean filled) {
         Button button = new Button(context);
         button.setAllCaps(false);
-        button.setTextSize(14);
+        button.setTextSize(13);
         button.setText(label);
         button.setMinHeight(dp(48));
         button.setMinimumHeight(dp(48));
@@ -527,10 +555,11 @@ final class DiagnosticsUi {
         button.setMinimumWidth(0);
         button.setPadding(dp(12), dp(10), dp(12), dp(10));
         int[][] states = {new int[]{-android.R.attr.state_enabled}, new int[]{}};
-        button.setTextColor(new ColorStateList(states, new int[]{secondary, filled ? onPrimary : primary}));
+        button.setTextColor(new ColorStateList(states, new int[]{secondary, filled ? onPrimary : ink}));
         android.graphics.drawable.StateListDrawable background = new android.graphics.drawable.StateListDrawable();
-        background.addState(new int[]{-android.R.attr.state_enabled}, shape(container, 24));
-        background.addState(new int[]{}, shape(filled ? primary : container, 24));
+        background.addState(new int[]{-android.R.attr.state_enabled}, shape(surface, 8));
+        background.addState(new int[]{}, buttonShape(filled));
+        button.setBackgroundTintList(null);
         button.setBackground(new android.graphics.drawable.RippleDrawable(
             ColorStateList.valueOf(outline), background, null));
         button.setStateListAnimator(null);
@@ -540,7 +569,7 @@ final class DiagnosticsUi {
     }
 
     void title(LinearLayout root, String label) {
-        TextView view = text(label, compact ? 22 : 28, ink, true);
+        TextView view = text(label, compact ? 22 : 26, ink, true);
         if (android.os.Build.VERSION.SDK_INT >= 28) view.setAccessibilityHeading(true);
         root.addView(view);
     }
@@ -598,6 +627,33 @@ final class DiagnosticsUi {
         View line = new View(context);
         line.setBackgroundColor(outline);
         parent.addView(line, new LinearLayout.LayoutParams(-1, dp(1)));
+    }
+
+    LinearLayout panel() {
+        LinearLayout view = column();
+        view.setPadding(dp(16), dp(16), dp(16), dp(16));
+        view.setBackground(fieldBackground());
+        return view;
+    }
+
+    GradientDrawable fieldBackground() {
+        GradientDrawable background = shape(panel, 12);
+        background.setStroke(dp(1), outline);
+        return background;
+    }
+
+    private GradientDrawable buttonShape(boolean filled) {
+        GradientDrawable background = shape(filled ? primary : panel, 8);
+        if (!filled) background.setStroke(dp(1), outline);
+        return background;
+    }
+
+    void icon(TextView view, int resource, int tint) {
+        android.graphics.drawable.Drawable drawable = context.getDrawable(resource).mutate();
+        drawable.setTint(tint);
+        drawable.setBounds(0, 0, dp(18), dp(18));
+        view.setCompoundDrawablesRelative(drawable, null, null, null);
+        view.setCompoundDrawablePadding(dp(8));
     }
 
     GradientDrawable shape(int color, int radius) {
