@@ -6,6 +6,8 @@ import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.SpannableStringBuilder;
+import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.view.Gravity;
@@ -17,6 +19,8 @@ import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 /** Configuration and log workspaces sharing the app's native dashboard components. */
@@ -29,6 +33,8 @@ final class WorkspaceUi {
     private final DiagnosticsUi theme;
     private final LinearLayout configuration, logPage;
     private final ScrollView logScroll;
+    private final LogFormatter logFormatter;
+    private Spanned formattedLogs, renderedSnapshot;
     private String rawLogs = "", logError = "";
     private boolean hasSnapshot;
 
@@ -36,6 +42,7 @@ final class WorkspaceUi {
             Runnable importFile, Runnable download, Runnable save, Runnable exportConfig,
             Runnable proxyTemplate, Runnable directTemplate, Runnable exportLogs) {
         this.theme = theme;
+        logFormatter = new LogFormatter(theme);
         boolean wide = theme.context.getResources().getConfiguration().screenWidthDp >= 600;
         configuration = new EditorPage(wide);
         configuration.setId(R.id.configuration_page);
@@ -211,6 +218,7 @@ final class WorkspaceUi {
         if (hasSnapshot && !live.isChecked()) return;
         if (hasSnapshot && rawLogs.equals(text) && logError.isEmpty()) return;
         rawLogs = text;
+        formattedLogs = logFormatter.format(text);
         hasSnapshot = true;
         logError = "";
         renderLogView(false);
@@ -238,28 +246,46 @@ final class WorkspaceUi {
             return;
         }
         String query = logFilter.getText().toString().trim().toLowerCase(Locale.ROOT);
-        StringBuilder filtered = new StringBuilder();
-        String header = "", emittedHeader = "";
+        List<int[]> retained = new ArrayList<>();
+        String plain = formattedLogs.toString();
+        int offset = 0, headerStart = -1, headerEnd = 0, emittedHeader = -1;
         int total = 0, matches = 0;
-        boolean empty = rawLogs.startsWith("No logs yet.");
-        for (String line : rawLogs.split("\n")) {
-            if (line.startsWith("— ") && line.endsWith(" —")) { header = line; continue; }
+        boolean empty = plain.startsWith("No logs yet.");
+        for (String line : plain.split("\n", -1)) {
+            int start = offset, end = Math.min(plain.length(), start + line.length() + 1);
+            offset = end;
+            if (line.startsWith("— ") && line.endsWith(" —")) { headerStart = start; headerEnd = end; continue; }
             if (line.isEmpty() || empty) continue;
             total++;
             if (!line.toLowerCase(Locale.ROOT).contains(query)) continue;
             matches++;
-            if (!header.equals(emittedHeader)) {
-                filtered.append(header).append('\n');
-                emittedHeader = header;
+            if (headerStart >= 0 && headerStart != emittedHeader) {
+                retained.add(new int[]{headerStart, headerEnd});
+                emittedHeader = headerStart;
             }
-            filtered.append(line).append('\n');
+            retained.add(new int[]{start, end});
         }
-        String view = query.isEmpty() ? rawLogs : matches == 0
-            ? "No matching log lines. Clear the filter to view all logs." : filtered.toString();
+        CharSequence view = formattedLogs;
+        if (!query.isEmpty()) {
+            if (matches == 0) view = "No matching log lines. Clear the filter to view all logs.";
+            else {
+                // Delete omitted ranges from the end so multi-line ANSI spans retain their styles.
+                SpannableStringBuilder filtered = new SpannableStringBuilder(formattedLogs);
+                int end = filtered.length();
+                for (int i = retained.size() - 1; i >= 0; i--) {
+                    int[] range = retained.get(i);
+                    filtered.delete(range[1], end);
+                    end = range[0];
+                }
+                filtered.delete(0, end);
+                view = filtered;
+            }
+        }
         boolean follow = !logScroll.canScrollVertically(1);
         int position = logScroll.getScrollY();
-        if (!TextUtils.equals(logs.getText(), view)) {
-            logs.setText(view);
+        if (!TextUtils.equals(logs.getText(), view) || renderedSnapshot != formattedLogs) {
+            logs.setText(view, TextView.BufferType.SPANNABLE);
+            renderedSnapshot = formattedLogs;
             logScroll.post(() -> {
                 if (filterChanged) logScroll.scrollTo(0, 0);
                 else if (follow) logScroll.scrollTo(0, Math.max(0, logs.getHeight() - logScroll.getHeight()));

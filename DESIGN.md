@@ -15,6 +15,8 @@ colors:
   download-light: '#237F77'
   panel-light: '#FFFFFF'
   sidebar-light: '#FCFCFD'
+  log-warning-light: '#936000'
+  log-magenta-light: '#8A4BA8'
   surface-dark: '#14171E'
   ink-dark: '#E3E7F1'
   secondary-dark: '#A2A9B9'
@@ -27,6 +29,8 @@ colors:
   download-dark: '#65CBBD'
   panel-dark: '#1C2029'
   sidebar-dark: '#191C24'
+  log-warning-dark: '#E7BD65'
+  log-magenta-dark: '#CE9BE7'
   brand-mark: '#5570E9'
 typography:
   headline:
@@ -266,6 +270,8 @@ The palette is cool and restrained, with accents reserved for actions, selected 
 - **Transfer Teal** (`download-light` / `download-dark`): upload icons and row measurements. The resource name is inherited; the rendered semantic role is upload.
 - **Engine Green** (`success-light` / `success-dark`): the labeled local “VPN active” state.
 - **Failure Red** (`error-light` / `error-dark`): failed requests, unavailable notices and connection errors.
+- **Log Amber** (`log-warning-light` / `log-warning-dark`): warning-level labels and ANSI yellow text.
+- **Log Magenta** (`log-magenta-light` / `log-magenta-dark`): ANSI magenta text in retained log content.
 
 ### Neutral
 
@@ -362,6 +368,10 @@ Connection shows two equally sized outlined tiles, Downloaded first and Uploaded
 YAML is a multiline, horizontally scrolling native EditText with source-role typography, (14dp) padding, native selection, no suggestions and no fullscreen/extract editor. Per-profile drafts and editor focus survive supported recreation. Profile selection uses a native chevron action; Manage and More retain native dialogs/menus and all profile/template/export operations.
 
 Logs and API results use selectable monospace on outlined panel fill with (14dp) padding. Live logs retain a snapshot while paused or on read failure; refresh follows the tail only when already at the bottom. Filter changes return to the top. Export still includes all retained logs independently of filter/pause. API results keep explicit remote/local scope, target, operation and status; mutations use native confirmation and never replay after recreation. Credential masking and secure capture remain product requirements.
+
+The log panel renders native rich text while retaining its monospace size, wrapping, selection and scrolling. File headings are bold periwinkle, timestamps use secondary slate, and severity labels remain textual and bold: INFO uses green, WARN/WARNING amber, ERROR/FATAL red, and DEBUG/TRACE secondary slate. Service lines without level labels still receive timestamp styling.
+
+ANSI SGR supports foreground/background colors, indexed and RGB colors, bold, italic, underline, strikethrough, dim, inverse and selective/full resets. Basic terminal colors map to the app's theme roles; explicit colors are adjusted where necessary to meet 4.5:1 text contrast against their background. Explicit ANSI colors take precedence over inferred level colors. Terminal control sequences are omitted, while message text and literal markup remain visible. Filters match visible text and preserve styles across retained lines, including multiline ANSI ranges. A change to ANSI styling refreshes the view even if its visible text is unchanged. Copy uses visible text without escape codes; full-log export continues to read the original retained files.
 
 ## Do's and Don'ts
 

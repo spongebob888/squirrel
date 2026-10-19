@@ -27,3 +27,15 @@ FORM: Native adaptation of user-pinned ../squirrelboard, superseding the earlier
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 Verification: full instrumentation suite, native light/dark/enlarged-text/landscape captures, profile/download regression checks and keyboard editing. Review data is synthetic; production FLAG_SECURE remains enabled.
+
+## Rich log text
+
+Log content uses native text spans: bold periwinkle file headings, quiet timestamps,
+and bold severity labels colored green/amber/red or secondary slate. ANSI SGR color,
+background, indexed/RGB color, bold, italic, underline, strikethrough, dim, inverse
+and resets render in the same selectable monospace pane. Theme roles and contrast
+adjustment keep colored text readable in light/dark appearance. Filtering matches
+visible text and preserves multiline styles; style-only updates also refresh.
+Pause, read-error snapshots, tail-following, filter focus and original-file exports
+retain their existing behavior. Verification for this refinement covers focused
+formatter/workspace tests and native phone/tablet appearance captures.

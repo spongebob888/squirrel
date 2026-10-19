@@ -11,4 +11,6 @@
     <color name="diagnostic_download">#65CBBD</color>
     <color name="diagnostic_panel">#1C2029</color>
     <color name="diagnostic_sidebar">#191C24</color>
+    <color name="log_warning">#E7BD65</color>
+    <color name="log_magenta">#CE9BE7</color>
 </resources>

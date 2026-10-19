@@ -7,6 +7,9 @@ import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
 import android.test.InstrumentationTestCase;
+import android.text.Spanned;
+import android.text.style.ForegroundColorSpan;
+import android.text.style.StyleSpan;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,6 +43,59 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
         + "08:42:05 INFO  Configuration remains unchanged\n";
     private MainActivity activity;
     private WorkspaceUi workspace;
+
+    private static final String RICH_LOGS = "— service.log —\n"
+        + "2026-10-19T08:42:01Z Synthetic review fixture\n"
+        + "2026-10-19T08:42:02Z Local engine started\n\n"
+        + "— core.log —\n"
+        + "08:42:02 INFO  Outbound direct initialized\n"
+        + "08:42:03 DEBUG TCP example.test:443 connected\n"
+        + "08:42:04 WARN  Probe timed out; retry pending\n"
+        + "08:42:05 ERROR Synthetic connection failure\n"
+        + "08:42:06 TRACE session_id=42 protocol=udp\n"
+        + "08:42:07 INFO  \u001B[1mBold\u001B[22m, \u001B[3mitalic\u001B[23m, \u001B[4munderlined\u001B[24m\n"
+        + "08:42:08 INFO  \u001B[36mANSI color\u001B[0m and \u001B[38;2;138;75;168mRGB color\u001B[0m\n";
+
+    public void testRichLogFilteringAndStyleOnlyRefreshPreserveFormatting() throws Exception {
+        launch();
+        page(MainActivity.LOGS);
+        onMain(() -> {
+            String raw = "— core.log —\n\u001B[32mINFO keep first\nWARN omit\nERROR keep last\u001B[0m\n";
+            workspace.renderLogs(raw);
+            assertFalse(workspace.logs.getText().toString().contains("\u001B"));
+            workspace.logFilter.setText("keep");
+            assertEquals("— core.log —\nINFO keep first\nERROR keep last\n", workspace.logs.getText().toString());
+            Spanned text = (Spanned) workspace.logs.getText();
+            int first = text.toString().indexOf("keep first"), last = text.toString().indexOf("keep last");
+            ForegroundColorSpan[] firstSpans = text.getSpans(first, first + 10, ForegroundColorSpan.class);
+            ForegroundColorSpan[] lastSpans = text.getSpans(last, last + 9, ForegroundColorSpan.class);
+            assertEquals(1, firstSpans.length);
+            assertEquals(1, lastSpans.length);
+            int previousColor = firstSpans[0].getForegroundColor();
+            assertEquals(previousColor, lastSpans[0].getForegroundColor());
+            assertTrue(text.getSpans(0, text.length(), StyleSpan.class).length > 0);
+            workspace.live.setChecked(false);
+            workspace.renderLogs(raw.replace("[32m", "[31m"));
+            assertSame(text, workspace.logs.getText());
+            workspace.live.setChecked(true);
+            workspace.renderLogs(raw.replace("[32m", "[31m"));
+            Spanned updated = (Spanned) workspace.logs.getText();
+            assertEquals(text.toString(), updated.toString());
+            assertTrue(previousColor != updated.getSpans(first, first + 10, ForegroundColorSpan.class)[0].getForegroundColor());
+            workspace.logReadError("Synthetic read failure");
+            assertSame(updated, workspace.logs.getText());
+            return null;
+        });
+    }
+
+    public void testRichLogReviewScreenshots() throws Exception {
+        launch();
+        page(MainActivity.LOGS);
+        onMain(() -> { workspace.renderLogs(RICH_LOGS); return null; });
+        capture("logs-rich", null);
+        onMain(() -> { workspace.logFilter.setText("WARN"); return null; });
+        capture("logs-rich-filtered", null);
+    }
 
     public void testLogFilterPauseAndReadFailurePreserveSnapshot() throws Exception {
         launch();

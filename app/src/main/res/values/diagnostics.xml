@@ -11,6 +11,8 @@
     <color name="diagnostic_download">#237F77</color>
     <color name="diagnostic_panel">#FFFFFF</color>
     <color name="diagnostic_sidebar">#FCFCFD</color>
+    <color name="log_warning">#936000</color>
+    <color name="log_magenta">#8A4BA8</color>
     <style name="DiagnosticsTheme" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:fontFamily">sans</item>
         <item name="android:colorAccent">@color/diagnostic_primary</item>
