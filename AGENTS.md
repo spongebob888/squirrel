@@ -7,11 +7,11 @@
 - `app/src/androidTest/`: device instrumentation tests for JNI, packet forwarding, restart, and import validation.
 - `native/src/`: Rust configuration normalization, rotating logs, and runtime/JNI lifecycle; unit tests live beside implementations.
 - `examples/`: user configuration examples. Keep corresponding bundled assets synchronized.
-- `scripts/` and `patches/android-tun.patch`: prepare and build the ShadowQUIC dependency. `.build/`, `native/target/`, and Gradle build directories are generated.
+- `scripts/`: prepare and build the ShadowQUIC dependency from unchanged upstream sources. `.build/`, `native/target/`, and Gradle build directories are generated.
 
 ## Build, Test, and Development Commands
 
-Use JDK 17/21, Rust stable with edition 2024 support, Python 3, `patch`, Android SDK 36, and NDK `28.2.13676358`. Set `JAVA_HOME` and `ANDROID_HOME`. ShadowQUIC defaults to `../shadowquic`; this environment requires `SHADOWQUIC_DIR=/home/liu/ws/shadowquic`.
+Use JDK 17/21, Rust stable with edition 2024 support, Python 3, Android SDK 36, and NDK `28.2.13676358`. Set `JAVA_HOME` and `ANDROID_HOME`. ShadowQUIC defaults to fetching upstream `main`; this environment uses `SHADOWQUIC_DIR=/home/liu/ws/shadowquic`. Local overrides must include upstream Android TUN support.
 
 Run from the repository root:
 
@@ -24,7 +24,7 @@ cargo fmt --manifest-path native/Cargo.toml -- --check
 ./gradlew installDebug
 ```
 
-These prepare the patched core, test Rust, check formatting, build/lint Android, run device tests, and install locally. Device commands require an emulator or phone. The APK is `app/build/outputs/apk/debug/app-debug.apk`. Set `ANDROID_ABIS=arm64-v8a` or `x86_64` to limit builds.
+These prepare the upstream core, test Rust, check formatting, build/lint Android, run device tests, and install locally. Device commands require an emulator or phone. The APK is `app/build/outputs/apk/debug/app-debug.apk`. Set `ANDROID_ABIS=arm64-v8a` or `x86_64` to limit builds.
 
 ## Coding Style & Naming Conventions
 
@@ -40,4 +40,4 @@ This snapshot has no Git history to establish conventions. Use concise imperativ
 
 ## Configuration & VPN Invariants
 
-Preserve the app-package bypass before establishing the VPN. Maintain descriptor ownership and disconnect cleanup. Never edit the original ShadowQUIC checkout or generated build copy as the lasting fix; update the preparation workflow or tracked patch. Keep credentials out of committed configs and test artifacts.
+Preserve the app-package bypass before establishing the VPN. Maintain descriptor ownership and disconnect cleanup. Never edit the original ShadowQUIC checkout or generated build copy as the lasting fix; update the preparation workflow or make the change upstream. Keep credentials out of committed configs and test artifacts.
