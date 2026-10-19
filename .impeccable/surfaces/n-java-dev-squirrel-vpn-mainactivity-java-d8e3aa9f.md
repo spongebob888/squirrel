@@ -35,3 +35,15 @@ geometry and tabular number role. It reads `num_alive_tasks` from `/api/v1/tokio
 on the Connection refresh. Zero is a valid count; missing or invalid values show a
 dash. Disconnect, a new engine run, and a failed metrics refresh clear the value.
 An unavailable Tokio endpoint leaves traffic and memory visible and retries normally.
+
+## Compact Proxies
+
+Selectors precede ordinary outbounds and show their members inline, matching
+`../squirrelboard`. Members have 48dp circular selection actions and an explicit
+checked state; all copies of an outbound share probe pending state. Proxy records
+use 12dp horizontal and 8dp vertical padding, 8dp gaps, a lightning probe action,
+and upload/download arrows alongside rounded integer RTT and packet loss.
+Accessible names and tooltips carry full action and measurement labels.
+The page omits its explanatory subtitle and repeated measurement labels.
+At heights below 480dp, title/live count sit beside the filter to preserve list
+space. Ordinary outbounds remain available below the selector groups.

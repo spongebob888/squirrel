@@ -62,6 +62,7 @@ public final class MainActivity extends Activity {
     private ConfigProfiles.State profileState;
     private String profileId;
     private final HashMap<String, AppState.Snapshot> pendingProbes = new HashMap<>();
+    private final HashMap<String, AppState.Snapshot> pendingSelections = new HashMap<>();
     private final HashMap<String, String> profileDrafts = new HashMap<>(), profileUrls = new HashMap<>();
 
     private static final class Draft {
@@ -426,7 +427,7 @@ public final class MainActivity extends Activity {
             && pager.getCurrentItem() == page;
     }
 
-    private void chooseOutbound(String selectorTag, JSONObject selector) {
+    private void chooseOutbound(String selectorTag, JSONObject selector, String member) {
         AppState.Snapshot connection = AppState.get();
         if (connection.phase != AppState.Phase.CONNECTED || selector == null) return;
         JSONArray options = selector.optJSONArray("outbounds");
@@ -437,27 +438,45 @@ public final class MainActivity extends Activity {
             labels[i] = options.optString(i);
             if (labels[i].equals(selector.optString("selected"))) selected = i;
         }
+        if (member != null) {
+            for (String label : labels) if (label.equals(member)) {
+                if (!member.equals(selector.optString("selected"))) selectOutbound(connection, selectorTag, member);
+                return;
+            }
+            return;
+        }
         new AlertDialog.Builder(diagnostics.context).setTitle("Select outbound · " + selectorTag)
             .setSingleChoiceItems(labels, selected, (dialog, which) -> {
                 dialog.dismiss();
-                if (AppState.get() != connection) return;
-                diagnostics.outboundAction("Selecting " + labels[which] + "…", false);
-                apiActionExecutor.execute(() -> {
-                    try {
-                        if (AppState.get() != connection) return;
-                        new ShadowQuicApi(this).put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
-                            new JSONObject().put("selected", labels[which]));
-                        post(() -> {
-                            if (AppState.get() != connection) return;
-                            diagnostics.outboundAction("Selected " + labels[which] + " for new sessions.", false);
-                            refreshApi();
-                        });
-                    } catch (Exception error) {
-                        post(() -> { if (AppState.get() == connection)
-                            diagnostics.outboundAction("Selection failed: " + SquirrelVpnService.message(error), true); });
-                    }
-                });
+                if (!labels[which].equals(selector.optString("selected"))) selectOutbound(connection, selectorTag, labels[which]);
             }).setNegativeButton("Cancel", null).show();
+    }
+
+    private void selectOutbound(AppState.Snapshot connection, String selectorTag, String member) {
+        if (AppState.get() != connection || pendingSelections.get(selectorTag) == connection) return;
+        pendingSelections.put(selectorTag, connection);
+        diagnostics.selectionPending(selectorTag, true);
+        diagnostics.outboundAction("Selecting " + member + "…", false);
+        apiActionExecutor.execute(() -> {
+            try {
+                if (AppState.get() != connection) return;
+                new ShadowQuicApi(this).put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
+                    new JSONObject().put("selected", member));
+                post(() -> {
+                    if (AppState.get() != connection) return;
+                    diagnostics.outboundAction("Selected " + member + " for new sessions.", false);
+                    refreshApi();
+                });
+            } catch (Exception error) {
+                post(() -> { if (AppState.get() == connection)
+                    diagnostics.outboundAction("Selection failed: " + SquirrelVpnService.message(error), true); });
+            } finally {
+                post(() -> {
+                    if (pendingSelections.get(selectorTag) == connection) pendingSelections.remove(selectorTag);
+                    if (AppState.get() == connection) diagnostics.selectionPending(selectorTag, false);
+                });
+            }
+        });
     }
 
     private void probeOutbound(String tag) {

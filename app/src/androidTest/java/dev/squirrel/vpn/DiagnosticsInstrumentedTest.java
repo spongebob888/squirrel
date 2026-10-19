@@ -5,7 +5,10 @@ import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
+import android.system.Os;
+import android.system.OsConstants;
 import android.test.InstrumentationTestCase;
 import android.view.View;
 import android.view.ViewGroup;
@@ -18,6 +21,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
 import java.io.File;
+import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -107,7 +111,7 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             assertTrue(hasText(row, "Duration  — · Half closed"));
             Bundle saved = new Bundle();
             ui.saveFilters(saved);
-            DiagnosticsUi restored = new DiagnosticsUi(activity, () -> {}, (tag, selector) -> {}, tag -> {});
+            DiagnosticsUi restored = new DiagnosticsUi(activity, () -> {}, (tag, selector, member) -> {}, tag -> {});
             restored.restoreFilters(saved);
             restored.renderState(connected(), false, "Synthetic fixture");
             restored.renderSessions(flows());
@@ -137,14 +141,118 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             RecyclerView list = rows(R.id.proxy_rows);
             assertSame(original, list.findViewHolderForAdapterPosition(12).itemView);
             assertEquals(12, ((LinearLayoutManager) list.getLayoutManager()).findFirstVisibleItemPosition());
-            assertTrue(hasText(original, "Selected · relay-b"));
+            assertTrue(hasText(original, "relay-b · 3 outbounds"));
             ((EditText) activity.findViewById(R.id.proxy_filter)).setText("route-34");
-            assertEquals(1, list.getAdapter().getItemCount());
+            assertEquals(4, list.getAdapter().getItemCount());
             ui.unavailable(MainActivity.PROXIES, "Synthetic unavailable response.");
             assertEquals(0, list.getAdapter().getItemCount());
             assertTrue(label(R.id.proxy_empty).contains("unavailable"));
             return null;
         });
+    }
+
+    public void testSelectorsShowMembersFirstAndRoundTransportRtt() throws Exception {
+        launch();
+        AtomicReference<String> selection = new AtomicReference<>();
+        onMain(() -> {
+            ui = new DiagnosticsUi(activity, () -> {},
+                (tag, selector, member) -> selection.set(tag + ":" + member), tag -> {});
+            activity.setContentView(ui.proxiesPage());
+            ui.renderState(connected(), false, "Synthetic fixture");
+            ui.renderOutbounds(proxyFixture());
+            return null;
+        });
+        getInstrumentation().waitForIdleSync();
+        onMain(() -> {
+            RecyclerView list = rows(R.id.proxy_rows);
+            View header = list.findViewHolderForAdapterPosition(0).itemView;
+            assertTrue(hasText(header, "Proxy"));
+            assertTrue(hasText(header, "relay-a · 3 outbounds"));
+            View selected = list.findViewHolderForAdapterPosition(1).itemView;
+            assertTrue(hasText(selected, "relay-a"));
+            assertTrue(hasText(selected, "36 ms · 0.20%"));
+            assertTrue(hasText(selected, "41 ms · 0.15%"));
+            assertTrue(hasText(selected, "48 ms"));
+            assertFalse(described(selected, "Selected relay-a for Proxy").isEnabled());
+            View member = list.findViewHolderForAdapterPosition(2).itemView;
+            assertTrue(hasText(member, "relay-b"));
+            assertTrue(hasText(member, "0 ms · 0.00%"));
+            assertTrue(hasText(member, "— · —"));
+            described(member, "Select relay-b for Proxy").performClick();
+            assertEquals("Proxy:relay-b", selection.get());
+            ((EditText) activity.findViewById(R.id.proxy_filter)).setText("relay-b");
+            // Both selector groups retain context, followed by the matching ordinary outbound.
+            assertEquals(6, list.getAdapter().getItemCount());
+            ((EditText) activity.findViewById(R.id.proxy_filter)).setText("Proxy");
+            assertEquals(4, list.getAdapter().getItemCount());
+            return null;
+        });
+    }
+
+    public void testProxyReviewScreenshots() throws Exception {
+        launch();
+        onMain(() -> {
+            Field headerField = MainActivity.class.getDeclaredField("appHeader");
+            headerField.setAccessible(true);
+            ((TextView) ((ViewGroup) headerField.get(activity)).getChildAt(1)).setText("SYNTHETIC DATA");
+            ui.renderState(connected(), false, "Synthetic fixture");
+            ui.renderOutbounds(proxyFixture());
+            return null;
+        });
+        page(MainActivity.PROXIES);
+        capture("proxies-compact");
+        onMain(() -> { ((EditText) activity.findViewById(R.id.proxy_filter)).setText("no-match"); return null; });
+        capture("proxies-empty");
+    }
+
+    public void testInlineMemberSelectionUpdatesLocalCoreAndCheckmark() throws Exception {
+        launch();
+        AppState.Snapshot previous = AppState.get();
+        FileDescriptor app = new FileDescriptor(), core = new FileDescriptor();
+        Os.socketpair(OsConstants.AF_UNIX, OsConstants.SOCK_DGRAM, 0, app, core);
+        android.content.Context context = getInstrumentation().getTargetContext();
+        try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core)) {
+            NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context,
+                "outbounds: [{tag: direct, type: direct}, {tag: backup, type: direct}, "
+                    + "{tag: 'choice / one', type: selector, outbounds: [direct, backup]}]\n"),
+                new File(context.getCacheDir(), "inline-selection-test.log").getPath());
+            ShadowQuicApi api = new ShadowQuicApi(context);
+            JSONObject response = null;
+            for (int attempt = 0; attempt < 80; attempt++) {
+                try { response = api.get("/outbounds"); break; }
+                catch (Exception ignored) { Thread.sleep(50); }
+            }
+            assertNotNull(response);
+            JSONObject snapshot = response;
+            onMain(() -> {
+                AppState.set(AppState.Phase.CONNECTED, "Synthetic local selector fixture");
+                ui.renderState(AppState.get(), false, "Synthetic fixture");
+                ui.renderOutbounds(snapshot.getJSONArray("outbounds"));
+                return null;
+            });
+            page(MainActivity.PROXIES);
+            long deadline = SystemClock.uptimeMillis() + 5000;
+            View select;
+            do {
+                select = onMain(() -> described(rows(R.id.proxy_rows), "Select backup for choice / one"));
+                if (select == null) Thread.sleep(50);
+            } while (select == null && SystemClock.uptimeMillis() < deadline);
+            assertNotNull(select);
+            View control = select;
+            onMain(() -> { control.performClick(); return null; });
+            String path = "/outbounds/" + ShadowQuicApi.segment("choice / one") + "/selection";
+            deadline = SystemClock.uptimeMillis() + 5000;
+            while (!"backup".equals(api.get(path).optString("selected")) && SystemClock.uptimeMillis() < deadline) Thread.sleep(50);
+            assertEquals("backup", api.get(path).getString("selected"));
+            deadline = SystemClock.uptimeMillis() + 5000;
+            while (onMain(() -> described(rows(R.id.proxy_rows), "Selected backup for choice / one")) == null
+                    && SystemClock.uptimeMillis() < deadline) Thread.sleep(50);
+            assertNotNull(onMain(() -> described(rows(R.id.proxy_rows), "Selected backup for choice / one")));
+        } finally {
+            NativeBridge.stop();
+            AppState.set(previous.phase, previous.detail);
+            Os.close(app); Os.close(core);
+        }
     }
 
     public void testPreviousRunAndOtherTabResponsesAreRejected() throws Exception {
@@ -199,7 +307,7 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         capture("engine");
         onMain(() -> { connectionScroll.scrollTo(0, 0); return null; });
         page(MainActivity.PROXIES);
-        onMain(() -> { ui.renderOutbounds(outbounds(3, "relay-a")); return null; });
+        onMain(() -> { ui.renderOutbounds(proxyFixture()); return null; });
         capture("proxies");
         page(MainActivity.SESSIONS);
         onMain(() -> { ui.renderSessions(flows()); return null; });
@@ -267,6 +375,18 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         return false;
     }
 
+    private View described(View view, String description) {
+        if (android.text.TextUtils.equals(description, view.getContentDescription())) return view;
+        if (view instanceof ViewGroup) {
+            ViewGroup group = (ViewGroup) view;
+            for (int i = 0; i < group.getChildCount(); i++) {
+                View found = described(group.getChildAt(i), description);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
     private void capture(String name) throws Exception {
         // Clear secure capture only in instrumentation, on the three known synthetic pages.
         // The YAML editor and stored profiles are never included in these captures.
@@ -327,6 +447,22 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
                 + "\"uplink\":{\"rtt\":36,\"sent_packets\":1000,\"lost_packets\":2},"
                 + "\"downlink\":{\"rtt\":41,\"sent_packets\":2000,\"lost_packets\":3}}}")));
         return items;
+    }
+
+    private static JSONArray proxyFixture() throws Exception {
+        JSONObject quality = new JSONObject("{\"probe\":{\"status\":\"ok\",\"latency_ms\":48.1},\"sq_conn_stats\":{"
+            + "\"uplink\":{\"rtt\":36.49,\"sent_packets\":1000,\"lost_packets\":2},"
+            + "\"downlink\":{\"rtt\":40.5,\"sent_packets\":2000,\"lost_packets\":3}}}");
+        return new JSONArray()
+            .put(new JSONObject().put("tag", "relay-a").put("quality", quality))
+            .put(new JSONObject().put("tag", "direct"))
+            .put(new JSONObject().put("tag", "Proxy").put("selector", new JSONObject()
+                .put("selected", "relay-a").put("outbounds", new JSONArray("[\"relay-a\",\"relay-b\",\"direct\"]"))))
+            .put(new JSONObject().put("tag", "relay-b").put("quality", new JSONObject(
+                "{\"probe\":{\"status\":\"timeout\"},\"sq_conn_stats\":{\"uplink\":{\"rtt\":0,\"sent_packets\":100,\"lost_packets\":0},\"downlink\":{\"rtt\":\"invalid\"}}}")))
+            .put(new JSONObject().put("tag", "Backup").put("selector", new JSONObject()
+                .put("selected", "relay-b").put("outbounds", new JSONArray("[\"relay-b\",\"singapore-relay-with-a-long-outbound-name\"]"))))
+            .put(new JSONObject().put("tag", "singapore-relay-with-a-long-outbound-name").put("quality", quality));
     }
 
     private <T> T onMain(Callable<T> action) throws Exception {

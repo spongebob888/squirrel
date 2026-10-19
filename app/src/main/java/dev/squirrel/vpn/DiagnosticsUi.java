@@ -14,6 +14,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
@@ -30,7 +31,7 @@ import org.json.JSONObject;
 
 /** Native, presentation-only views for the three runtime diagnostic screens. */
 final class DiagnosticsUi {
-    interface ChooseOutbound { void choose(String tag, JSONObject selector); }
+    interface ChooseOutbound { void choose(String tag, JSONObject selector, String member); }
 
     final Context context;
     final int surface, ink, secondary, primary, onPrimary, container, outline, success, error, download, panel, header;
@@ -253,7 +254,19 @@ final class DiagnosticsUi {
         if (pending) proxies.pendingProbes.add(tag);
         else proxies.pendingProbes.remove(tag);
         for (int i = 0; i < proxies.adapter.items.size(); i++) {
-            if (tag.equals(proxies.adapter.items.get(i).optString("tag"))) proxies.adapter.notifyItemChanged(i);
+            if (tag.equals(proxies.adapter.items.get(i).item.optString("tag"))) proxies.adapter.notifyItemChanged(i);
+        }
+    }
+
+    void selectionPending(String tag, boolean pending) {
+        if (pending) proxies.pendingSelections.add(tag);
+        else proxies.pendingSelections.remove(tag);
+        for (int i = 0; i < proxies.adapter.items.size(); i++) {
+            DisplayItem entry = proxies.adapter.items.get(i);
+            if (tag.equals(entry.item.optString("tag"))
+                    || entry.parent != null && tag.equals(entry.parent.optString("tag"))) {
+                proxies.adapter.notifyItemChanged(i);
+            }
         }
     }
 
@@ -270,6 +283,7 @@ final class DiagnosticsUi {
         final TextView actionNotice = text("", 13, primary, false);
         final Rows adapter = new Rows(this);
         final java.util.Set<String> pendingProbes = new java.util.HashSet<>();
+        final java.util.Set<String> pendingSelections = new java.util.HashSet<>();
         List<JSONObject> all = new ArrayList<>();
         String protocol = "All";
         boolean available;
@@ -279,11 +293,20 @@ final class DiagnosticsUi {
             root.setBackgroundColor(surface);
             root.setFocusableInTouchMode(true);
             root.setPadding(dp(22), dp(compact ? 12 : 24), dp(22), 0);
-            title(root, isSessions ? "Sessions" : "Proxies");
-            if (!compact) add(root, text(isSessions ? "Live TCP and UDP flows, route by route."
-                : "Choose an outbound. Check its quality.", 14, secondary, false), 6, 16);
+            boolean compactProxies = compact && !isSessions;
+            LinearLayout heading = compactProxies ? row() : root;
+            LinearLayout identity = compactProxies ? column() : root;
+            title(identity, isSessions ? "Sessions" : "Proxies");
+            if (compactProxies) {
+                heading.setGravity(Gravity.CENTER_VERTICAL);
+                identity.setPadding(0, 0, dp(20), 0);
+                heading.addView(identity, new LinearLayout.LayoutParams(-2, -2));
+                root.addView(heading, new LinearLayout.LayoutParams(-1, -2));
+            }
+            if (!compact && isSessions) add(root, text("Live TCP and UDP flows, route by route.", 14, secondary, false), 6, 16);
             LinearLayout filterArea = compact && isSessions ? row() : column();
-            add(root, filterArea, compact ? 8 : 0, 0);
+            if (compactProxies) heading.addView(filterArea, new LinearLayout.LayoutParams(0, -2, 1));
+            else add(root, filterArea, compact || !isSessions ? 8 : 0, 0);
             filter.setId(isSessions ? R.id.session_filter : R.id.proxy_filter);
             filter.setTextColor(ink);
             filter.setHintTextColor(secondary);
@@ -300,7 +323,7 @@ final class DiagnosticsUi {
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
                 params.setMarginEnd(dp(16));
                 filterArea.addView(filter, params);
-            } else add(filterArea, filter, 0, 8);
+            } else add(filterArea, filter, 0, compactProxies ? 0 : 8);
             filter.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
                 @Override public void onTextChanged(CharSequence s, int start, int before, int count) { publish(); }
@@ -329,7 +352,8 @@ final class DiagnosticsUi {
                 else filterArea.addView(choices);
             }
             summary.setId(isSessions ? R.id.session_summary : R.id.proxy_summary);
-            add(root, summary, 8, 8);
+            add(compactProxies ? identity : root, summary, compactProxies ? 2 : 8, compactProxies ? 0 : 8);
+            if (compactProxies) heading.setPadding(0, 0, 0, dp(8));
             actionNotice.setVisibility(View.GONE);
             actionNotice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
             add(root, actionNotice, 0, 8);
@@ -363,6 +387,7 @@ final class DiagnosticsUi {
             available = false;
             all = new ArrayList<>();
             pendingProbes.clear();
+            pendingSelections.clear();
             actionNotice.setVisibility(View.GONE);
             publish();
             String message = phase == AppState.Phase.CONNECTED ? "Loading " + noun() + "…"
@@ -392,17 +417,57 @@ final class DiagnosticsUi {
 
         void publish() {
             String query = filter.getText().toString().trim().toLowerCase(Locale.ROOT);
-            List<JSONObject> visible = new ArrayList<>();
+            List<DisplayItem> visible = new ArrayList<>();
+            java.util.Set<String> matching = new java.util.HashSet<>();
+            if (!isSessions) {
+                java.util.Map<String, JSONObject> byTag = new java.util.HashMap<>();
+                for (JSONObject item : all) byTag.put(item.optString("tag"), item);
+                // Keep every selector and its members ahead of the ordinary outbound list.
+                for (JSONObject item : all) {
+                    JSONObject selector = item.optJSONObject("selector");
+                    if (selector == null) continue;
+                    List<DisplayItem> members = new ArrayList<>();
+                    boolean groupMatches = matches(value(item, "tag"), query);
+                    JSONArray tags = selector.optJSONArray("outbounds");
+                    java.util.Set<String> seen = new java.util.HashSet<>();
+                    for (int i = 0; tags != null && i < tags.length(); i++) {
+                        String tag = tags.optString(i, "");
+                        if (tag.isEmpty() || !seen.add(tag)) continue;
+                        if (!groupMatches && !matches(tag, query)) continue;
+                        JSONObject member = byTag.get(tag);
+                        if (member == null) {
+                            member = new JSONObject();
+                            try { member.put("tag", tag); } catch (org.json.JSONException ignored) { }
+                        }
+                        members.add(new DisplayItem(member, item));
+                        if (byTag.containsKey(tag)) matching.add(tag);
+                    }
+                    if (groupMatches || !members.isEmpty()) {
+                        visible.add(new DisplayItem(item, null));
+                        visible.addAll(members);
+                        matching.add(value(item, "tag"));
+                    }
+                }
+            }
+            boolean outboundHeading = !isSessions && !visible.isEmpty();
             for (JSONObject item : all) {
                 String searchable = isSessions ? value(item, "dst_domain") + " " + value(item, "dst_ip")
                     + " " + value(item, "dst_port") + " " + value(item, "inbound") + " " + value(item, "outbound")
                     : value(item, "tag");
                 if (!query.isEmpty() && !searchable.toLowerCase(Locale.ROOT).contains(query)) continue;
                 if (isSessions && !protocol.equals("All") && !protocol.equalsIgnoreCase(item.optString("protocol"))) continue;
-                visible.add(item);
+                if (!isSessions && item.optJSONObject("selector") != null) continue;
+                if (outboundHeading) {
+                    visible.add(new DisplayItem("All outbounds"));
+                    outboundHeading = false;
+                }
+                visible.add(new DisplayItem(item, null));
+                matching.add(value(item, "tag"));
             }
             adapter.submit(visible);
-            set(summary, available ? visible.size() + " of " + all.size() + " " + noun() + " · live"
+            int count = isSessions ? visible.size() : matching.size();
+            set(summary, available ? (query.isEmpty() && !isSessions ? all.size() + " " + noun()
+                : count + " of " + all.size() + " " + noun()) + " · live"
                 : "Live data pending");
             empty.setVisibility(visible.isEmpty() ? View.VISIBLE : View.GONE);
             if (available && visible.isEmpty()) notice(empty, all.isEmpty()
@@ -412,42 +477,70 @@ final class DiagnosticsUi {
         }
     }
 
-    private final class Rows extends RecyclerView.Adapter<Row> {
+    private static boolean matches(String tag, String query) {
+        return tag.toLowerCase(Locale.ROOT).contains(query);
+    }
+
+    private static final class DisplayItem {
+        final JSONObject item, parent;
+        final String section;
+        DisplayItem(JSONObject item, JSONObject parent) { this.item = item; this.parent = parent; section = null; }
+        DisplayItem(String section) { item = new JSONObject(); parent = null; this.section = section; }
+        String key(String field) {
+            if (section != null) return "section:" + section;
+            // Length-prefixed names distinguish shared members and arbitrary punctuation in tags.
+            String group = parent == null ? "" : value(parent, "tag");
+            return (parent == null ? "outbound:" : "member:") + group.length() + ":" + group + value(item, field);
+        }
+        String content() { return section != null ? section : item.toString() + (parent == null ? "" : parent.toString()); }
+    }
+
+    private final class Rows extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
         final RuntimeList owner;
-        List<JSONObject> items = new ArrayList<>();
+        List<DisplayItem> items = new ArrayList<>();
         Rows(RuntimeList owner) { this.owner = owner; }
 
-        void submit(List<JSONObject> next) {
-            List<JSONObject> previous = items;
+        void submit(List<DisplayItem> next) {
+            List<DisplayItem> previous = items;
             DiffUtil.DiffResult diff = DiffUtil.calculateDiff(new DiffUtil.Callback() {
                 @Override public int getOldListSize() { return previous.size(); }
                 @Override public int getNewListSize() { return next.size(); }
                 @Override public boolean areItemsTheSame(int oldPosition, int newPosition) {
                     String key = owner.isSessions ? "id" : "tag";
-                    return value(previous.get(oldPosition), key).equals(value(next.get(newPosition), key));
+                    return previous.get(oldPosition).key(key).equals(next.get(newPosition).key(key));
                 }
                 @Override public boolean areContentsTheSame(int oldPosition, int newPosition) {
-                    return previous.get(oldPosition).toString().equals(next.get(newPosition).toString());
+                    return previous.get(oldPosition).content().equals(next.get(newPosition).content());
                 }
             }, false);
             items = next;
             diff.dispatchUpdatesTo(this);
         }
 
-        @Override public Row onCreateViewHolder(ViewGroup parent, int type) { return new Row(owner); }
-        @Override public void onBindViewHolder(Row row, int position) { row.bind(items.get(position)); }
+        @Override public RecyclerView.ViewHolder onCreateViewHolder(ViewGroup parent, int type) {
+            if (type == 1) {
+                TextView heading = text("", 16, ink, true);
+                heading.setPadding(dp(4), dp(16), dp(4), dp(8));
+                heading.setLayoutParams(new RecyclerView.LayoutParams(-1, -2));
+                if (android.os.Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
+                return new RecyclerView.ViewHolder(heading) {};
+            }
+            return owner.isSessions ? new SessionRow() : new ProxyRow(owner);
+        }
+        @Override public int getItemViewType(int position) { return items.get(position).section == null ? 0 : 1; }
+        @Override public void onBindViewHolder(RecyclerView.ViewHolder row, int position) {
+            if (items.get(position).section != null) set((TextView) row.itemView, items.get(position).section);
+            else if (row instanceof ProxyRow) ((ProxyRow) row).bind(items.get(position));
+            else ((SessionRow) row).bind(items.get(position).item);
+        }
         @Override public int getItemCount() { return items.size(); }
     }
 
-    private final class Row extends RecyclerView.ViewHolder {
-        final RuntimeList owner;
+    private final class SessionRow extends RecyclerView.ViewHolder {
         final TextView title, route, info, up, down, latency;
-        final Button select, test;
-        JSONObject item;
 
-        Row(RuntimeList owner) {
+        SessionRow() {
             super(column());
-            this.owner = owner;
             LinearLayout body = (LinearLayout) itemView;
             body.setPadding(dp(16), dp(16), dp(16), dp(4));
             body.setBackground(fieldBackground());
@@ -469,10 +562,6 @@ final class DiagnosticsUi {
             identity.addView(title);
             route = text("", 13, primary, true);
             add(identity, route, 5, 8);
-            if (!owner.isSessions) {
-                route.setPadding(dp(10), dp(7), dp(10), dp(7));
-                route.setBackground(shape(container, 8));
-            }
             LinearLayout pair = row();
             up = number("", 14, download);
             down = number("", 14, primary);
@@ -486,65 +575,137 @@ final class DiagnosticsUi {
             add(measurements, latency, 6, 0);
             info = text("", 12, secondary, false);
             add(measurements, info, 6, 12);
-            if (owner.isSessions) {
-                select = null; test = null;
-            } else {
-                LinearLayout actions = compact ? column() : row();
-                select = action("Choose proxy", () -> choose.choose(value(item, "tag"), item.optJSONObject("selector")), false);
-                test = action("Probe latency", () -> probe.accept(value(item, "tag")), false);
-                if (compact) {
-                    add(actions, select, 0, 8);
-                    add(actions, test, 0, 14);
-                    content.addView(actions, new LinearLayout.LayoutParams(0, -2, 0.8f));
-                } else {
-                    LinearLayout.LayoutParams selectParams = new LinearLayout.LayoutParams(0, -2, 1);
-                    selectParams.setMarginEnd(dp(8));
-                    actions.addView(select, selectParams);
-                    actions.addView(test, new LinearLayout.LayoutParams(0, -2, 1));
-                    add(body, actions, 0, 14);
-                }
-            }
         }
 
         void bind(JSONObject item) {
-            this.item = item;
-            if (owner.isSessions) {
-                String domain = item.isNull("dst_domain") ? "" : item.optString("dst_domain").trim();
-                String destination = domain.isEmpty() ? value(item, "dst_ip") : domain;
-                if (domain.isEmpty() && destination.contains(":")) destination = "[" + destination + "]";
-                set(title, destination + ":" + value(item, "dst_port"));
-                set(route, value(item, "protocol").toUpperCase(Locale.ROOT) + " · "
-                    + value(item, "inbound") + " → " + value(item, "outbound"));
-                set(up, "Upload\n" + byteMetric(item, "upload_bytes"));
-                set(down, "Download\n" + byteMetric(item, "download_bytes"));
-                set(latency, "First response  " + metric(item, "first_response_ms", " ms"));
-                set(info, "Duration  " + (item.isNull("duration_ms") ? "—" : item.optLong("duration_ms") / 1000 + " s")
-                    + (item.optBoolean("half_closed") ? " · Half closed" : ""));
-            } else {
-                String tag = value(item, "tag");
-                set(title, tag);
-                JSONObject selector = item.optJSONObject("selector");
-                set(route, selector == null ? "Outbound" : "Selected · " + value(selector, "selected"));
-                select.setVisibility(selector == null ? View.GONE : View.VISIBLE);
-                JSONArray members = selector == null ? null : selector.optJSONArray("outbounds");
-                select.setEnabled(members != null && members.length() > 0);
-                select.setContentDescription("Choose proxy for " + tag);
-                boolean pending = owner.pendingProbes.contains(tag);
-                set(test, pending ? "Probing…" : "Probe latency");
-                test.setEnabled(!pending);
-                test.setContentDescription("Probe latency for " + tag);
-                JSONObject quality = item.optJSONObject("quality");
-                JSONObject sample = quality == null ? null : quality.optJSONObject("sq_conn_stats");
-                JSONObject probeResult = quality == null ? null : quality.optJSONObject("probe");
-                JSONObject uplink = sample == null ? null : sample.optJSONObject("uplink");
-                JSONObject downlink = sample == null ? null : sample.optJSONObject("downlink");
-                set(up, "Upload RTT\n" + metric(uplink, "rtt", " ms"));
-                set(down, "Download RTT\n" + metric(downlink, "rtt", " ms"));
-                set(latency, "Probe latency  " + (probeResult == null ? "Not probed"
-                    : "ok".equals(probeResult.optString("status")) ? metric(probeResult, "latency_ms", " ms") : "Unavailable"));
-                set(info, "Packet loss · Up " + loss(uplink) + " / Down " + loss(downlink));
-            }
+            String domain = item.isNull("dst_domain") ? "" : item.optString("dst_domain").trim();
+            String destination = domain.isEmpty() ? value(item, "dst_ip") : domain;
+            if (domain.isEmpty() && destination.contains(":")) destination = "[" + destination + "]";
+            set(title, destination + ":" + value(item, "dst_port"));
+            set(route, value(item, "protocol").toUpperCase(Locale.ROOT) + " · "
+                + value(item, "inbound") + " → " + value(item, "outbound"));
+            set(up, "Upload\n" + byteMetric(item, "upload_bytes"));
+            set(down, "Download\n" + byteMetric(item, "download_bytes"));
+            set(latency, "First response  " + metric(item, "first_response_ms", " ms"));
+            set(info, "Duration  " + (item.isNull("duration_ms") ? "—" : item.optLong("duration_ms") / 1000 + " s")
+                + (item.optBoolean("half_closed") ? " · Half closed" : ""));
         }
+    }
+
+    private final class ProxyRow extends RecyclerView.ViewHolder {
+        final RuntimeList owner;
+        final TextView name, subtitle, up, down;
+        final LinearLayout quality;
+        final ImageButton select, test;
+        DisplayItem entry;
+
+        ProxyRow(RuntimeList owner) {
+            super(column());
+            this.owner = owner;
+            LinearLayout body = (LinearLayout) itemView;
+            body.setPadding(dp(12), dp(8), dp(12), dp(8));
+            RecyclerView.LayoutParams params = new RecyclerView.LayoutParams(-1, -2);
+            params.bottomMargin = dp(8);
+            body.setLayoutParams(params);
+            LinearLayout heading = row();
+            heading.setGravity(Gravity.CENTER_VERTICAL);
+            select = iconAction("", () -> {
+                JSONObject parent = entry.parent == null ? entry.item : entry.parent;
+                choose.choose(value(parent, "tag"), parent.optJSONObject("selector"),
+                    entry.parent == null ? null : value(entry.item, "tag"));
+            });
+            heading.addView(select, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            LinearLayout identity = column();
+            identity.setPadding(dp(8), 0, dp(8), 0);
+            name = text("", 15, ink, true);
+            identity.addView(name);
+            subtitle = text("", 12, secondary, false);
+            subtitle.setFontFeatureSettings("tnum");
+            add(identity, subtitle, 2, 0);
+            heading.addView(identity, new LinearLayout.LayoutParams(0, -2, 1));
+            test = iconAction("", () -> probe.accept(value(entry.item, "tag")));
+            heading.addView(test, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            body.addView(heading);
+            quality = row();
+            up = text("", 13, download, false);
+            down = text("", 13, primary, false);
+            for (TextView measurement : new TextView[]{up, down}) {
+                measurement.setFontFeatureSettings("tnum");
+                measurement.setPadding(0, dp(4), dp(8), 0);
+                quality.addView(measurement, new LinearLayout.LayoutParams(0, -2, 1));
+            }
+            icon(up, R.drawable.ic_upload, download);
+            icon(down, R.drawable.ic_download, primary);
+            body.addView(quality);
+        }
+
+        void bind(DisplayItem entry) {
+            this.entry = entry;
+            String tag = value(entry.item, "tag");
+            JSONObject selector = entry.item.optJSONObject("selector");
+            boolean heading = entry.parent == null && selector != null;
+            JSONObject parentSelector = entry.parent == null ? null : entry.parent.optJSONObject("selector");
+            boolean selected = parentSelector != null && tag.equals(parentSelector.optString("selected"));
+            boolean selecting = owner.pendingSelections.contains(entry.parent == null ? tag : value(entry.parent, "tag"));
+            set(name, tag);
+            name.setContentDescription(heading ? tag + ", selector" : tag);
+            if (android.os.Build.VERSION.SDK_INT >= 28) name.setAccessibilityHeading(heading);
+            GradientDrawable background = fieldBackground();
+            if (selected) background.setStroke(dp(1), primary);
+            itemView.setBackground(heading ? null : background);
+            select.setVisibility(heading || entry.parent != null ? View.VISIBLE : View.GONE);
+            JSONArray options = selector == null ? null : selector.optJSONArray("outbounds");
+            select.setEnabled(!selecting && !selected && (!heading || options != null && options.length() > 0));
+            select.setSelected(selected);
+            select.setImageResource(heading ? R.drawable.ic_proxies
+                : selected ? R.drawable.ic_check_circle : R.drawable.ic_circle);
+            select.setContentDescription(heading ? "Choose proxy for " + tag
+                : (selected ? "Selected " : "Select ") + tag + " for " + value(entry.parent, "tag"));
+            select.setTooltipText(select.getContentDescription());
+            boolean pending = owner.pendingProbes.contains(tag);
+            test.setEnabled(!pending);
+            test.setImageResource(pending ? R.drawable.ic_hourglass : R.drawable.ic_probe);
+            test.setContentDescription((pending ? "Probing " : "Probe latency for ") + tag);
+            test.setTooltipText(test.getContentDescription());
+            JSONObject measurements = entry.item.optJSONObject("quality");
+            JSONObject sample = measurements == null ? null : measurements.optJSONObject("sq_conn_stats");
+            JSONObject result = measurements == null ? null : measurements.optJSONObject("probe");
+            if (heading) {
+                JSONArray members = selector.optJSONArray("outbounds");
+                set(subtitle, value(selector, "selected") + " · " + (members == null ? 0 : members.length()) + " outbounds");
+                subtitle.setContentDescription("Selected " + value(selector, "selected") + ", "
+                    + (members == null ? 0 : members.length()) + " outbounds");
+                icon(subtitle, R.drawable.ic_check_circle, primary);
+            } else {
+                String latency = result == null ? "Untested" : "ok".equals(result.optString("status"))
+                    ? milliseconds(result, "latency_ms") : "timeout".equals(result.optString("status")) ? "Timed out" : "Failed";
+                set(subtitle, latency);
+                subtitle.setContentDescription("Probe latency: " + latency);
+                icon(subtitle, R.drawable.ic_probe, secondary);
+            }
+            quality.setVisibility(!heading && sample != null ? View.VISIBLE : View.GONE);
+            JSONObject uplink = sample == null ? null : sample.optJSONObject("uplink");
+            JSONObject downlink = sample == null ? null : sample.optJSONObject("downlink");
+            set(up, milliseconds(uplink, "rtt") + " · " + loss(uplink));
+            set(down, milliseconds(downlink, "rtt") + " · " + loss(downlink));
+            up.setContentDescription("Upload RTT " + milliseconds(uplink, "rtt") + ", packet loss " + loss(uplink));
+            down.setContentDescription("Download RTT " + milliseconds(downlink, "rtt") + ", packet loss " + loss(downlink));
+            up.setTooltipText(up.getContentDescription());
+            down.setTooltipText(down.getContentDescription());
+        }
+    }
+
+    private ImageButton iconAction(String label, Runnable action) {
+        ImageButton button = new ImageButton(context);
+        button.setContentDescription(label);
+        button.setMinimumHeight(dp(48));
+        button.setMinimumWidth(dp(48));
+        button.setPadding(dp(14), dp(14), dp(14), dp(14));
+        button.setImageTintList(new ColorStateList(new int[][]{new int[]{android.R.attr.state_selected},
+            new int[]{-android.R.attr.state_enabled}, new int[]{}}, new int[]{primary, secondary, primary}));
+        button.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(outline), null, shape(container, 8)));
+        button.setOnClickListener(view -> action.run());
+        return button;
     }
 
     Button action(String label, Runnable action, boolean filled) {
@@ -684,6 +845,13 @@ final class DiagnosticsUi {
 
     private static String metric(JSONObject item, String key, String suffix) {
         return item == null || item.isNull(key) ? "—" : item.optString(key) + suffix;
+    }
+
+    private static String milliseconds(JSONObject item, String key) {
+        Object raw = item == null ? null : item.opt(key);
+        if (!(raw instanceof Number)) return "—";
+        double value = ((Number) raw).doubleValue();
+        return Double.isFinite(value) && value >= 0 ? Math.round(value) + " ms" : "—";
     }
 
     private static String byteMetric(JSONObject item, String key) {

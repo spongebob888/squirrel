@@ -276,7 +276,7 @@ The palette is cool and restrained, with accents reserved for actions, selected 
 - **Secondary Slate** (`secondary-light` / `secondary-dark`): explanatory copy, metadata, hints and disabled text.
 - **Fine Outline** (`outline-light` / `outline-dark`): panel/field/button strokes, engine dividers and native ripple tint.
 
-**The Labeled Direction Rule.** Use periwinkle for download and teal for upload, and retain the direction words. Connection tiles show Downloaded then Uploaded; row pairs show Upload then Download. Color never replaces the label.
+**The Labeled Direction Rule.** Use periwinkle for download and teal for upload. Connection tiles show Downloaded then Uploaded; session pairs show Upload then Download. Compact proxy measurements use upload/download vector arrows with full accessible labels and tooltips. Direction remains identifiable independently of color.
 
 ## Typography
 
@@ -305,7 +305,7 @@ Navigation follows available Android configuration size: below **600dp width**, 
 
 Page horizontal padding is (22dp). Normal diagnostic pages begin at (24dp), short pages at (12dp). Panel padding is normally (16dp); panel gaps are (12dp) or (16dp). The shared spacing scale is in frontmatter; values are Android dp rather than browser pixels. Engine label/value rows allocate widths 1:1.4, use (13dp) vertical padding and align values to the end. Lists use outlined, content-wrapping records with (12dp) gaps, preserving long names and bracketed IPv6 destinations. RecyclerView stable diff updates keep reading position without item animations.
 
-Diagnostics compact mode is **screenHeightDp < 480**. Titles shrink, list descriptions disappear, and Connection puts controls beside measurements at widths 1:1.5 with a (16dp) gap. The compact control panel uses (12dp) padding, omits the redundant Network status heading and orders state, full-height action, detail, then profile. The action remains at least (48dp), ahead of wrapping copy. Proxy/session rows separate identity from measurements at 1:1.3; proxy actions add a 0.8-weight column. Compact Sessions places text filtering and protocol choices side by side. These are height adaptations, independent of navigation width thresholds.
+Diagnostics compact mode is **screenHeightDp < 480**. Titles shrink, list descriptions disappear, and Connection puts controls beside measurements at widths 1:1.5 with a (16dp) gap. The compact control panel uses (12dp) padding, omits the redundant Network status heading and orders state, full-height action, detail, then profile. The action remains at least (48dp), ahead of wrapping copy. Session rows separate identity from measurements at 1:1.3. Compact Sessions places text filtering and protocol choices side by side. Compact Proxies places its title and live count beside the filter to preserve list height. These are height adaptations, independent of navigation width thresholds.
 
 Configuration stacks controls above its flexible editor below **600dp width**. At or above that width, a scrollable control sidebar has width **min(360dp, screenWidthDp / 2 − 36dp)**, followed by a (24dp) gap and the flexible editor. Below **500dp measured page height**, a non-wide editor page hides the redundant heading/profile label and uses (12dp) top padding. Logs hides its heading below **450dp measured page height**, retaining filter/live/export controls and a flexible selectable viewer. These measured-height adaptations preserve editing space when the IME resizes the app.
 
@@ -331,11 +331,19 @@ Compact rectangular actions with modest rounding. Primary actions use periwinkle
 
 ### Chips
 
-Outbound selection is a textual chip, not a separate control: selection wash, bold route-colored text, (8dp) corners and (7dp 10dp) padding. The “Selected” wording carries the state independently of color. Sessions retain plain route text.
+Proxy members use circular selection controls. A checked circle and periwinkle outline identify the active member; the accessible name includes “Selected” and its selector. Selector headers show the current member and member count. Sessions retain plain route text.
 
 ### Cards / Containers
 
-Connection status, paired transfer totals, engine detail and proxy/session rows use panel fill with (12dp) corners and a (1dp) outline. Normal internal padding is (16dp). Runtime list records use (16dp 16dp 4dp) outer padding and manage bottom spacing inside. Compact Connection uses its documented smaller padding and control-first order.
+Connection status, paired transfer totals, engine detail and proxy/session rows use panel fill with (12dp) corners and a (1dp) outline. Normal internal padding is (16dp). Session records use (16dp 16dp 4dp) outer padding and manage bottom spacing inside. Proxy records use (12dp 8dp) padding and (8dp) gaps. Compact Connection uses its documented smaller padding and control-first order.
+
+### Proxy selectors and outbound quality
+
+Following `../squirrelboard`, selectors appear first, each immediately followed by its configured members in configuration order. Members are directly selectable; a selector's radio icon also opens the native chooser. Ordinary outbounds follow under All outbounds. Shared members have independent row identities per selector and retain their own selected state. Live refreshes preserve scroll position, and searching a member retains its selector context. Searching a selector shows its members.
+
+Each proxy row shows its name, a lightning icon with the cached HTTP probe result, and a (48dp) icon action to probe again. Pending probes show an hourglass and disable duplicate requests across all copies of the outbound. A pending selection disables that selector's controls until the request finishes; the checkmark changes only after a successful refreshed snapshot. Failures remain visible in the page's action notice.
+
+When a QUIC sample exists, a compact measurement line shows upload and download arrows, integer RTT in milliseconds, and packet-loss percentage. RTT and probe milliseconds round to the nearest integer; zero stays zero and invalid or missing RTT stays an em dash. Full measurement meanings are available through accessibility labels and tooltips. Rows without transport samples omit that line. Probe states remain explicit: Untested, Timed out, or Failed. Names wrap, and controls keep (48dp) targets at larger text sizes. No explanatory subtitle or repeated Outbound/Upload RTT/Download RTT/Packet loss labels appear on this page.
 
 ### Inputs / Fields
 
@@ -347,7 +355,7 @@ All three layouts share quiet-sidebar fill, outlined-ripple feedback, selected p
 
 ### Transfer and engine measurements
 
-Connection shows two equally sized outlined tiles, Downloaded first and Uploaded second, separated by (12dp). Totals use slate tabular figures, with periwinkle/teal direction icons and explicit labels. Proxy/session row pairs put upload left in teal and download right in periwinkle; labels are repeated. Engine rows use plain key/value alignment and thin dividers. Missing values use an em dash; zero remains an actual measurement.
+Connection shows two equally sized outlined tiles, Downloaded first and Uploaded second, separated by (12dp). Totals use slate tabular figures, with periwinkle/teal direction icons and explicit labels. Proxy/session row pairs put upload left in teal and download right in periwinkle; proxy rows use arrows with accessible labels while session rows retain visible labels. Engine rows use plain key/value alignment and thin dividers. Missing values use an em dash; zero remains an actual measurement.
 
 ### Source workspaces
 

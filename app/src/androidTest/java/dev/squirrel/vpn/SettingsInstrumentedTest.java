@@ -17,7 +17,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityNodeInfo;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -147,12 +146,12 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
             });
             getInstrumentation().waitForIdleSync();
             long layoutDeadline = SystemClock.uptimeMillis() + 5000;
-            Button visibleProbe;
+            View visibleProbe;
             do {
                 visibleProbe = onMain(() -> findProbe(main.findViewById(R.id.proxy_rows)));
                 if (visibleProbe == null) Thread.sleep(50);
             } while (visibleProbe == null && SystemClock.uptimeMillis() < layoutDeadline);
-            Button probe = visibleProbe;
+            View probe = visibleProbe;
             assertNotNull(probe);
             onMain(() -> { probe.performClick(); return null; });
             assertTrue("One tap must start the probe without a URL dialog", received.await(5, TimeUnit.SECONDS));
@@ -274,12 +273,12 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
         assertNotNull(settings);
     }
 
-    private Button findProbe(View view) {
-        if (view instanceof Button && "Probe latency".contentEquals(((Button) view).getText())) return (Button) view;
+    private View findProbe(View view) {
+        if (view.getContentDescription() != null && view.getContentDescription().toString().startsWith("Probe latency for ")) return view;
         if (view instanceof ViewGroup) {
             ViewGroup group = (ViewGroup) view;
             for (int i = 0; i < group.getChildCount(); i++) {
-                Button found = findProbe(group.getChildAt(i));
+                View found = findProbe(group.getChildAt(i));
                 if (found != null) return found;
             }
         }
