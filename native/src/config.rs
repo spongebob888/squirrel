@@ -264,4 +264,32 @@ mod tests {
         parse(include_str!("../../examples/shadowquic.yaml")).unwrap();
         parse(include_str!("../../examples/direct.yaml")).unwrap();
     }
+
+    #[test]
+    fn bundled_cn_template_preserves_routing_and_uses_private_runtime_paths() {
+        let template = include_str!("../../app/src/main/assets/example.yaml");
+        assert_eq!(template, include_str!("../../examples/shadowquic.yaml"));
+        let original = document(template).unwrap();
+        let prepared =
+            prepare_android_config(template, Path::new("/private/files"), "test-token").unwrap();
+        let runtime = document(&prepared).unwrap();
+        let (cfg, vpn) = parse(&prepared).unwrap();
+        assert_eq!(cfg.inbounds.len(), 2);
+        assert_eq!(cfg.inbounds[1].tag(), "tun-in");
+        assert_eq!(vpn["dns"], json!(["1.1.1.1", "1.0.0.1"]));
+        assert_eq!(runtime["router"]["src"], original["router"]["src"]);
+        assert_eq!(runtime["dns"], original["dns"]);
+        assert_eq!(
+            cfg.router.database[0].path(),
+            Path::new("/private/files/data/geolite2-country.mmdb")
+        );
+        assert_eq!(
+            cfg.router.database[1].path(),
+            Path::new("/private/files/data/geosite.redb")
+        );
+        assert_eq!(
+            runtime["restful-api"],
+            json!({"bind-addr": "127.0.0.1:19090", "secret": "test-token"})
+        );
+    }
 }

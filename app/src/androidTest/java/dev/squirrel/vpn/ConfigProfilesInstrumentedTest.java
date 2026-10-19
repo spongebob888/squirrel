@@ -36,6 +36,21 @@ public final class ConfigProfilesInstrumentedTest extends InstrumentationTestCas
         assertEquals(CONFIG, ConfigStore.read(context));
     }
 
+    public void testFreshProfileUsesCnTemplateAndPreservesSavedEdits() throws Exception {
+        String template = ConfigStore.asset(context, "example.yaml");
+        assertEquals(template, ConfigStore.read(context));
+        String runtime = ConfigStore.forRuntime(context, template);
+        org.json.JSONObject config = new org.json.JSONObject(runtime);
+        org.json.JSONObject vpn = new org.json.JSONObject(NativeBridge.validate(runtime));
+        assertEquals("tun-in", config.getJSONArray("inbounds").getJSONObject(1).getString("tag"));
+        assertEquals("1.1.1.1", vpn.getJSONArray("dns").getString(0));
+        assertEquals(new File(root, "data/geosite.redb").getAbsolutePath(),
+            config.getJSONObject("router").getJSONArray("database").getJSONObject(1).getString("path"));
+        assertEquals("127.0.0.1:19090", config.getJSONObject("restful-api").getString("bind-addr"));
+        ConfigStore.save(context, CONFIG);
+        assertEquals(CONFIG, ConfigStore.read(context));
+    }
+
     public void testProfilesSaveSelectRenameAndDeleteIndependently() throws Exception {
         ConfigProfiles.State initial = ConfigProfiles.list(context);
         String first = initial.selectedId;
