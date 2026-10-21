@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
-python3 scripts/prepare-core.py
-shadowquic_dir="${SHADOWQUIC_DIR:-.build/shadowquic-upstream}"
+shadowquic_dir="$(python3 scripts/prepare-core.py)"
 cargo_config="$shadowquic_dir/.cargo/config.toml"
 if [[ ! -f "$cargo_config" ]]; then
-  echo "ShadowQUIC Cargo config missing: $cargo_config. Check SHADOWQUIC_DIR." >&2
+  echo "ShadowQUIC Cargo config missing from the pinned dependency: $cargo_config." >&2
   exit 1
 fi
 sdk_dir="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"

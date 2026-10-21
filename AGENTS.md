@@ -7,11 +7,11 @@
 - `app/src/androidTest/`: device instrumentation tests for JNI, packet forwarding, restart, and import validation.
 - `native/src/`: Rust configuration normalization, rotating logs, and runtime/JNI lifecycle; unit tests live beside implementations.
 - `examples/`: user configuration examples. Keep corresponding bundled assets synchronized.
-- `scripts/`: prepare and build the ShadowQUIC dependency from unchanged upstream sources. `.build/`, `native/target/`, and Gradle build directories are generated.
+- `scripts/`: resolve and build the pinned ShadowQUIC Git dependency from unchanged upstream sources. `.build/`, `native/target/`, and Gradle build directories are generated.
 
 ## Build, Test, and Development Commands
 
-Use JDK 17/21, Rust stable with edition 2024 support, Python 3, Android SDK 36, and NDK `28.2.13676358`. Set `JAVA_HOME` and `ANDROID_HOME`. ShadowQUIC defaults to fetching upstream `main`; this environment uses `SHADOWQUIC_DIR=/home/liu/ws/shadowquic`. Local overrides must include upstream Android TUN support.
+Use JDK 17/21, Rust stable with edition 2024 support, Python 3, Android SDK 36, and NDK `28.2.13676358`. Set `JAVA_HOME` and `ANDROID_HOME`. The native crate imports ShadowQUIC directly from GitHub tag `v0.4.5`; `native/Cargo.lock` pins its exact commit. Cargo manages the dependency checkout.
 
 Run from the repository root:
 
@@ -40,4 +40,4 @@ This snapshot has no Git history to establish conventions. Use concise imperativ
 
 ## Configuration & VPN Invariants
 
-Preserve the app-package bypass before establishing the VPN. Maintain descriptor ownership and disconnect cleanup. Never edit the original ShadowQUIC checkout or generated build copy as the lasting fix; update the preparation workflow or make the change upstream. Keep credentials out of committed configs and test artifacts.
+Preserve the app-package bypass before establishing the VPN. Maintain descriptor ownership and disconnect cleanup. Never edit a ShadowQUIC checkout or Cargo's cached dependency as the lasting fix; update the build workflow or make the change upstream. Keep credentials out of committed configs and test artifacts.

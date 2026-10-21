@@ -16,11 +16,11 @@ An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 ph
 
 Use the pinned Nix development environment on **x86_64 Linux**, following the Android SDK composition used by Homesick. `nix/flake.nix` and `nix/flake.lock` supply JDK 21, Rust with both Android targets, Python, native build tools, Android SDK/build tools 36, NDK **28.2.13676358**, and the emulator with a Google APIs x86_64 system image. A separate Android Studio installation, mutable SDK, or `steam-run` is not required. The composition accepts the Android SDK licenses through Nixpkgs configuration.
 
-By default, each native build fetches the latest `main` branch from
-[ShadowQUIC on GitHub](https://github.com/spongebob888/shadowquic) into the ignored
-`.build/shadowquic-upstream/` cache. Git and network access are required; fetch
-failures stop the build instead of silently using an older revision. Preparation
-prints the resolved commit.
+The native crate imports [ShadowQUIC v0.4.5 from GitHub](https://github.com/spongebob888/shadowquic/tree/v0.4.5)
+as a Cargo Git dependency. `native/Cargo.toml` selects the release tag and
+`native/Cargo.lock` pins its exact commit. Cargo downloads the source into its
+Git cache on first use and reuses it for subsequent builds. Updating the core
+requires an explicit manifest and lockfile change.
 
 ```sh
 nix develop ./nix
@@ -37,19 +37,14 @@ The flake lives in `nix/` so Nix excludes changing build artifacts even in a sou
 
 The installable APK is `app/build/outputs/apk/debug/app-debug.apk`. Gradle builds and packages the actual Rust library for both supported ABIs. To build only one architecture, use `ANDROID_ABIS=arm64-v8a ./gradlew assembleDebug` or `ANDROID_ABIS=x86_64 ./gradlew assembleDebug`. Native ELF segments are aligned for 16 KiB Android pages.
 
-To use a local checkout instead, set `SHADOWQUIC_DIR=/path/to/shadowquic` (for example,
-`SHADOWQUIC_DIR=/home/liu/ws/shadowquic nix develop ./nix --command ./gradlew assembleDebug`).
-This skips GitHub fetching and leaves that checkout untouched. Unset the variable
-to return to GitHub `main`.
+`scripts/prepare-core.py` resolves the locked dependency through Cargo metadata and prints its workspace root. Native builds load `.cargo/config.toml` from that exact checkout to preserve upstream target settings, including Android ARM64's `-C default-linker-libraries` and jemalloc's 16 KiB page support. The build appends its 16 KiB ELF page-alignment flag through Cargo configuration array merging. See [Cargo configuration](https://doc.rust-lang.org/cargo/reference/config.html).
 
-Native builds explicitly load `$SHADOWQUIC_DIR/.cargo/config.toml` (or `.build/shadowquic-upstream/.cargo/config.toml` by default). This preserves upstream target settings, including Android ARM64's `-C default-linker-libraries`. The build appends its 16 KiB page-alignment flag through Cargo configuration array merging. Changes to the upstream config take effect on the next build without copying it into Squirrel. See [Cargo configuration](https://doc.rust-lang.org/cargo/reference/config.html).
-
-ShadowQUIC includes Android TUN support and fake-IP restoration upstream, accepting an owned `VpnService` descriptor instead of creating a desktop adapter. Local overrides must include that support (commit `d516ed1` or later). `scripts/prepare-core.py` copies the source unchanged into the ignored `.build/shadowquic/` directory for configurable Cargo path dependencies; it never edits its source checkout. The Rust dependency lockfile is checked in. Incompatible core changes fail the build explicitly.
+ShadowQUIC includes Android TUN support and fake-IP restoration upstream, accepting an owned `VpnService` descriptor instead of creating a desktop adapter. Squirrel builds the Git dependency directly without copying or modifying upstream sources.
 
 ## Continuous integration and alpha releases
 
 Every push to `main` runs `.github/workflows/alpha.yml` on GitHub Actions using
-`nix develop ./nix`. It fetches ShadowQUIC `main` once, checks Rust formatting,
+`nix develop ./nix`. It resolves the pinned ShadowQUIC `v0.4.5` dependency, checks Rust formatting,
 runs Rust unit tests, and builds/lints the universal ARM64/x86_64 release APK, then signs and verifies it.
 Successful runs publish an `alpha-<run-number>-<attempt>` GitHub prerelease with
 an APK, SHA-256 checksums, and both source commit IDs. Each push runs independently;

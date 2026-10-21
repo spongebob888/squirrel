@@ -37,12 +37,10 @@ jobs:
             fi
           done
 
-      - name: Prepare ShadowQUIC main
+      - name: Resolve pinned ShadowQUIC dependency
         run: |
-          nix develop ./nix --command python3 scripts/prepare-core.py
-          # Use the exact fetched source for both tests and the Android build.
-          echo "SHADOWQUIC_DIR=$GITHUB_WORKSPACE/.build/shadowquic-upstream" >> "$GITHUB_ENV"
-          echo "SHADOWQUIC_REVISION=$(git -C .build/shadowquic-upstream rev-parse HEAD)" >> "$GITHUB_ENV"
+          shadowquic_dir="$(nix develop ./nix --command python3 scripts/prepare-core.py)"
+          echo "SHADOWQUIC_REVISION=$(git -C "$shadowquic_dir" rev-parse HEAD)" >> "$GITHUB_ENV"
 
       - name: Check Rust formatting and tests
         run: |
@@ -74,7 +72,7 @@ jobs:
           Automated alpha build from main.
 
           - Squirrel commit: $GITHUB_SHA
-          - ShadowQUIC main commit: $SHADOWQUIC_REVISION
+          - ShadowQUIC v0.4.5 commit: $SHADOWQUIC_REVISION
           - Universal APK: ARM64 and x86_64; Android 8.0 or later.
           - Release APK signed with the persistent repository signing key.
             Subsequent alphas signed with this key can update the app in place.

@@ -23,7 +23,7 @@ Options:
   --restart   Cold-restart the selected emulator, preserving its saved data.
   -h, --help  Show this help.
 
-Environment: SHADOWQUIC_DIR, SQUIRREL_AVD_NAME, SQUIRREL_SYSTEM_IMAGE, APK_PATH,
+Environment: SQUIRREL_AVD_NAME, SQUIRREL_SYSTEM_IMAGE, APK_PATH,
              EMULATOR_BOOT_TIMEOUT (seconds; default: 180),
              SQUIRREL_EMULATOR_GPU (default: swiftshader; use host for host GPU).
 SDK, NDK, Java, Rust, and emulator tools are supplied by nix/flake.nix.
