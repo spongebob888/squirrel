@@ -130,11 +130,14 @@ pub fn parse(text: &str) -> Result<(Config, Value), String> {
         return Err("Android supports exactly one TUN inbound".into());
     }
     let tun = tuns[0];
-    let vpn = json!({
+    let mut vpn = json!({
         "ipv4": tun.ipv4.addr().to_string(), "ipv4Prefix": tun.ipv4.prefix_len(),
-        "ipv6": tun.ipv6.addr().to_string(), "ipv6Prefix": tun.ipv6.prefix_len(),
         "mtu": tun.mtu, "dns": dns,
     });
+    if let Some(ipv6) = tun.ipv6 {
+        vpn["ipv6"] = json!(ipv6.addr().to_string());
+        vpn["ipv6Prefix"] = json!(ipv6.prefix_len());
+    }
     // Package bypass protects every socket owned by this UID. Imported desktop
     // protection socket paths are unnecessary and may not exist on this device.
     for outbound in &mut cfg.outbounds {
@@ -225,14 +228,35 @@ mod tests {
         assert_eq!(cfg.inbounds.len(), 1);
         assert_eq!(vpn["dns"][0], "9.9.9.9");
         assert_eq!(vpn["mtu"], 1500);
+        assert_eq!(vpn["ipv6"], "fdfe:dcba:9876::1");
+        assert_eq!(vpn["ipv6Prefix"], 126);
     }
 
     #[test]
     fn preserves_tun_addresses_and_routing() {
-        let (cfg, vpn) = parse(&format!("{DIRECT}\ninbounds:\n  - type: tun\n    tag: phone\n    ipv4: 10.7.0.2/24\n    mtu: 1400\n    default-outbound: direct\n")).unwrap();
+        let (cfg, vpn) = parse(&format!("{DIRECT}\ninbounds:\n  - type: tun\n    tag: phone\n    ipv4: 10.7.0.2/24\n    ipv6: '2001:db8::2/64'\n    mtu: 1400\n    default-outbound: direct\n")).unwrap();
         assert_eq!(vpn["ipv4"], "10.7.0.2");
+        assert_eq!(vpn["ipv4Prefix"], 24);
+        assert_eq!(vpn["ipv6"], "2001:db8::2");
+        assert_eq!(vpn["ipv6Prefix"], 64);
         assert_eq!(vpn["mtu"], 1400);
         assert_eq!(cfg.inbounds[0].default_outbound(), Some("direct"));
+    }
+
+    #[test]
+    fn null_tun_ipv6_disables_it_in_core_and_android_settings() {
+        let (cfg, vpn) = parse(&format!(
+            "{DIRECT}\ninbounds: [{{type: tun, tag: phone, ipv6: null}}]\n"
+        ))
+        .unwrap();
+        let InboundCfg::Tun(tun) = &cfg.inbounds[0] else {
+            panic!("Expected TUN inbound");
+        };
+        assert!(tun.ipv6.is_none());
+        assert!(vpn.get("ipv6").is_none());
+        assert!(vpn.get("ipv6Prefix").is_none());
+        assert_eq!(vpn["ipv4"], "172.19.0.1");
+        assert_eq!(vpn["ipv4Prefix"], 30);
     }
 
     #[test]
@@ -253,6 +277,7 @@ mod tests {
             "android: {dns-servers: [127.0.0.1]}",
             "android: {typo: true}",
             "inbounds: [{type: tun, tag: a}, {type: tun, tag: b}]",
+            "inbounds: [{type: tun, tag: a, ipv6: invalid}]",
             "router: {default-outbound: missing}",
         ] {
             assert!(parse(&format!("{DIRECT}\n{extra}\n")).is_err(), "{extra}");

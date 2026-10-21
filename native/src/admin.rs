@@ -111,6 +111,7 @@ async fn execute(
             DnsCfg::Udp(c) => c.bind_addr = bind,
             DnsCfg::Tcp(c) => c.bind_addr = bind,
             DnsCfg::Tls(c) => c.bind_addr = bind,
+            DnsCfg::Quic(c) => c.bind_addr = bind,
             DnsCfg::System(c) => c.bind_addr = bind,
             DnsCfg::FakeIp(_) => {
                 return Err("A fake-IP resolver cannot resolve the remote API server".into());

@@ -67,14 +67,18 @@ public final class SquirrelVpnService extends VpnService {
             JSONObject settings = new JSONObject(NativeBridge.validate(config));
             if (stopping.get()) return;
             if (VpnService.prepare(this) != null) throw new IOException("VPN permission was revoked. Connect again.");
+            // Keep ::/0 captured when IPv6 is disabled; the core drops it.
+            // An IPv6 DNS server must not enable traffic to bypass the VPN.
             Builder builder = new Builder().setSession("Squirrel · ShadowQUIC")
                 .setMtu(settings.getInt("mtu"))
                 .addAddress(settings.getString("ipv4"), settings.getInt("ipv4Prefix"))
-                .addAddress(settings.getString("ipv6"), settings.getInt("ipv6Prefix"))
                 .addRoute("0.0.0.0", 0).addRoute("::", 0)
                 .setBlocking(false)
                 .setConfigureIntent(PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class),
                     PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE));
+            if (!settings.isNull("ipv6")) {
+                builder.addAddress(settings.getString("ipv6"), settings.getInt("ipv6Prefix"));
+            }
             if (Build.VERSION.SDK_INT >= 29) builder.setMetered(false);
             // A bypass whitelist: ALL sockets from our UID, including Rust and DNS,
             // use the underlying network instead of re-entering this TUN.

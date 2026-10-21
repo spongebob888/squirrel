@@ -15,18 +15,31 @@ import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicReference;
+import org.json.JSONObject;
 
 /** Exercises the real JNI library and TUN packet engine with a datagram socket pair. */
 @SuppressWarnings("deprecation")
 public final class CoreInstrumentedTest extends InstrumentationTestCase {
     public void testUdpPacketRoundTripAndRestart() throws Exception {
+        udpPacketRoundTripAndRestart("outbounds: [{tag: direct, type: direct}]\nlog-level: debug\n");
+    }
+
+    public void testUdpPacketRoundTripAndRestartWithIpv6Disabled() throws Exception {
+        String config = "outbounds: [{tag: direct, type: direct}]\n"
+            + "inbounds: [{type: tun, tag: phone, ipv6: null}]\nlog-level: debug\n";
+        JSONObject settings = new JSONObject(NativeBridge.validate(config));
+        assertFalse(settings.has("ipv6"));
+        assertFalse(settings.has("ipv6Prefix"));
+        udpPacketRoundTripAndRestart(config);
+    }
+
+    private void udpPacketRoundTripAndRestart(String config) throws Exception {
         FileDescriptor app = new FileDescriptor(), core = new FileDescriptor();
         Os.socketpair(OsConstants.AF_UNIX, OsConstants.SOCK_DGRAM, 0, app, core);
         File log = new File(getInstrumentation().getTargetContext().getCacheDir(), "native-test.log");
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core);
              DatagramSocket echo = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"))) {
             echo.setSoTimeout(5000);
-            String config = "outbounds: [{tag: direct, type: direct}]\nlog-level: debug\n";
             assertTrue(NativeBridge.validate(config).contains("172.19.0.1"));
             // Each restart must release Rust-owned descriptors and runtime tasks.
             for (int attempt = 0; attempt < 2; attempt++) {
