@@ -41,7 +41,7 @@ The installable APK is `app/build/outputs/apk/debug/app-debug.apk`. Gradle build
 
 ShadowQUIC includes Android TUN support and fake-IP restoration upstream, accepting an owned `VpnService` descriptor instead of creating a desktop adapter. Squirrel builds the Git dependency directly without copying or modifying upstream sources.
 
-## Continuous integration and alpha releases
+## Continuous integration and releases
 
 Every push to `main` runs `.github/workflows/alpha.yml` on GitHub Actions using
 `nix develop ./nix`. It resolves the pinned ShadowQUIC `v0.4.5` dependency, checks Rust formatting,
@@ -49,6 +49,20 @@ runs Rust unit tests, and builds/lints the universal ARM64/x86_64 release APK, t
 Successful runs publish an `alpha-<run-number>-<attempt>` GitHub prerelease with
 an APK, SHA-256 checksums, and both source commit IDs. Each push runs independently;
 failed checks prevent publication. Device tests remain a local validation step.
+
+Pushing any tag beginning with `v` runs the same checks and publishes a regular
+GitHub release for that tag. For example, pushing `v1.2.3` builds app version
+`1.2.3` and uploads `squirrel-v1.2.3.apk` plus `SHA256SUMS`. The workflow builds
+the tagged commit and verifies that the tag exists before publishing. Alpha and
+tagged builds share the workflow's increasing run number as their Android
+version code and use the same signing key.
+
+To release a version after committing the changes:
+
+```sh
+git tag v1.2.3
+git push origin v1.2.3
+```
 
 The workflow uses the automatic `GITHUB_TOKEN` with `contents: write` for publishing.
 Configure these repository Actions secrets before pushing:
@@ -75,8 +89,9 @@ Run the `gh` commands from this repository with GitHub authentication configured
 Back up the keystore and passwords privately; keep the same key for future updates.
 Missing secrets stop CI before building. Signing uses a temporary keystore that is
 removed on exit, and `apksigner verify` must pass before publication.
-The workflow sets version code to its run number and version name to
-`0.1.0-alpha.<run-number>.<attempt>`; reruns retain the same version code.
+The workflow sets version code to its run number. Main-branch builds use version
+name `0.1.0-alpha.<run-number>.<attempt>`; tagged builds use the tag without its
+leading `v`. Reruns retain the same version code.
 
 For local signing, export the same four variables, build with
 `nix develop ./nix --command ./gradlew assembleRelease lintRelease`, then run
