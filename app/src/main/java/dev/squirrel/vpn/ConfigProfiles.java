@@ -16,11 +16,14 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-/** Serialized profile transactions; YAML and the selected-profile index are app-private. */
+/** Serialized profile transactions; YAML and profile metadata are app-private. */
 final class ConfigProfiles {
     static final class Profile {
-        final String id, name;
-        Profile(String id, String name) { this.id = id; this.name = name; }
+        final String id, name, downloadUrl;
+        Profile(String id, String name) { this(id, name, ""); }
+        Profile(String id, String name, String downloadUrl) {
+            this.id = id; this.name = name; this.downloadUrl = downloadUrl;
+        }
     }
 
     static final class State {
@@ -53,6 +56,14 @@ final class ConfigProfiles {
         require(load(context), id);
         write(yaml(context, id), text);
     }
+    static synchronized void setDownloadUrl(Context context, String id, String url) throws IOException {
+        State state = load(context);
+        require(state, id);
+        List<Profile> profiles = new ArrayList<>();
+        for (Profile profile : state.profiles) profiles.add(profile.id.equals(id)
+            ? new Profile(id, profile.name, url.trim()) : profile);
+        writeIndex(context, new State(profiles, state.selectedId));
+    }
     static synchronized State select(Context context, String id) throws IOException {
         State state = load(context);
         require(state, id);
@@ -62,13 +73,16 @@ final class ConfigProfiles {
         return next;
     }
     static synchronized State create(Context context, String name, String text) throws IOException {
+        return create(context, name, text, "");
+    }
+    static synchronized State create(Context context, String name, String text, String downloadUrl) throws IOException {
         State state = load(context);
         name = checkedName(state, null, name);
         String id = UUID.randomUUID().toString();
         AtomicFile file = yaml(context, id);
         write(file, text);
         List<Profile> profiles = new ArrayList<>(state.profiles);
-        profiles.add(new Profile(id, name));
+        profiles.add(new Profile(id, name, downloadUrl));
         State next = new State(profiles, id);
         try { writeIndex(context, next); }
         catch (IOException error) { file.delete(); throw error; }
@@ -79,7 +93,8 @@ final class ConfigProfiles {
         require(state, id);
         name = checkedName(state, id, name);
         List<Profile> profiles = new ArrayList<>();
-        for (Profile profile : state.profiles) profiles.add(profile.id.equals(id) ? new Profile(id, name) : profile);
+        for (Profile profile : state.profiles) profiles.add(profile.id.equals(id)
+            ? new Profile(id, name, profile.downloadUrl) : profile);
         State next = new State(profiles, state.selectedId);
         writeIndex(context, next);
         return next;
@@ -128,7 +143,7 @@ final class ConfigProfiles {
                 String id = entry.getString("id");
                 if (!validId(id) || !ids.add(id)) throw new IOException("Invalid configuration profile ID");
                 String name = checkedName(new State(profiles, ""), null, entry.getString("name"));
-                profiles.add(new Profile(id, name));
+                profiles.add(new Profile(id, name, entry.optString("downloadUrl", "")));
             }
             State state = new State(profiles, json.getString("selected"));
             require(state, state.selectedId);
@@ -165,7 +180,8 @@ final class ConfigProfiles {
     private static void writeIndex(Context context, State state) throws IOException {
         try {
             JSONArray profiles = new JSONArray();
-            for (Profile profile : state.profiles) profiles.put(new JSONObject().put("id", profile.id).put("name", profile.name));
+            for (Profile profile : state.profiles) profiles.put(new JSONObject().put("id", profile.id)
+                .put("name", profile.name).put("downloadUrl", profile.downloadUrl));
             write(index(context), new JSONObject().put("version", 1).put("selected", state.selectedId)
                 .put("profiles", profiles).toString());
         } catch (JSONException error) { throw new IOException("Cannot save configuration profiles", error); }

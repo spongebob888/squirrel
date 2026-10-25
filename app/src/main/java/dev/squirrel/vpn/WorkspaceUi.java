@@ -26,7 +26,8 @@ import java.util.Locale;
 /** Configuration and log workspaces sharing the app's native dashboard components. */
 final class WorkspaceUi {
     final EditText editor, logFilter;
-    final Button profileButton, downloadButton, more;
+    final Button profileButton, downloadButton, more, editButton;
+    final YamlEditorPanel editorPanel;
     final LinearLayout profileActions, configActions, configTools;
     final TextView configNotice, logs, logStatus;
     final Switch live;
@@ -38,21 +39,23 @@ final class WorkspaceUi {
     private String rawLogs = "", logError = "";
     private boolean hasSnapshot;
 
-    WorkspaceUi(DiagnosticsUi theme, Runnable chooseProfile, Runnable manageProfiles,
+    WorkspaceUi(android.app.Activity activity, DiagnosticsUi theme, Runnable chooseProfile, Runnable manageProfiles,
             Runnable importFile, Runnable download, Runnable save, Runnable exportConfig,
             Runnable proxyTemplate, Runnable directTemplate, Runnable exportLogs) {
         this.theme = theme;
         logFormatter = new LogFormatter(theme);
         boolean wide = theme.context.getResources().getConfiguration().screenWidthDp >= 600;
-        configuration = new EditorPage(wide);
+        configuration = theme.column();
         configuration.setId(R.id.configuration_page);
+        configuration.setBackgroundColor(theme.surface);
+        configuration.setPadding(theme.dp(22), theme.dp(24), theme.dp(22), theme.dp(12));
+        ScrollView configScroll = new ScrollView(theme.context);
+        configuration.addView(configScroll, new LinearLayout.LayoutParams(-1, -1));
         LinearLayout controls = theme.column();
         TextView configTitle = heading("Configuration");
         controls.addView(configTitle);
         TextView profileLabel = theme.text("Selected profile", 12, theme.secondary, false);
         add(controls, profileLabel, 14, 6);
-        ((EditorPage) configuration).heading = configTitle;
-        ((EditorPage) configuration).profileLabel = profileLabel;
         profileActions = theme.row();
         profileButton = theme.action("Loading profiles…", chooseProfile, false);
         profileButton.setId(R.id.config_profile);
@@ -73,14 +76,16 @@ final class WorkspaceUi {
         downloadButton = theme.action("Download URL", download, false);
         downloadButton.setId(R.id.download_config);
         weighted(configActions, downloadButton, 1.3f, true);
-        weighted(configActions, theme.action("Save", save, true), 0.75f, false);
+        Button saveConfig = theme.action("Save", save, false);
+        saveConfig.setId(R.id.config_save);
+        weighted(configActions, saveConfig, 0.75f, false);
         add(controls, configActions, 12, 0);
         configNotice = theme.text("Import or edit YAML, then Save or Connect to apply.", 13, theme.secondary, false);
         configNotice.setId(R.id.config_notice);
         configNotice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        add(controls, configNotice, 12, wide ? 12 : 0);
+        add(controls, configNotice, 12, 0);
 
-        LinearLayout editorPane = theme.column();
+        LinearLayout document = theme.panel();
         configTools = theme.row();
         configTools.setGravity(Gravity.CENTER_VERTICAL);
         TextView yaml = theme.text("YAML · UTF-8", 12, theme.secondary, true);
@@ -102,7 +107,7 @@ final class WorkspaceUi {
             menu.show();
         });
         configTools.addView(more, new LinearLayout.LayoutParams(theme.dp(88), -2));
-        add(editorPane, configTools, wide ? 0 : 8, 8);
+        add(document, configTools, 0, 12);
         editor = new EditText(theme.context);
         editor.setId(R.id.config_editor);
         editor.setTextSize(13);
@@ -130,21 +135,16 @@ final class WorkspaceUi {
         editorBackground.addState(new int[]{}, resting);
         editor.setBackground(editorBackground);
         editor.setSaveEnabled(false);
-        EditorScrollHost host = new EditorScrollHost(theme.context);
-        host.addView(editor, new android.widget.FrameLayout.LayoutParams(-1, -1));
-        editorPane.addView(host, new LinearLayout.LayoutParams(-1, 0, 1));
-        if (wide) {
-            ScrollView sidebar = new ScrollView(theme.context);
-            sidebar.addView(controls);
-            int sidebarWidth = Math.min(360, theme.context.getResources().getConfiguration().screenWidthDp / 2 - 36);
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(theme.dp(sidebarWidth), -1);
-            params.setMarginEnd(theme.dp(24));
-            configuration.addView(sidebar, params);
-            configuration.addView(editorPane, new LinearLayout.LayoutParams(0, -1, 1));
-        } else {
-            configuration.addView(controls);
-            configuration.addView(editorPane, new LinearLayout.LayoutParams(-1, 0, 1));
-        }
+        editorPanel = new YamlEditorPanel(activity, theme, editor, save);
+        editButton = theme.action("Edit YAML", this::openEditor, true);
+        editButton.setId(R.id.config_edit);
+        theme.icon(editButton, R.drawable.ic_configuration, theme.onPrimary);
+        document.addView(editButton, new LinearLayout.LayoutParams(-1, -2));
+        add(controls, document, 16, 0);
+        android.widget.FrameLayout.LayoutParams controlsParams = new android.widget.FrameLayout.LayoutParams(
+            wide ? theme.dp(Math.min(720, theme.context.getResources().getConfiguration().screenWidthDp - 44)) : -1, -2,
+            Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        configScroll.addView(controls, controlsParams);
 
         logPage = new LogPage();
         logPage.setPadding(theme.dp(22), theme.dp(wide ? 12 : 24), theme.dp(22), theme.dp(12));
@@ -210,6 +210,21 @@ final class WorkspaceUi {
     }
 
     View configurationPage() { return configuration; }
+    void openEditor() {
+        editorPanel.ready(editor.isEnabled(), false, profileButton.getText());
+        editorPanel.open();
+    }
+    void renderEditorState(boolean ready, boolean saving) {
+        editButton.setEnabled(ready);
+        editorPanel.ready(ready, saving, profileButton.getText());
+    }
+    void renderConfigNotice(String message, boolean failed) {
+        configNotice.setText(message);
+        configNotice.setTextColor(failed ? theme.error : theme.secondary);
+        editorPanel.notice(message, failed);
+    }
+    void closeEditor() { editorPanel.close(); }
+    void destroy() { editorPanel.dialog.dismiss(); }
     View logsPage() { return logPage; }
     boolean needsLogRead() { return live.isChecked() || !hasSnapshot; }
     void clearLogFilterFocus() { logFilter.clearFocus(); }
@@ -230,11 +245,13 @@ final class WorkspaceUi {
     }
 
     void saveState(Bundle state) {
+        editorPanel.saveState(state);
         state.putString("workspace.logFilter", logFilter.getText().toString());
         state.putBoolean("workspace.liveLogs", live.isChecked());
     }
 
     void restoreState(Bundle state) {
+        editorPanel.restoreState(state);
         logFilter.setText(state.getString("workspace.logFilter", ""));
         live.setChecked(state.getBoolean("workspace.liveLogs", true));
     }
@@ -295,25 +312,6 @@ final class WorkspaceUi {
         logStatus.setText(logError.isEmpty() ? (live.isChecked() ? "Live" : "Paused")
             + " · " + matches + " of " + total + " lines · service + core" : logError);
         logStatus.setTextColor(logError.isEmpty() ? theme.secondary : theme.error);
-    }
-
-    private final class EditorPage extends LinearLayout {
-        final boolean wide;
-        View heading, profileLabel;
-        EditorPage(boolean wide) {
-            super(theme.context);
-            this.wide = wide;
-            setOrientation(wide ? HORIZONTAL : VERTICAL);
-            setBackgroundColor(theme.surface);
-            setFocusableInTouchMode(true);
-        }
-        @Override protected void onMeasure(int width, int height) {
-            boolean shortViewport = !wide && View.MeasureSpec.getSize(height) < theme.dp(500);
-            heading.setVisibility(shortViewport ? GONE : VISIBLE);
-            profileLabel.setVisibility(shortViewport ? GONE : VISIBLE);
-            setPadding(theme.dp(22), theme.dp(shortViewport || wide ? 12 : 24), theme.dp(22), theme.dp(12));
-            super.onMeasure(width, height);
-        }
     }
 
     private final class LogPage extends LinearLayout {

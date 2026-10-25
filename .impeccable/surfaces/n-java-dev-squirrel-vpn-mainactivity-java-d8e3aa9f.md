@@ -72,3 +72,16 @@ duration icon accompany the values. Full meanings remain accessible and in
 tooltips. The complete destination, protocol and route remain visible; Half
 closed retains its explicit label beside a half-circle icon. Lists keep native
 filters, long-name wrapping, unknown dashes, state notices and stable refreshes.
+
+## YAML editing panel
+
+The scoped [Configuration and Logs contract](in-java-dev-squirrel-vpn-workspaceui-java-5b466e8c.md)
+owns the YAML editing flow. Configuration is a scrollable controls page with
+an Edit YAML entry, rather than an embedded source pane or control sidebar.
+The secure native Dialog fills phones and short landscapes; taller tablets
+use a centered max900dp panel with 24dp vertical margins. Save validates
+asynchronously and remains open; Close/Back retain the draft. Successful
+import, download and template loading open the panel for review. Supported
+activity recreation restores its open state, source selection, scroll, focus
+and IME visibility with retained drafts. This locally supersedes the inline
+editor composition while preserving the Squirrelboard materials.

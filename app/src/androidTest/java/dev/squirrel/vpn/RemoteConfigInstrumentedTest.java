@@ -82,7 +82,9 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
 
     public void testRemoteImportValidatesBeforeReplacingEditorAndDoesNotSave() throws Exception {
         launch();
-        String saved = ConfigStore.read(getInstrumentation().getTargetContext());
+        android.content.Context context = getInstrumentation().getTargetContext();
+        String saved = ConfigStore.read(context);
+        ConfigProfiles.Profile original = ConfigProfiles.list(context).selected();
         try (Server server = new Server()) {
             onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
             awaitPage(MainActivity.CONFIGURATION);
@@ -96,6 +98,66 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
             awaitNotice("Downloaded and validated");
             assertEquals(CONFIG, onMain(() -> editor().getText().toString()));
             assertEquals(saved, ConfigStore.read(getInstrumentation().getTargetContext()));
+        } finally { ConfigProfiles.setDownloadUrl(context, original.id, original.downloadUrl); }
+    }
+
+    public void testDownloadUrlsRemainPerProfileAfterFreshLaunchAndCanBeReused() throws Exception {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        String original = ConfigProfiles.list(context).selectedId;
+        String suffix = Long.toString(System.nanoTime());
+        String nameA = "URL A " + suffix, nameB = "URL B " + suffix;
+        String a = ConfigProfiles.create(context, nameA, CONFIG).selectedId;
+        String b = null;
+        try (Server server = new Server()) {
+            b = ConfigProfiles.create(context, nameB, "# B\n" + CONFIG).selectedId;
+            ConfigProfiles.select(context, a);
+            launch();
+            onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
+            awaitPage(MainActivity.CONFIGURATION);
+            String urlA = server.url("/redirect"), urlB = server.url("/config");
+            importUrl(urlA);
+            awaitNotice("Downloaded and validated");
+            assertEquals(urlA, ConfigProfiles.list(context).find(a).downloadUrl);
+            switchProfile(nameB);
+            openDownload();
+            assertDownloadUrl("");
+            clickAccessible("android:id/button2");
+            importUrl(urlB);
+            awaitNotice("Downloaded and validated");
+            assertEquals(urlB, ConfigProfiles.list(context).find(b).downloadUrl);
+            switchProfile(nameA);
+            openDownload();
+            assertDownloadUrl(urlA);
+            clickAccessible("android:id/button2");
+            onMain(() -> { activity.finish(); activity = null; return null; });
+            getInstrumentation().waitForIdleSync();
+            launch(); // Fresh Activity without retained instance state.
+            onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
+            awaitPage(MainActivity.CONFIGURATION);
+            openDownload();
+            assertDownloadUrl(urlA);
+            clickAccessible("android:id/button1"); // Reuse the saved URL without entering it again.
+            awaitNotice("Downloaded and validated");
+            assertEquals(CONFIG, onMain(() -> editor().getText().toString()));
+            switchProfile(nameB);
+            openDownload();
+            assertDownloadUrl(urlB);
+            clickAccessible("android:id/button2");
+            String failedUrl = server.url("/missing");
+            importUrl(failedUrl);
+            awaitNotice("Download failed");
+            clickAccessible("android:id/button1");
+            assertEquals(failedUrl, ConfigProfiles.list(context).find(b).downloadUrl);
+            openDownload();
+            assertDownloadUrl(failedUrl);
+            clickAccessible("android:id/button2");
+            assertEquals(CONFIG, ConfigProfiles.read(context, a));
+            assertEquals("# B\n" + CONFIG, ConfigProfiles.read(context, b));
+        } finally {
+            if (activity != null) onMain(() -> { activity.finish(); activity = null; return null; });
+            ConfigProfiles.select(context, original);
+            ConfigProfiles.delete(context, a);
+            if (b != null) ConfigProfiles.delete(context, b);
         }
     }
 
@@ -206,7 +268,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         fail("Cannot click " + text);
     }
     private void switchProfile(String name) throws Exception {
-        onMain(() -> { activity.findViewById(R.id.config_profile).performClick(); return null; });
+        onMain(() -> { WorkspaceTestViews.workspace(activity).closeEditor(); activity.findViewById(R.id.config_profile).performClick(); return null; });
         clickText(name);
         awaitProfile(name);
     }
@@ -230,7 +292,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         awaitReady();
     }
 
-    private EditText editor() { return activity.findViewById(R.id.config_editor); }
+    private EditText editor() throws Exception { return WorkspaceTestViews.workspace(activity).editor; }
     private ViewPager2 pager() { return activity.findViewById(R.id.pages); }
     private void awaitReady() throws Exception {
         long deadline = SystemClock.uptimeMillis() + 5000;
@@ -246,7 +308,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
             if (onMain(() -> pager().getCurrentItem() == page && pager().getScrollState() == ViewPager2.SCROLL_STATE_IDLE)) return;
             Thread.sleep(50);
         }
-        fail("Pager did not switch to tab " + page + "; editor scroll=" + onMain(() -> editor().getScrollX()) + "; editor width=" + onMain(() -> editor().getWidth()) + "; line width=" + onMain(() -> editor().getLayout().getLineWidth(0)) + "; pager height=" + onMain(() -> pager().getHeight()));
+        fail("Pager did not switch to tab " + page);
     }
     private void awaitNotice(String text) throws Exception {
         long deadline = SystemClock.uptimeMillis() + 6000;
@@ -257,13 +319,22 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         fail("Missing status: " + text);
     }
     private void importUrl(String url) throws Exception {
-        onMain(() -> { activity.findViewById(R.id.download_config).performClick(); return null; });
+        openDownload();
         AccessibilityNodeInfo field = accessible("dev.squirrel.vpn:id/remote_url");
         Bundle text = new Bundle();
         text.putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, url);
         assertTrue(field.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, text));
         field.recycle();
         clickAccessible("android:id/button1");
+    }
+    private void openDownload() throws Exception {
+        onMain(() -> { WorkspaceTestViews.workspace(activity).closeEditor(); activity.findViewById(R.id.download_config).performClick(); return null; });
+    }
+    private void assertDownloadUrl(String expected) throws Exception {
+        AccessibilityNodeInfo field = accessible("dev.squirrel.vpn:id/remote_url");
+        if (expected.isEmpty()) assertTrue(field.isShowingHintText() || field.getText() == null || field.getText().length() == 0);
+        else assertEquals(expected, field.getText().toString());
+        field.recycle();
     }
     private void clickAccessible(String id) throws Exception {
         AccessibilityNodeInfo node = accessible(id);

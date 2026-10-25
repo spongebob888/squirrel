@@ -832,7 +832,7 @@ final class DiagnosticsUi {
         }
     }
 
-    private ImageButton iconAction(String label, Runnable action) {
+    ImageButton iconAction(String label, Runnable action) {
         ImageButton button = new ImageButton(context);
         button.setContentDescription(label);
         button.setMinimumHeight(dp(48));

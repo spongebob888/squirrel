@@ -50,7 +50,7 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
         launchMain();
         onMain(() -> {
             ((ViewPager2) main.findViewById(R.id.pages)).setCurrentItem(MainActivity.PROXIES, false);
-            ((EditText) main.findViewById(R.id.config_editor)).setText("# Unsaved settings navigation fixture\n");
+            WorkspaceTestViews.workspace(main).editor.setText("# Unsaved settings navigation fixture\n");
             return null;
         });
         openSettings();
@@ -70,7 +70,7 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
         getInstrumentation().waitForIdleSync();
         onMain(() -> {
             assertEquals(MainActivity.PROXIES, ((ViewPager2) main.findViewById(R.id.pages)).getCurrentItem());
-            assertEquals("# Unsaved settings navigation fixture\n", ((EditText) main.findViewById(R.id.config_editor)).getText().toString());
+            assertEquals("# Unsaved settings navigation fixture\n", WorkspaceTestViews.workspace(main).editor.getText().toString());
             return null;
         });
         openSettings();
@@ -245,8 +245,8 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
         main = (MainActivity) getInstrumentation().startActivitySync(new Intent(context, MainActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         long deadline = SystemClock.uptimeMillis() + 5000;
-        while (SystemClock.uptimeMillis() < deadline && !onMain(() -> main.findViewById(R.id.config_editor).isEnabled())) Thread.sleep(50);
-        assertTrue(onMain(() -> main.findViewById(R.id.config_editor).isEnabled()));
+        while (SystemClock.uptimeMillis() < deadline && !onMain(() -> main.findViewById(R.id.config_edit).isEnabled())) Thread.sleep(50);
+        assertTrue(onMain(() -> main.findViewById(R.id.config_edit).isEnabled()));
     }
 
     private void openSettings() throws Exception {

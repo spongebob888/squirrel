@@ -20,13 +20,33 @@ OWN-WORLD: Cool gray canvas, white/charcoal outlined panes, slate ink, periwinkl
 
 STORY: Choose a profile, bring in configuration, edit and save it without losing the draft. Inspect a readable log tail, filter or pause its display, and export all retained logs independently of the view filter.
 
-FIRST VIEWPORT: Configuration places its title above a profile row and a compact import/download/save toolbar, followed by the status and a large YAML pane with secondary tools. Landscape puts controls beside the editor; a short IME viewport hides the redundant heading. Logs places title, scoped filter/export controls, live switch and status above a large selectable monospace viewer. All destinations share the panel-colored brand header and adaptive bottom navigation, horizontal tabs or expanded rail.
+FIRST VIEWPORT: Configuration places its title above a profile row and import/download/save toolbar, followed by status and a compact YAML action panel. Edit YAML opens a secure full-height editor window on phones and short landscape displays, or a centered editing panel on tablets. The editor has Save and Close actions; closing retains the draft. Logs places title, scoped filter/export controls, live switch and status above a large selectable monospace viewer. All destinations share the existing header and adaptive navigation.
 
 FORM: Native adaptation of user-pinned ../squirrelboard, superseding the earlier atlas seed. Exact tokens and responsive thresholds are recorded in DESIGN.md and its schemaVersion 2 sidecar.
 
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 Verification: full instrumentation suite, native light/dark/enlarged-text/landscape captures, profile/download regression checks and keyboard editing. Review data is synthetic; production FLAG_SECURE remains enabled.
+
+## YAML editing panel
+
+The user explicitly requested a popup panel for YAML editing. This is protected
+editing, with the existing native visual world and every configuration action
+preserved. There is one editor instance per workspace; its draft remains when
+the panel closes. Save validates asynchronously and keeps the panel open;
+validation failure preserves both the entered draft and the saved profile.
+Activity recreation restores the open panel, draft, selection, scroll, focus
+and keyboard visibility. Drafts remain temporary; there is no new autosave or
+process-death persistence.
+Successful import, download and template loading open the panel for review.
+The panel fills the window below 600dp width or 480dp height. Taller tablets
+use min(900dp, screenWidthDp − 48dp) width and 24dp vertical margins inside a
+full-height resizing window; the controls page centers at max720dp width.
+Save and Close retain at least 48dp touch targets. The panel has its own
+secure-window flag, resizes for the IME and leaves system
+Back behavior native. Short editing viewports omit profile/status context to
+preserve space for the source, Save and Close. Profile and source operations
+remain on the scrollable Configuration page, without an embedded editor.
 
 ## Rich log text
 

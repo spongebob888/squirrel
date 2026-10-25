@@ -103,6 +103,46 @@ public final class ConfigProfilesInstrumentedTest extends InstrumentationTestCas
         assertEquals(CONFIG, new String(Files.readAllBytes(new File(root, "configs/default.yaml").toPath()), StandardCharsets.UTF_8));
     }
 
+    public void testDownloadUrlsPersistIndependentlyThroughProfileOperations() throws Exception {
+        String first = ConfigProfiles.list(context).selectedId;
+        ConfigProfiles.save(context, first, CONFIG);
+        String firstUrl = "https://config.example.test/home.yaml?token=synthetic";
+        String secondUrl = "https://config.example.test/travel.yaml";
+        ConfigProfiles.setDownloadUrl(context, first, firstUrl);
+        String second = ConfigProfiles.create(context, "Travel", CONFIG).selectedId;
+        assertEquals("", ConfigProfiles.list(context).selected().downloadUrl);
+        ConfigProfiles.setDownloadUrl(context, second, secondUrl);
+        ConfigProfiles.setDownloadUrl(context, first, firstUrl); // Updating another profile preserves selection.
+        assertEquals(second, ConfigProfiles.list(context).selectedId);
+        ConfigProfiles.rename(context, first, "Home");
+        ConfigProfiles.save(context, first, "# Edited\n" + CONFIG);
+        assertEquals(firstUrl, ConfigProfiles.select(context, first).selected().downloadUrl);
+        assertEquals(secondUrl, ConfigProfiles.list(context).find(second).downloadUrl);
+        String copy = ConfigProfiles.create(context, "Home copy", CONFIG, firstUrl).selectedId;
+        assertEquals(firstUrl, ConfigProfiles.list(context).selected().downloadUrl);
+        ConfigProfiles.setDownloadUrl(context, copy, secondUrl);
+        assertEquals(firstUrl, ConfigProfiles.list(context).find(first).downloadUrl);
+        ConfigProfiles.delete(context, copy);
+        ConfigProfiles.delete(context, second);
+        assertEquals(firstUrl, ConfigProfiles.list(context).selected().downloadUrl);
+        assertEquals("# Edited\n" + CONFIG, ConfigProfiles.read(context, first));
+        expectFailure(() -> ConfigProfiles.setDownloadUrl(context, second, firstUrl));
+        assertEquals(firstUrl, ConfigProfiles.list(context).selected().downloadUrl);
+    }
+
+    public void testExistingProfileIndexWithoutDownloadUrlRemainsReadable() throws Exception {
+        ConfigStore.save(context, CONFIG);
+        File index = new File(root, "profiles.json");
+        org.json.JSONObject json = new org.json.JSONObject(new String(Files.readAllBytes(index.toPath()), StandardCharsets.UTF_8));
+        json.getJSONArray("profiles").getJSONObject(0).remove("downloadUrl");
+        Files.write(index.toPath(), json.toString().getBytes(StandardCharsets.UTF_8));
+        assertEquals("", ConfigProfiles.list(context).selected().downloadUrl);
+        assertEquals(CONFIG, ConfigStore.read(context));
+        ConfigProfiles.setDownloadUrl(context, "default", "https://config.example.test/config.yaml");
+        assertEquals("https://config.example.test/config.yaml", ConfigProfiles.list(context).selected().downloadUrl);
+        assertEquals(CONFIG, ConfigStore.read(context));
+    }
+
     private interface Operation { void run() throws Exception; }
     private void expectFailure(Operation operation) throws Exception {
         try { operation.run(); fail("Invalid profile operation succeeded"); }

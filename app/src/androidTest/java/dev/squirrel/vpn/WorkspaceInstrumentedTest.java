@@ -134,6 +134,7 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
     public void testEditorKeepsSpaceWithKeyboardAndMoreActionsPreserveDraft() throws Exception {
         launch();
         page(MainActivity.CONFIGURATION);
+        openEditor();
         String previous = shell("settings get secure show_ime_with_hard_keyboard").trim();
         try {
             shell("settings put secure show_ime_with_hard_keyboard 1");
@@ -151,6 +152,7 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
                 return null;
             });
             Thread.sleep(300);
+            onMain(() -> { workspace.closeEditor(); return null; });
             onMain(() -> { workspace.more.performClick(); return null; });
             assertAccessibleText("Export configuration");
             assertAccessibleText("Proxy template");
@@ -165,12 +167,77 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
         }
     }
 
+    public void testEditorPanelRetainsDraftAndCursorAcrossCloseAndRecreationAndValidatesSave() throws Exception {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        String original = ConfigProfiles.list(context).selectedId;
+        String id = ConfigProfiles.create(context, "Panel fixture " + System.nanoTime(), YAML).selectedId;
+        String draft = "# Unsaved panel draft\n" + YAML;
+        try {
+            launch();
+            page(MainActivity.CONFIGURATION);
+            openEditor();
+            onMain(() -> {
+                workspace.editor.setText(draft);
+                workspace.editor.setSelection(12);
+                workspace.editorPanel.dialog.findViewById(R.id.yaml_panel_close).performClick();
+                assertFalse(workspace.editorPanel.dialog.isShowing());
+                return null;
+            });
+            assertEquals(YAML, ConfigProfiles.read(context, id));
+            openEditor();
+            assertEquals(draft, onMain(() -> workspace.editor.getText().toString()));
+            assertEquals(12, (int) onMain(() -> workspace.editor.getSelectionStart()));
+            onMain(() -> { workspace.editor.requestFocus(); return null; });
+            android.app.Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(MainActivity.class.getName(), null, false);
+            onMain(() -> { activity.recreate(); return null; });
+            activity = (MainActivity) getInstrumentation().waitForMonitorWithTimeout(monitor, 5000);
+            getInstrumentation().removeMonitor(monitor);
+            assertNotNull(activity);
+            long deadline = SystemClock.uptimeMillis() + 5000;
+            while (SystemClock.uptimeMillis() < deadline && !onMain(() ->
+                    activity.findViewById(R.id.config_edit).isEnabled())) Thread.sleep(50);
+            workspace = onMain(() -> WorkspaceTestViews.workspace(activity));
+            getInstrumentation().waitForIdleSync();
+            assertTrue(onMain(() -> workspace.editorPanel.dialog.isShowing()));
+            assertEquals(draft, onMain(() -> workspace.editor.getText().toString()));
+            assertEquals(12, (int) onMain(() -> workspace.editor.getSelectionStart()));
+            assertTrue(onMain(() -> workspace.editor.hasFocus()));
+            back();
+            assertFalse(onMain(() -> workspace.editorPanel.dialog.isShowing()));
+            assertEquals(YAML, ConfigProfiles.read(context, id));
+            openEditor();
+            onMain(() -> { workspace.editorPanel.save.performClick(); assertFalse(workspace.editorPanel.save.isEnabled()); return null; });
+            deadline = SystemClock.uptimeMillis() + 5000;
+            while (SystemClock.uptimeMillis() < deadline && !draft.equals(ConfigProfiles.read(context, id))) Thread.sleep(50);
+            assertEquals(draft, ConfigProfiles.read(context, id));
+            assertTrue(onMain(() -> workspace.editorPanel.dialog.isShowing()));
+            deadline = SystemClock.uptimeMillis() + 5000;
+            while (SystemClock.uptimeMillis() < deadline && !onMain(() -> workspace.editorPanel.save.isEnabled())) Thread.sleep(50);
+            onMain(() -> { workspace.editor.setText("outbounds: ["); workspace.editorPanel.save.performClick(); return null; });
+            assertAccessibleText("OK");
+            assertEquals(draft, ConfigProfiles.read(context, id));
+            assertEquals("outbounds: [", onMain(() -> workspace.editor.getText().toString()));
+            clickText("OK");
+            assertTrue(onMain(() -> workspace.editorPanel.dialog.isShowing()));
+        } finally {
+            if (activity != null) onMain(() -> { activity.finish(); activity = null; return null; });
+            ConfigProfiles.select(context, original);
+            ConfigProfiles.delete(context, id);
+        }
+    }
+
     /** Real native screenshots, with all visible editor/log values replaced by labeled fixtures. */
     public void testReviewScreenshots() throws Exception {
         launch();
+        // Let feedback from the preceding save regression test leave the window.
+        Thread.sleep(2200);
         page(MainActivity.CONFIGURATION);
         assertTrue(onMain(() -> (activity.getWindow().getAttributes().flags & WindowManager.LayoutParams.FLAG_SECURE) != 0));
         capture("configuration", null);
+        openEditor();
+        assertTrue(onMain(() -> (workspace.editorPanel.dialog.getWindow().getAttributes().flags & WindowManager.LayoutParams.FLAG_SECURE) != 0));
+        capture("yaml-editor", null);
+        onMain(() -> { workspace.closeEditor(); return null; });
         Configuration config = activity.getResources().getConfiguration();
         boolean normalPortrait = config.fontScale <= 1.1f && config.orientation == Configuration.ORIENTATION_PORTRAIT
             && (config.uiMode & Configuration.UI_MODE_NIGHT_MASK) != Configuration.UI_MODE_NIGHT_YES;
@@ -183,20 +250,22 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
                 workspace.downloadButton.performClick();
             });
             back();
-            String previous = shell("settings get secure show_ime_with_hard_keyboard").trim();
-            try {
-                shell("settings put secure show_ime_with_hard_keyboard 1");
-                showKeyboard();
-                capture("configuration-keyboard", null);
-            } finally {
-                onMain(() -> {
-                    activity.getSystemService(InputMethodManager.class).hideSoftInputFromWindow(workspace.editor.getWindowToken(), 0);
-                    workspace.editor.clearFocus();
-                    return null;
-                });
-                shell(previous.equals("null") ? "settings delete secure show_ime_with_hard_keyboard"
-                    : "settings put secure show_ime_with_hard_keyboard " + previous);
-            }
+        }
+        String previous = shell("settings get secure show_ime_with_hard_keyboard").trim();
+        try {
+            shell("settings put secure show_ime_with_hard_keyboard 1");
+            openEditor();
+            showKeyboard();
+            capture("configuration-keyboard", null);
+        } finally {
+            onMain(() -> {
+                activity.getSystemService(InputMethodManager.class).hideSoftInputFromWindow(workspace.editor.getWindowToken(), 0);
+                workspace.editor.clearFocus();
+                workspace.closeEditor();
+                return null;
+            });
+            shell(previous.equals("null") ? "settings delete secure show_ime_with_hard_keyboard"
+                : "settings put secure show_ime_with_hard_keyboard " + previous);
         }
         page(MainActivity.LOGS);
         onMain(() -> { workspace.renderLogs(LOGS); return null; });
@@ -230,11 +299,11 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         long deadline = SystemClock.uptimeMillis() + 5000;
         while (SystemClock.uptimeMillis() < deadline) {
-            if (onMain(() -> ((EditText) activity.findViewById(R.id.config_editor)).isEnabled())) break;
+            if (onMain(() -> activity.findViewById(R.id.config_edit).isEnabled())) break;
             Thread.sleep(50);
         }
         onMain(() -> {
-            assertTrue("Configuration did not finish loading", ((EditText) activity.findViewById(R.id.config_editor)).isEnabled());
+            assertTrue("Configuration did not finish loading", activity.findViewById(R.id.config_edit).isEnabled());
             Field main = MainActivity.class.getDeclaredField("main");
             main.setAccessible(true);
             ((Handler) main.get(activity)).removeCallbacksAndMessages(null);
@@ -244,7 +313,7 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
             workspace.editor.setText(YAML);
             workspace.profileButton.setText("Synthetic fixture");
             workspace.profileButton.setContentDescription("Select synthetic fixture");
-            workspace.configNotice.setText("Synthetic data. Save or Connect to apply. Switching profiles keeps drafts until the app closes.");
+            workspace.renderConfigNotice("Synthetic data. Save or Connect to apply. Switching profiles keeps drafts until the app closes.", false);
             Field remoteUrl = MainActivity.class.getDeclaredField("remoteUrl");
             remoteUrl.setAccessible(true);
             remoteUrl.set(activity, "https://config.example.test/squirrel.yaml");
@@ -258,8 +327,8 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
 
     private void showKeyboard() throws Exception {
         long focusDeadline = SystemClock.uptimeMillis() + 5000;
-        while (SystemClock.uptimeMillis() < focusDeadline && !onMain(() -> activity.hasWindowFocus())) Thread.sleep(50);
-        assertTrue("Activity has not regained input focus", onMain(() -> activity.hasWindowFocus()));
+        while (SystemClock.uptimeMillis() < focusDeadline && !onMain(() -> workspace.editor.hasWindowFocus())) Thread.sleep(50);
+        assertTrue("Editor panel has not regained input focus", onMain(() -> workspace.editor.hasWindowFocus()));
         int originalHeight = onMain(() -> workspace.editor.getHeight());
         onMain(() -> {
             workspace.editor.requestFocus();
@@ -284,6 +353,11 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
         getInstrumentation().waitForIdleSync();
     }
 
+    private void openEditor() throws Exception {
+        onMain(() -> { workspace.editButton.performClick(); return null; });
+        getInstrumentation().waitForIdleSync();
+    }
+
     private void capture(String name, Runnable showOverlay) throws Exception {
         onMain(() -> {
             int page = ((ViewPager2) activity.findViewById(R.id.pages)).getCurrentItem();
@@ -292,6 +366,7 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
             assertTrue("Profile contains non-fixture data", "Synthetic fixture".contentEquals(workspace.profileButton.getText()));
             activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
             if (showOverlay != null) showOverlay.run();
+            workspace.editorPanel.dialog.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
             return null;
         });
         try {
@@ -309,7 +384,11 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
                 assertTrue(image.compress(Bitmap.CompressFormat.PNG, 100, output));
             }
             image.recycle();
-        } finally { onMain(() -> { activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE); return null; }); }
+        } finally { onMain(() -> {
+            activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            workspace.editorPanel.dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+            return null;
+        }); }
     }
 
     private void back() throws Exception {

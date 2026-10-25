@@ -54,6 +54,15 @@ security, anonymity, or reliability claims have been established.
   selection, import, editing, validation, saving, and export. At least one profile
   remains. Saved selection persists across restarts; unsaved per-profile drafts
   survive activity recreation but are not durable storage.
+- Each profile saves its last submitted download URL in private app storage,
+  independently of YAML Save. Download URL prefills it after switching profiles
+  or restarting the app, including after a failed download. Rename preserves it;
+  duplicating a profile copies it, and deleting a profile removes it.
+- Configuration keeps profile/source actions on a scrollable page. Edit YAML
+  opens a secure editing panel with Save and Close; Close or Back keeps the
+  unsaved draft. Successful import, download and template loading open it for
+  review. Supported activity recreation restores the open panel, selection,
+  scroll, focus and keyboard state with retained drafts.
 - Save or Connect applies editor contents to the saved profile. Changes and
   profile switches while connected take effect on the next connection.
 - Configuration imports are UTF-8 YAML up to 1 MiB. A file import does not bundle
@@ -87,7 +96,7 @@ security, anonymity, or reliability claims have been established.
 - Always-on and lockdown VPN are disabled because they conflict with the app's
   package-bypass strategy. Network handovers may require reconnecting.
 - Configurations live in private app storage and app backup is disabled. The
-  current activity prevents screenshots and recents captures because profiles
+  current activity and YAML editing window prevent screenshots and recents captures because profiles
   may contain credentials. Exports include entered credentials, and verbose
   logs may reveal destinations; future copy must describe these facts accurately.
 

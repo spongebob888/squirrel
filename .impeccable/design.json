@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-25T01:31:18.420714+00:00",
+  "generatedAt": "2026-10-25T06:59:47Z",
   "title": "Design System: Squirrel",
   "extensions": {
     "colorMeta": {
@@ -453,16 +453,20 @@
         "value": "screenHeightDp < 480"
       },
       {
-        "name": "wide-workspace-and-api",
+        "name": "wide-configuration-and-api",
         "value": "screenWidthDp >= 600"
-      },
-      {
-        "name": "short-stacked-editor",
-        "value": "measured page height < 500dp AND screenWidthDp < 600"
       },
       {
         "name": "short-log-page",
         "value": "measured page height < 450dp"
+      },
+      {
+        "name": "centered-yaml-panel",
+        "value": "screenWidthDp >= 600 AND screenHeightDp >= 480"
+      },
+      {
+        "name": "short-yaml-panel",
+        "value": "measured panel height minus vertical padding < 300dp"
       }
     ],
     "nativeGeometry": {
@@ -486,8 +490,6 @@
         "pending/error detail",
         "profile below divider"
       ],
-      "workspaceSidebarWidth": "min(360dp, screenWidthDp / 2 - 36dp)",
-      "workspaceSidebarGap": "24dp",
       "apiColumnWeights": "1:1.2",
       "apiFormEndGap": "24dp",
       "apiActionPadding": "10dp 14dp",
@@ -498,7 +500,15 @@
       "connectionPowerMinimumHeight": "96dp",
       "connectionPowerIconSize": "28dp",
       "connectionInfoTarget": "48dp",
-      "connectionPairInnerPadding": "12dp per inner column edge"
+      "connectionPairInnerPadding": "12dp per inner column edge",
+      "configurationControlsWidth": "screenWidthDp >= 600: min(720dp, screenWidthDp - 44dp); otherwise fill available width",
+      "yamlPanelWidth": "screenWidthDp >= 600 AND screenHeightDp >= 480: min(900dp, screenWidthDp - 48dp); otherwise MATCH_PARENT",
+      "yamlPanelWindowHeight": "MATCH_PARENT with SOFT_INPUT_ADJUST_RESIZE",
+      "yamlPanelVerticalMargins": "24dp when centered; otherwise 0dp",
+      "yamlPanelPadding": "12dp 16dp 16dp plus system insets",
+      "yamlPanelOuterCorners": "12dp when centered; otherwise 0dp",
+      "yamlPanelCloseTarget": "48dp",
+      "yamlPanelDimAmount": "0.32"
     },
     "nativeBehavior": {
       "feedback": "Native RippleDrawable tinted by outline, zero button elevation and no state animator; browser previews approximate active/focus only.",
@@ -513,7 +523,9 @@
       "connectionMetrics": "Shared Download/Upload totals panel; Runtime TCP/UDP session counts and upload/download totals, followed by Tasks, Resident and Allocated rows. Normal refresh explanation is omitted; pending, incomplete and failed metric notices remain inline.",
       "diagnosticListHeaders": "Sessions and Proxies use icon/count headings and search-icon filters. Matched / total appears when filtered; pending data is a dash. Full count/live semantics remain accessible and in tooltips. Compact title/count blocks sit beside filter controls; no repeated subtitle or separate live-summary row.",
       "sessionMeasurements": "Selectable destination and full protocol/route remain. Upload/download arrows accompany totals; lightning first-response and clock duration share a second row. Full measurement names remain accessible and in tooltips. Half closed retains an explicit label and half-circle icon. No metrics require expansion.",
-      "proxyControls": "Selector headers show checked selected-member text plus outbound-icon member counts. Refresh icons trigger existing HTTP probes; cached probe latency retains lightning. Pending probes and selector actions use disabled hourglasses, preserving the last confirmed selection and all transport measurements."
+      "proxyControls": "Selector headers show checked selected-member text plus outbound-icon member counts. Refresh icons trigger existing HTTP probes; cached probe latency retains lightning. Pending probes and selector actions use disabled hourglasses, preserving the last confirmed selection and all transport measurements.",
+      "yamlPanel": "Edit YAML opens a native Dialog over the scrollable controls page. Save validates asynchronously and remains open. Close and native Back retain the draft; outside taps do not dismiss. Successful import, download and template loading open it for review. Both windows retain FLAG_SECURE. Activity recreation restores open state, selection, scroll, focus and IME visibility with retained per-profile drafts; no new process-death persistence or autosave.",
+      "yamlPanelShortViewport": "Measured inner height below 300dp hides profile/status context; title, Save, Close and source remain. Initial open does not force the IME; restored focus/IME follows saved state."
     },
     "rampPolicy": "Eight-step OKLCH ramps are synthesized for panel visualization only. Actual native colors are exclusively the DESIGN.md frontmatter/day-night resources; ramp steps are not shipping tokens.",
     "sourceEvidence": [
@@ -534,9 +546,12 @@
       "app/src/main/res/drawable/ic_info.xml",
       "app/src/main/res/drawable/ic_close.xml",
       "app/src/main/res/drawable/ic_memory.xml",
-      "app/src/main/res/drawable/ic_allocation.xml"
+      "app/src/main/res/drawable/ic_allocation.xml",
+      "app/src/main/java/dev/squirrel/vpn/YamlEditorPanel.java",
+      ".impeccable/review/yaml-panel",
+      ".impeccable/review/yaml-panel/finish-review.md"
     ],
-    "notCanonized": "No known remaining visual defect is promoted into these tokens. Pending refreshed compact captures and final finish disposition belong to the reviewer; this documentation pass does not declare them verified."
+    "notCanonized": "Pre-existing Selection chip preview and route-chip tokens differ from the current circular selector controls; retained outside this YAML-panel scope, not promoted as guidance for the new component."
   },
   "components": [
     {
@@ -607,7 +622,7 @@
       "name": "YAML editor",
       "kind": "input",
       "refersTo": "yaml-editor",
-      "description": "Native source pane with 1dp resting and 2dp focused stroke. Browser line metrics approximate native metrics plus 2dp; no IME reproduction.",
+      "description": "Native source field inside the secure YAML editing Dialog, with 1dp resting and 2dp focused stroke. Browser line metrics approximate native metrics plus 2dp; no IME reproduction.",
       "html": "<textarea class=\"ds-yaml\" aria-label=\"YAML configuration editor\" wrap=\"off\" spellcheck=\"false\"># Synthetic documentation preview\noutbounds: []</textarea>",
       "css": ".ds-yaml{display:block;max-width:100%;min-height:180px;font:400 13px monospace;line-height:calc(1.2em + 2px);color:#292E3D;background:#FFFFFF;border:1px solid #E3E7EF;border-radius:12px;padding:14px;white-space:pre;overflow:auto;resize:vertical}.ds-yaml:hover{border-color:#E3E7EF}.ds-yaml:focus,.ds-yaml:focus-visible{border:2px solid #5366CA;outline:none}.ds-yaml::selection{background:#5366CA33}@media(prefers-color-scheme:dark){.ds-yaml{background:#1C2029;color:#E3E7F1;border-color:#2C3240}.ds-yaml:focus,.ds-yaml:focus-visible{border-color:#98A8FF}.ds-yaml::selection{background:#98A8FF33}}"
     },
@@ -618,6 +633,14 @@
       "description": "Logs and API protocol/JSON results reuse this source role. Log export remains independent of live/filter display. Browser line metrics approximate native metrics plus 3dp.",
       "html": "<pre class=\"ds-output\" tabindex=\"0\">— service.log —\nINFO Synthetic documentation preview</pre>",
       "css": ".ds-output{font:400 12px monospace;line-height:calc(1.2em + 3px);color:#292E3D;background:#FFFFFF;border:1px solid #E3E7EF;border-radius:12px;padding:14px;white-space:pre-wrap;max-height:180px;overflow:auto;user-select:text}.ds-output:focus-visible{outline:auto}.ds-output::selection{background:#5366CA33}@media(prefers-color-scheme:dark){.ds-output{background:#1C2029;color:#E3E7F1;border-color:#2C3240}.ds-output::selection{background:#98A8FF33}}"
+    },
+    {
+      "name": "YAML editing panel",
+      "kind": "custom",
+      "refersTo": "yaml-panel",
+      "description": "Secure native Dialog: full window on phones/short landscapes, centered max900dp panel on taller tablets. Save validates and remains open; Close/Back retain the draft. Browser preview illustrates materials only; native window, keyboard, insets and lifecycle are not reproduced.",
+      "html": "<section class=\"ds-editor\" role=\"dialog\" aria-label=\"Edit YAML\"><header><div><strong>Edit YAML</strong><small>Synthetic preview profile</small></div><button class=\"ds-save\">Save</button><button class=\"ds-close\" aria-label=\"Close YAML editor, keep draft\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M6 6L18 18M18 6L6 18\"/></svg></button></header><p>Save or Connect to apply.</p><textarea aria-label=\"YAML configuration editor\" wrap=\"off\" spellcheck=\"false\"># Synthetic documentation preview\noutbounds: []</textarea></section>",
+      "css": ".ds-editor{box-sizing:border-box;display:flex;flex-direction:column;gap:0;background:#FFFFFF;color:#292E3D;border-radius:12px;padding:12px 16px 16px;font:400 13px sans-serif;max-width:900px;min-height:280px}.ds-editor header{display:flex;align-items:center;gap:8px}.ds-editor header div{flex:1;min-width:0}.ds-editor strong{display:block;font-size:20px}.ds-editor small{display:block;font-size:12px;color:#666E80}.ds-editor button{min-height:48px;border-radius:8px;font:400 13px sans-serif;cursor:pointer}.ds-save{padding:10px 12px;border:0;background:#5366CA;color:#FFFFFF}.ds-close{width:48px;padding:14px;border:0;background:#EDF0FD;color:#5366CA}.ds-close svg{width:20px;height:20px;stroke:currentColor;stroke-width:2;fill:none}.ds-editor p{color:#666E80;margin:8px 0 12px}.ds-editor textarea{flex:1;min-height:140px;box-sizing:border-box;padding:14px;border:1px solid #E3E7EF;border-radius:12px;background:#FFFFFF;color:#292E3D;font:400 13px monospace;line-height:calc(1.2em + 2px);white-space:pre;overflow:auto;resize:vertical}.ds-editor textarea:focus{border:2px solid #5366CA;outline:none}.ds-editor textarea::selection{background:#5366CA33}.ds-editor button:hover{filter:brightness(.97)}.ds-editor button:active{filter:brightness(.92)}.ds-editor button:focus-visible{outline:2px solid #5366CA;outline-offset:2px}@media(prefers-color-scheme:dark){.ds-editor,.ds-editor textarea{background:#1C2029;color:#E3E7F1}.ds-editor small,.ds-editor p{color:#A2A9B9}.ds-close{background:#2C3350;color:#98A8FF}.ds-editor button:focus-visible{outline-color:#98A8FF}.ds-save{background:#98A8FF;color:#171D32}.ds-editor textarea{border-color:#2C3240}.ds-editor textarea:focus{border-color:#98A8FF}.ds-editor textarea::selection{background:#98A8FF33}}"
     }
   ],
   "narrative": {

@@ -182,6 +182,11 @@ components:
     typography: '{typography.yaml}'
     rounded: '{rounded.panel}'
     padding: 14dp
+  yaml-panel:
+    backgroundColor: '{colors.panel-light}'
+    textColor: '{colors.ink-light}'
+    rounded: '{rounded.panel}'
+    padding: 12dp 16dp 16dp
   log-viewer:
     backgroundColor: '{colors.panel-light}'
     textColor: '{colors.ink-light}'
@@ -243,6 +248,11 @@ components:
     typography: '{typography.yaml}'
     rounded: '{rounded.panel}'
     padding: 14dp
+  yaml-panel-dark:
+    backgroundColor: '{colors.panel-dark}'
+    textColor: '{colors.ink-dark}'
+    rounded: '{rounded.panel}'
+    padding: 12dp 16dp 16dp
   log-viewer-dark:
     backgroundColor: '{colors.panel-dark}'
     textColor: '{colors.ink-dark}'
@@ -327,13 +337,13 @@ Page horizontal padding is (22dp). Normal diagnostic pages begin at (24dp), shor
 
 Diagnostics compact mode is **screenHeightDp < 480**. Titles shrink, list descriptions disappear, and Connection puts controls beside measurements at widths 1:1.5 with a (16dp) gap. The compact Connection control panel uses (12dp) padding. State and the power action share its first row; pending/error detail and the separated profile row follow. The power action retains its documented minimum height while wrapping copy expands the panel. Portrait and taller tablet layouts stack the control panel above measurements. Session rows separate identity from measurements at 1:1.3. Compact Sessions places text filtering and protocol choices side by side. Compact Proxies places its title and icon count beside the filter to preserve list height. These are height adaptations, independent of navigation width thresholds.
 
-Configuration stacks controls above its flexible editor below **600dp width**. At or above that width, a scrollable control sidebar has width **min(360dp, screenWidthDp / 2 − 36dp)**, followed by a (24dp) gap and the flexible editor. Below **500dp measured page height**, a non-wide editor page hides the redundant heading/profile label and uses (12dp) top padding. Logs hides its heading below **450dp measured page height**, retaining filter/live/export controls and a flexible selectable viewer. These measured-height adaptations preserve editing space when the IME resizes the app.
+Configuration is a vertically scrolling controls page: title, profile row, import/download/save actions, status and a YAML action panel with More and Edit YAML. At **600dp width or more**, its centered controls are at most **720dp** wide; narrower pages fill the available width. YAML editing opens in a separate native Dialog. Below **600dp width** or **480dp height**, it fills the window with square outer corners. Otherwise, a centered panel uses **min(900dp, screenWidthDp − 48dp)** width, (12dp) corners and (24dp) top/bottom margins inside a full-height resizing window. Panel padding is (12dp 16dp 16dp), plus system insets. The editor fills remaining height; when the measured inner panel height is below **300dp**, profile/status context hides while the title, Save, Close and source remain. Logs hides its heading below **450dp measured page height**, retaining filter/live/export controls and a flexible selectable viewer.
 
 API tools keeps its Back/title header outside a vertically scrolling body. Below **600dp width**, form and result stack; at or above it, columns use 1:1.2 widths and (24dp) form-end spacing. The entire body scrolls together. Scope choices, native Spinners and conditional fields retain their own Android behavior.
 
 ## Elevation & Depth
 
-Ordinary panels, buttons and navigation are flat. Fill contrast and fine (1dp) outlines create grouping; buttons disable Android’s elevation animator and set elevation to zero. Focus in the YAML editor changes its outline to (2dp) periwinkle. Android owns dialog, popup, cursor, switch and error feedback; this system does not establish a custom shadow scale or motion duration. Native ripples use the outline role. Navigation uses ViewPager2 scrolling; live rows suppress decorative item animation.
+Ordinary panels, buttons and navigation are flat. Fill contrast and fine (1dp) outlines create grouping; buttons disable Android’s elevation animator and set elevation to zero. Focus in the YAML editor changes its outline to (2dp) periwinkle. Android owns dialog, popup, cursor, switch and error feedback; this system does not establish a custom shadow scale or motion duration. The YAML editing window dims the underlying page at 32%; Android owns its window elevation. Native ripples use the outline role. Navigation uses ViewPager2 scrolling; live rows suppress decorative item animation.
 
 **The Outlined Panel Rule.** Separate work areas with panel fill and a thin outline; keep ordinary panels and actions flat.
 
@@ -389,7 +399,9 @@ Session records keep the selectable destination and full protocol/inbound/outbou
 
 ### Source workspaces
 
-YAML is a multiline, horizontally scrolling native EditText with source-role typography, (14dp) padding, native selection, no suggestions and no fullscreen/extract editor. Per-profile drafts and editor focus survive supported recreation. Profile selection uses a native chevron action; Manage and More retain native dialogs/menus and all profile/template/export operations.
+YAML is a multiline, horizontally scrolling native EditText inside the secure editing panel, with source-role typography, (14dp) padding, native selection, no suggestions, no personalized keyboard learning and no fullscreen/extract editor. Its (1dp) outline changes to (2dp) periwinkle on focus. Profile selection uses a native chevron action; Manage and More retain native dialogs/menus and all profile/template/export operations.
+
+The Edit YAML primary action opens the panel. Its header uses a bold (20sp) title, a two-line ellipsized (12sp) profile identity, Save and a (48dp) vector Close action. Save retains the shared minimum (48dp) height, validates asynchronously, reports success and leaves the panel open. Validation failure preserves the draft and saved profile. Close and native Back retain the draft without saving; tapping outside does not dismiss. Successful import, download and template loading open the panel for review. Both activity and editor windows use FLAG_SECURE; the editor window resizes for the keyboard. Supported activity recreation restores panel visibility, source selection, scroll, focus and keyboard visibility alongside retained per-profile drafts. This does not establish autosave or new process-death draft persistence.
 
 Logs and API results use selectable monospace on outlined panel fill with (14dp) padding. Live logs retain a snapshot while paused or on read failure; refresh follows the tail only when already at the bottom. Filter changes return to the top. Export still includes all retained logs independently of filter/pause. API results keep explicit remote/local scope, target, operation and status; mutations use native confirmation and never replay after recreation. Credential masking and secure capture remain product requirements.
 

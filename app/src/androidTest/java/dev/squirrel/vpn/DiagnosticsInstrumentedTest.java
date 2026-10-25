@@ -461,7 +461,7 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         activity = (MainActivity) getInstrumentation().startActivitySync(intent);
         long deadline = SystemClock.uptimeMillis() + 5000;
         while (SystemClock.uptimeMillis() < deadline) {
-            if (onMain(() -> ((EditText) activity.findViewById(R.id.config_editor)).isEnabled())) break;
+            if (onMain(() -> activity.findViewById(R.id.config_edit).isEnabled())) break;
             Thread.sleep(50);
         }
         onMain(() -> {

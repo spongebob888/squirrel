@@ -1,4 +1,10 @@
 <resources>
+    <item name="config_edit" type="id"/>
+    <item name="config_save" type="id"/>
+    <item name="yaml_panel" type="id"/>
+    <item name="yaml_panel_save" type="id"/>
+    <item name="yaml_panel_close" type="id"/>
+    <item name="yaml_panel_notice" type="id"/>
     <item name="connection_info" type="id"/>
     <item name="connection_help" type="id"/>
     <item name="pages" type="id" />

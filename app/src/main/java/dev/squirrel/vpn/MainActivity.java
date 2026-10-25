@@ -47,7 +47,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService apiActionExecutor = Executors.newSingleThreadExecutor();
     private ConfigDownloader downloader;
     private final AtomicBoolean logRead = new AtomicBoolean(), apiRead = new AtomicBoolean();
-    private TextView configNotice, brand;
+    private TextView brand;
     private DiagnosticsUi diagnostics;
     private WorkspaceUi workspace;
     private LinearLayout root, appHeader;
@@ -63,13 +63,13 @@ public final class MainActivity extends Activity {
     private String profileId;
     private final HashMap<String, AppState.Snapshot> pendingProbes = new HashMap<>();
     private final HashMap<String, AppState.Snapshot> pendingSelections = new HashMap<>();
-    private final HashMap<String, String> profileDrafts = new HashMap<>(), profileUrls = new HashMap<>();
+    private final HashMap<String, String> profileDrafts = new HashMap<>();
 
     private static final class Draft {
-        final HashMap<String, String> texts, urls;
+        final HashMap<String, String> texts;
         final int page;
-        Draft(HashMap<String, String> texts, HashMap<String, String> urls, int page) {
-            this.texts = new HashMap<>(texts); this.urls = new HashMap<>(urls); this.page = page;
+        Draft(HashMap<String, String> texts, int page) {
+            this.texts = new HashMap<>(texts); this.page = page;
         }
     }
     private final Runnable refresh = new Runnable() {
@@ -94,7 +94,7 @@ public final class MainActivity extends Activity {
         // Configs may contain credentials; keep them out of recents and screenshots.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         diagnostics = new DiagnosticsUi(this, this::toggleVpn, this::chooseOutbound, this::probeOutbound);
-        workspace = new WorkspaceUi(diagnostics, this::chooseProfile, this::manageProfiles,
+        workspace = new WorkspaceUi(this, diagnostics, this::chooseProfile, this::manageProfiles,
             this::importFile, this::downloadConfig, () -> save(false), this::exportConfig,
             () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
             () -> createDocument(EXPORT_LOG, "squirrel-logs.txt", "text/plain"));
@@ -198,7 +198,6 @@ public final class MainActivity extends Activity {
         if (retained instanceof Draft) {
             Draft draft = (Draft) retained;
             profileDrafts.putAll(draft.texts);
-            profileUrls.putAll(draft.urls);
             page = draft.page;
         }
         loadProfile(() -> ConfigProfiles.list(this), null);
@@ -211,7 +210,6 @@ public final class MainActivity extends Activity {
 
     private View configurationPage() {
         editor = workspace.editor;
-        configNotice = workspace.configNotice;
         profileButton = workspace.profileButton;
         downloadButton = workspace.downloadButton;
         profileActions = workspace.profileActions;
@@ -290,6 +288,7 @@ public final class MainActivity extends Activity {
         boolean ready = !loadingConfig && !downloading && !preparing && profileId != null;
         diagnostics.connect.setEnabled(state.phase != AppState.Phase.STOPPING && (state.busy() || ready));
         editor.setEnabled(ready);
+        workspace.renderEditorState(ready, preparing);
         enableActions(configActions, ready);
         enableActions(configTools, ready);
         enableActions(profileActions, ready && profileState != null);
@@ -301,7 +300,6 @@ public final class MainActivity extends Activity {
     private void rememberDraft() {
         if (profileId != null) {
             profileDrafts.put(profileId, editor.getText().toString());
-            profileUrls.put(profileId, remoteUrl);
         }
     }
 
@@ -314,11 +312,11 @@ public final class MainActivity extends Activity {
                 ConfigProfiles.State state = operation.run();
                 String config = ConfigProfiles.read(this, state.selectedId);
                 post(() -> {
-                    if (deletedId != null) { profileDrafts.remove(deletedId); profileUrls.remove(deletedId); }
+                    if (deletedId != null) profileDrafts.remove(deletedId);
                     profileState = state;
                     profileId = state.selectedId;
                     editor.setText(profileDrafts.containsKey(profileId) ? profileDrafts.get(profileId) : config);
-                    remoteUrl = profileUrls.containsKey(profileId) ? profileUrls.get(profileId) : "";
+                    remoteUrl = state.selected().downloadUrl;
                     profileButton.setText(state.selected().name);
                     profileButton.setContentDescription("Select configuration. Current: " + state.selected().name);
                     setConfigNotice("Save or Connect to apply. Switching profiles keeps drafts until the app closes.", false);
@@ -388,8 +386,9 @@ public final class MainActivity extends Activity {
             String id = profileId;
             String copy = editor.getText().toString();
             dialog.dismiss();
+            String sourceUrl = action == 1 ? remoteUrl : "";
             loadProfile(() -> action == 2 ? ConfigProfiles.rename(this, id, label)
-                : ConfigProfiles.create(this, label, action == 1 ? copy : ConfigStore.asset(this, "example.yaml")), null);
+                : ConfigProfiles.create(this, label, action == 1 ? copy : ConfigStore.asset(this, "example.yaml"), sourceUrl), null);
         }));
         dialog.show();
     }
@@ -582,6 +581,7 @@ public final class MainActivity extends Activity {
             String url = address.getText().toString().trim();
             if (url.isEmpty()) { address.setError("Enter a configuration URL"); return; }
             remoteUrl = url;
+            String id = profileId;
             dialog.dismiss();
             downloading = true;
             setConfigNotice("Downloading and validating configuration…", false);
@@ -590,6 +590,7 @@ public final class MainActivity extends Activity {
             downloader = download;
             network.execute(() -> {
                 try {
+                    ConfigProfiles.setDownloadUrl(this, id, url);
                     String config = download.download(url);
                     NativeBridge.validate(ConfigStore.forRuntime(this, config));
                     post(() -> {
@@ -597,6 +598,7 @@ public final class MainActivity extends Activity {
                         setConfigNotice("Downloaded and validated. Save or Connect to use this configuration.", false);
                         finishDownload();
                         showPage(CONFIGURATION);
+                        workspace.openEditor();
                     });
                 } catch (Exception | LinkageError error) {
                     post(() -> {
@@ -637,6 +639,7 @@ public final class MainActivity extends Activity {
                             setConfigNotice("Example loaded. Edit, then save or connect.", false);
                             loadingConfig = false;
                             renderStatus();
+                            workspace.openEditor();
                         });
                     } catch (Exception e) {
                         post(() -> { loadingConfig = false; renderStatus(); showError(e); });
@@ -666,6 +669,7 @@ public final class MainActivity extends Activity {
                         loadingConfig = false;
                         renderStatus();
                         showPage(CONFIGURATION);
+                        workspace.openEditor();
                     });
                 } else if (request == EXPORT_LOG || request == EXPORT_CONFIG) {
                     String text = request == EXPORT_LOG ? AppLog.read(this, true) : configCopy;
@@ -693,6 +697,7 @@ public final class MainActivity extends Activity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        workspace.destroy();
         if (downloader != null) downloader.cancel();
         main.removeCallbacksAndMessages(null);
         network.shutdownNow();
@@ -703,7 +708,7 @@ public final class MainActivity extends Activity {
     }
     @Override public Object onRetainNonConfigurationInstance() {
         rememberDraft();
-        return new Draft(profileDrafts, profileUrls, pager.getCurrentItem());
+        return new Draft(profileDrafts, pager.getCurrentItem());
     }
     private void post(Runnable action) {
         main.post(() -> { if (!isFinishing() && !isDestroyed()) action.run(); });
@@ -716,8 +721,7 @@ public final class MainActivity extends Activity {
         }
     }
     private void setConfigNotice(String message, boolean failed) {
-        configNotice.setText(message);
-        configNotice.setTextColor(failed ? diagnostics.error : diagnostics.secondary);
+        workspace.renderConfigNotice(message, failed);
     }
     private void showError(Throwable e) {
         if (isFinishing() || isDestroyed()) return;
