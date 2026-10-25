@@ -42,7 +42,8 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             ui.renderNetworkStats(metrics());
             assertEquals("28.4 MiB", label(R.id.upload_total));
             assertEquals("194.8 MiB", label(R.id.download_total));
-            assertTrue(label(R.id.tcp_metric).startsWith("24\n"));
+            assertEquals("24", label(R.id.tcp_metric));
+            assertEquals("TCP sessions: 24", activity.findViewById(R.id.tcp_metric).getContentDescription());
             assertEquals("32", label(R.id.alive_tasks_metric));
             ui.renderNetworkStats(new JSONObject().put("traffic", new JSONObject().put("inbounds", new JSONArray())));
             assertEquals("0 B", label(R.id.upload_total));
@@ -107,8 +108,9 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             View row = rows(R.id.session_rows).getChildAt(0);
             assertNotNull(row);
             assertTrue(hasText(row, "[2001:db8::53]:53"));
-            assertTrue(hasText(row, "Upload\n—"));
-            assertTrue(hasText(row, "Duration  — · Half closed"));
+            assertNotNull(described(row, "Uploaded: —"));
+            assertNotNull(described(row, "Duration: —"));
+            assertTrue(hasText(row, "Half closed"));
             Bundle saved = new Bundle();
             ui.saveFilters(saved);
             DiagnosticsUi restored = new DiagnosticsUi(activity, () -> {}, (tag, selector, member) -> {}, tag -> {});
@@ -141,7 +143,7 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             RecyclerView list = rows(R.id.proxy_rows);
             assertSame(original, list.findViewHolderForAdapterPosition(12).itemView);
             assertEquals(12, ((LinearLayoutManager) list.getLayoutManager()).findFirstVisibleItemPosition());
-            assertTrue(hasText(original, "relay-b · 3 outbounds"));
+            assertNotNull(described(original, "Selected relay-b, 3 outbounds"));
             ((EditText) activity.findViewById(R.id.proxy_filter)).setText("route-34");
             assertEquals(4, list.getAdapter().getItemCount());
             ui.unavailable(MainActivity.PROXIES, "Synthetic unavailable response.");
@@ -154,9 +156,10 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
     public void testSelectorsShowMembersFirstAndRoundTransportRtt() throws Exception {
         launch();
         AtomicReference<String> selection = new AtomicReference<>();
+        AtomicReference<String> probed = new AtomicReference<>();
         onMain(() -> {
             ui = new DiagnosticsUi(activity, () -> {},
-                (tag, selector, member) -> selection.set(tag + ":" + member), tag -> {});
+                (tag, selector, member) -> selection.set(tag + ":" + member), probed::set);
             activity.setContentView(ui.proxiesPage());
             ui.renderState(connected(), false, "Synthetic fixture");
             ui.renderOutbounds(proxyFixture());
@@ -167,12 +170,14 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             RecyclerView list = rows(R.id.proxy_rows);
             View header = list.findViewHolderForAdapterPosition(0).itemView;
             assertTrue(hasText(header, "Proxy"));
-            assertTrue(hasText(header, "relay-a · 3 outbounds"));
+            assertNotNull(described(header, "Selected relay-a, 3 outbounds"));
             View selected = list.findViewHolderForAdapterPosition(1).itemView;
             assertTrue(hasText(selected, "relay-a"));
             assertTrue(hasText(selected, "36 ms · 0.20%"));
             assertTrue(hasText(selected, "41 ms · 0.15%"));
             assertTrue(hasText(selected, "48 ms"));
+            described(selected, "Probe latency for relay-a").performClick();
+            assertEquals("relay-a", probed.get());
             assertFalse(described(selected, "Selected relay-a for Proxy").isEnabled());
             View member = list.findViewHolderForAdapterPosition(2).itemView;
             assertTrue(hasText(member, "relay-b"));
@@ -201,8 +206,76 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         });
         page(MainActivity.PROXIES);
         capture("proxies-compact");
+        capture("polish-proxies");
+        onMain(() -> {
+            ui.probePending("relay-a", true);
+            ui.probePending("Proxy", true);
+            ui.selectionPending("Proxy", true);
+            return null;
+        });
+        capture("polish-proxies-pending");
+        onMain(() -> {
+            assertFalse(described(rows(R.id.proxy_rows), "Probing Proxy").isEnabled());
+            assertFalse(described(rows(R.id.proxy_rows), "Choose proxy for Proxy").isEnabled());
+            ui.probePending("relay-a", false);
+            ui.probePending("Proxy", false);
+            ui.selectionPending("Proxy", false);
+            rows(R.id.proxy_rows).scrollToPosition(rows(R.id.proxy_rows).getAdapter().getItemCount() - 1);
+            return null;
+        });
+        capture("polish-proxies-long");
         onMain(() -> { ((EditText) activity.findViewById(R.id.proxy_filter)).setText("no-match"); return null; });
         capture("proxies-empty");
+        capture("polish-proxies-filter");
+        onMain(() -> {
+            ((EditText) activity.findViewById(R.id.proxy_filter)).setText("");
+            ui.renderOutbounds(new JSONArray());
+            return null;
+        });
+        capture("polish-proxies-empty");
+        onMain(() -> { ui.unavailable(MainActivity.PROXIES, "Synthetic unavailable response."); return null; });
+        capture("polish-proxies-unavailable");
+        onMain(() -> {
+            ui.renderState(new AppState.Snapshot(AppState.Phase.DISCONNECTED, "Synthetic fixture"), false, "Synthetic fixture");
+            return null;
+        });
+        capture("polish-proxies-disconnected");
+        page(MainActivity.SESSIONS);
+        onMain(() -> { ui.renderState(connected(), false, "Synthetic fixture"); ui.renderSessions(flows()); return null; });
+        capture("polish-sessions");
+        onMain(() -> {
+            View first = rows(R.id.session_rows).findViewHolderForAdapterPosition(0).itemView;
+            assertNotNull(described(first, "Uploaded: 16.0 KiB"));
+            assertNotNull(described(first, "Downloaded: 189.8 KiB"));
+            assertNotNull(described(first, "First response: 42 ms"));
+            assertNotNull(described(first, "Duration: 15 s"));
+            rows(R.id.session_rows).scrollToPosition(2);
+            return null;
+        });
+        capture("polish-sessions-long");
+        onMain(() -> { protocol("UDP"); return null; });
+        capture("polish-sessions-udp");
+        onMain(() -> {
+            assertEquals("1 / 3", label(R.id.session_summary));
+            assertEquals("1 of 3 sessions, live", activity.findViewById(R.id.session_summary).getContentDescription());
+            ((EditText) activity.findViewById(R.id.session_filter)).setText("no-match");
+            return null;
+        });
+        capture("polish-sessions-filter");
+        onMain(() -> { ui.unavailable(MainActivity.SESSIONS, "Synthetic unavailable response."); return null; });
+        capture("polish-sessions-unavailable");
+        onMain(() -> {
+            ((EditText) activity.findViewById(R.id.session_filter)).setText("");
+            protocol("All");
+            ui.renderSessions(new JSONArray());
+            return null;
+        });
+        capture("polish-sessions-empty");
+        onMain(() -> {
+            ui.renderState(new AppState.Snapshot(AppState.Phase.DISCONNECTED, "Synthetic fixture"), false, "Synthetic fixture");
+            return null;
+        });
+        capture("polish-sessions-disconnected");
     }
 
     public void testInlineMemberSelectionUpdatesLocalCoreAndCheckmark() throws Exception {
@@ -306,6 +379,59 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         });
         capture("engine");
         onMain(() -> { connectionScroll.scrollTo(0, 0); return null; });
+        onMain(() -> {
+            assertEquals("Disconnect VPN", ui.connect.getContentDescription());
+            activity.findViewById(R.id.connection_info).performClick();
+            assertEquals(View.VISIBLE, activity.findViewById(R.id.connection_help).getVisibility());
+            assertEquals(View.VISIBLE, activity.findViewById(R.id.tcp_metric).getVisibility());
+            return null;
+        });
+        capture("connection-info");
+        onMain(() -> {
+            Bundle saved = new Bundle();
+            ui.saveFilters(saved);
+            assertTrue(saved.getBoolean("diagnostics.connectionHelp"));
+            activity.findViewById(R.id.connection_info).performClick();
+            assertEquals(View.GONE, activity.findViewById(R.id.connection_help).getVisibility());
+            ui.restoreFilters(saved);
+            assertEquals(View.VISIBLE, activity.findViewById(R.id.connection_help).getVisibility());
+            activity.findViewById(R.id.connection_info).performClick();
+            return null;
+        });
+        onMain(() -> {
+            ui.renderNetworkStats(new JSONObject().put("traffic", new JSONObject().put("inbounds", new JSONArray())));
+            return null;
+        });
+        capture("connection-partial");
+        onMain(() -> {
+            ui.unavailable(MainActivity.CONNECTION, "Synthetic unavailable response.");
+            return null;
+        });
+        capture("connection-unavailable");
+        onMain(() -> {
+            ui.renderState(new AppState.Snapshot(AppState.Phase.DISCONNECTED, "Ready when you are"), true, "Synthetic fixture");
+            assertEquals("Checking configuration", ui.connect.getContentDescription());
+            ui.connect.setEnabled(false);
+            return null;
+        });
+        capture("connection-checking");
+        onMain(() -> {
+            ui.renderState(new AppState.Snapshot(AppState.Phase.CONNECTING, "Starting ShadowQUIC"), false, "Synthetic fixture");
+            ui.connect.setEnabled(true);
+            return null;
+        });
+        capture("connection-starting");
+        onMain(() -> {
+            ui.renderState(new AppState.Snapshot(AppState.Phase.STOPPING, "Closing VPN"), false, "Synthetic fixture");
+            ui.connect.setEnabled(false);
+            return null;
+        });
+        capture("connection-stopping");
+        onMain(() -> {
+            ui.renderState(connected(), false, "Synthetic fixture");
+            ui.connect.setEnabled(true);
+            return null;
+        });
         page(MainActivity.PROXIES);
         onMain(() -> { ui.renderOutbounds(proxyFixture()); return null; });
         capture("proxies");

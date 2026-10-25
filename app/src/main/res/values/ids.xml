@@ -1,4 +1,6 @@
 <resources>
+    <item name="connection_info" type="id"/>
+    <item name="connection_help" type="id"/>
     <item name="pages" type="id" />
     <item name="connection_tab" type="id" />
     <item name="configuration_tab" type="id" />

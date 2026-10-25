@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-18T13:06:14.147141+00:00",
+  "generatedAt": "2026-10-25T01:31:18.420714+00:00",
   "title": "Design System: Squirrel",
   "extensions": {
     "colorMeta": {
@@ -386,7 +386,7 @@
       },
       "panel-title": {
         "displayName": "Panel Title",
-        "purpose": "Observed native panel title role."
+        "purpose": "Proxy row names; the former Connection panel heading has been removed."
       },
       "body": {
         "displayName": "Body",
@@ -482,10 +482,9 @@
       "compactConnectionGap": "16dp",
       "compactConnectionPanelPadding": "12dp",
       "compactConnectionOrder": [
-        "state",
-        "48dp minimum primary action",
-        "detail",
-        "profile"
+        "state beside power action",
+        "pending/error detail",
+        "profile below divider"
       ],
       "workspaceSidebarWidth": "min(360dp, screenWidthDp / 2 - 36dp)",
       "workspaceSidebarGap": "24dp",
@@ -495,7 +494,11 @@
       "apiFieldPadding": "10dp 14dp",
       "bottomTabPadding": "8dp 2dp",
       "bottomTabIconGap": "4dp",
-      "regularTabPadding": "8dp 12dp"
+      "regularTabPadding": "8dp 12dp",
+      "connectionPowerMinimumHeight": "96dp",
+      "connectionPowerIconSize": "28dp",
+      "connectionInfoTarget": "48dp",
+      "connectionPairInnerPadding": "12dp per inner column edge"
     },
     "nativeBehavior": {
       "feedback": "Native RippleDrawable tinted by outline, zero button elevation and no state animator; browser previews approximate active/focus only.",
@@ -505,7 +508,12 @@
       "logSnapshot": "Pause retains snapshot; read failure retains content; follow tail only when at bottom; filter resets to top. Export reads all retained logs.",
       "sourceSelection": "Primary color at 20% alpha (0x33), native text selection and cursor behavior.",
       "sourceLineSpacing": "YAML +2dp; logs/API results +3dp; multiplier 1.",
-      "assetProvenance": "ic_squirrelboard.xml faithfully copies local ../squirrelboard/public/favicon.svg geometry as native vector. Other interface icons are native vector XML; no shipping raster."
+      "assetProvenance": "ic_squirrelboard.xml faithfully copies local ../squirrelboard/public/favicon.svg geometry as native vector. Other interface icons are native vector XML; no shipping raster.",
+      "connectionDisclosure": "Initially collapsed help expands inline before TCP/UDP metrics and toggles info/close icons, action names, tooltips and expanded/collapsed state on supported Android versions. Disclosure state survives supported recreation; every metric widget remains in the scrollable layout.",
+      "connectionMetrics": "Shared Download/Upload totals panel; Runtime TCP/UDP session counts and upload/download totals, followed by Tasks, Resident and Allocated rows. Normal refresh explanation is omitted; pending, incomplete and failed metric notices remain inline.",
+      "diagnosticListHeaders": "Sessions and Proxies use icon/count headings and search-icon filters. Matched / total appears when filtered; pending data is a dash. Full count/live semantics remain accessible and in tooltips. Compact title/count blocks sit beside filter controls; no repeated subtitle or separate live-summary row.",
+      "sessionMeasurements": "Selectable destination and full protocol/route remain. Upload/download arrows accompany totals; lightning first-response and clock duration share a second row. Full measurement names remain accessible and in tooltips. Half closed retains an explicit label and half-circle icon. No metrics require expansion.",
+      "proxyControls": "Selector headers show checked selected-member text plus outbound-icon member counts. Refresh icons trigger existing HTTP probes; cached probe latency retains lightning. Pending probes and selector actions use disabled hourglasses, preserving the last confirmed selection and all transport measurements."
     },
     "rampPolicy": "Eight-step OKLCH ramps are synthesized for panel visualization only. Actual native colors are exclusively the DESIGN.md frontmatter/day-night resources; ramp steps are not shipping tokens.",
     "sourceEvidence": [
@@ -522,7 +530,11 @@
       "../squirrelboard/src/App.vue",
       ".impeccable/review/squirrelboard/reference.png",
       ".impeccable/review/squirrelboard/phone/diagnostic-review/proxies.png",
-      ".impeccable/review/squirrelboard/tablet-wide/workspace-review/configuration-dark.png"
+      ".impeccable/review/squirrelboard/tablet-wide/workspace-review/configuration-dark.png",
+      "app/src/main/res/drawable/ic_info.xml",
+      "app/src/main/res/drawable/ic_close.xml",
+      "app/src/main/res/drawable/ic_memory.xml",
+      "app/src/main/res/drawable/ic_allocation.xml"
     ],
     "notCanonized": "No known remaining visual defect is promoted into these tokens. Pending refreshed compact captures and final finish disposition belong to the reviewer; this documentation pass does not declare them verified."
   },
@@ -532,7 +544,7 @@
       "kind": "button",
       "refersTo": "button-primary",
       "description": "Filled native primary action. Browser active/focus approximates native ripple/focus; dp/sp map to default-scale CSS px.",
-      "html": "<button class=\"ds-button\">Connect</button>",
+      "html": "<button class=\"ds-button\">Save</button>",
       "css": ".ds-button{font:400 13px sans-serif;border-radius:8px;min-height:48px;padding:10px 12px;cursor:pointer;box-shadow:none;background:#5366CA;color:#FFFFFF;border:0}.ds-button:hover{cursor:pointer}.ds-button:active:not(:disabled){background-image:linear-gradient(#E3E7EF66,#E3E7EF66)}.ds-button:focus-visible{outline:auto}.ds-button:disabled{background:#F7F8FA;color:#666E80;border:0;cursor:default}@media(prefers-color-scheme:dark){.ds-button{background:#98A8FF;color:#171D32}.ds-button:disabled{background:#14171E;color:#A2A9B9}}"
     },
     {
@@ -568,28 +580,28 @@
       "css": ".ds-chip{display:block;font:700 13px sans-serif;background:#EDF0FD;color:#5366CA;border-radius:8px;padding:7px 10px}@media(prefers-color-scheme:dark){.ds-chip{background:#2C3350;color:#98A8FF}}"
     },
     {
-      "name": "Status panel",
+      "name": "Connection control panel",
       "kind": "card",
       "refersTo": "panel",
-      "description": "Shared outlined panel. Compact Connection omits the panel heading and moves its primary action ahead of wrapping detail/profile.",
-      "html": "<section class=\"ds-panel\"><h2 class=\"ds-panel-title\">Network status</h2><strong class=\"ds-state\">Disconnected</strong><p class=\"ds-detail\">Ready when you are</p></section>",
-      "css": ".ds-panel{font:400 14px sans-serif;color:#292E3D;background:#FFFFFF;border:1px solid #E3E7EF;border-radius:12px;padding:16px;box-shadow:none}.ds-panel-title{font-size:15px;font-weight:700;margin:0 0 16px}.ds-state{font-size:20px}.ds-detail{font-size:13px;color:#666E80;margin:4px 0 0}@media(prefers-color-scheme:dark){.ds-panel{background:#1C2029;color:#E3E7F1;border-color:#2C3240}.ds-detail{color:#A2A9B9}}"
+      "description": "Local-engine state beside the 112dp-wide, min96dp power action; profile follows a divider. Native dp/sp map to default-scale CSS px.",
+      "html": "<section class=\"ds-panel\"><div class=\"ds-status\"><div><strong class=\"ds-state\">Disconnected</strong><p class=\"ds-detail\">Local engine</p></div><button class=\"ds-power\" aria-label=\"Connect VPN\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 2V12M6.3 4.8C1.4 8.6 2.3 16 7.5 19C12.7 22 19.5 18.5 20.5 13C21.1 9.6 19.6 6.5 17.7 4.8\"/></svg>Connect</button></div><div class=\"ds-profile\">Selected profile</div></section>",
+      "css": ".ds-panel{font:400 14px sans-serif;color:#292E3D;background:#FFFFFF;border:1px solid #E3E7EF;border-radius:12px;padding:16px;box-shadow:none}.ds-status{display:flex;align-items:center;gap:12px;justify-content:space-between}.ds-state{font-size:20px}.ds-detail{font-size:12px;color:#666E80;margin:4px 0 0}.ds-power{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;flex-shrink:0;width:112px;min-height:96px;padding:10px 12px;border:0;border-radius:8px;background:#5366CA;color:#FFFFFF;font:400 13px sans-serif;cursor:pointer}.ds-power svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.ds-power:hover{cursor:pointer}.ds-power:active:not(:disabled){background-image:linear-gradient(#E3E7EF66,#E3E7EF66)}.ds-power:focus-visible{outline:auto}.ds-power:disabled{background:#F7F8FA;color:#666E80;cursor:default}.ds-profile{margin-top:16px;padding-top:12px;border-top:1px solid #E3E7EF;color:#666E80;font-size:13px}@media(prefers-color-scheme:dark){.ds-panel{background:#1C2029;color:#E3E7F1;border-color:#2C3240}.ds-detail,.ds-profile{color:#A2A9B9}.ds-profile{border-color:#2C3240}.ds-power{background:#98A8FF;color:#171D32}.ds-power:disabled{background:#14171E;color:#A2A9B9}}"
     },
     {
-      "name": "Paired transfer tiles",
+      "name": "Paired transfer panel",
       "kind": "custom",
       "refersTo": "panel",
-      "description": "Downloaded first with periwinkle icon; uploaded second with teal icon. Slate figures use 24sp tabular totals. No sample traffic is implied.",
-      "html": "<div class=\"ds-pair\"><section class=\"ds-tile\"><span class=\"ds-label\"><svg class=\"ds-down\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 7V17H17M7 17L19 5\"/></svg>Downloaded</span><strong class=\"ds-total\">—</strong><small>Total downloaded</small></section><section class=\"ds-tile\"><span class=\"ds-label\"><svg class=\"ds-up\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 7H17V17M17 7L5 19\"/></svg>Uploaded</span><strong class=\"ds-total\">—</strong><small>Total uploaded</small></section></div>",
-      "css": ".ds-pair{display:flex;gap:12px;font-family:sans-serif}.ds-tile{flex:1;min-width:0;padding:16px;border:1px solid #E3E7EF;border-radius:12px;background:#FFFFFF;color:#292E3D}.ds-label{display:flex;align-items:center;gap:8px;color:#666E80;font-size:12px;margin-bottom:12px}.ds-label svg{width:18px;height:18px;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none}.ds-down{stroke:#5366CA}.ds-up{stroke:#237F77}.ds-total{display:block;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ds-tile small{display:block;font-size:11px;color:#666E80;margin-top:8px}@media(prefers-color-scheme:dark){.ds-tile{background:#1C2029;color:#E3E7F1;border-color:#2C3240}.ds-label,.ds-tile small{color:#A2A9B9}.ds-down{stroke:#98A8FF}.ds-up{stroke:#65CBBD}}"
+      "description": "One outlined panel, equal Download then Upload columns with 12dp inner-edge padding. Slate 24sp totals retain tabular figures; no sample traffic is implied.",
+      "html": "<div class=\"ds-pair\"><section class=\"ds-tile\"><span class=\"ds-label\"><svg class=\"ds-down\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 7V17H17M7 17L19 5\"/></svg>Download</span><strong class=\"ds-total\">—</strong></section><section class=\"ds-tile\"><span class=\"ds-label\"><svg class=\"ds-up\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 7H17V17M17 7L5 19\"/></svg>Upload</span><strong class=\"ds-total\">—</strong></section></div>",
+      "css": ".ds-pair{display:flex;padding:16px;border:1px solid #E3E7EF;border-radius:12px;background:#FFFFFF;font-family:sans-serif}.ds-tile{flex:1;min-width:0;color:#292E3D}.ds-tile:first-child{padding-right:12px}.ds-tile:last-child{padding-left:12px}.ds-label{display:flex;align-items:center;gap:8px;color:#666E80;font-size:12px;margin-bottom:8px}.ds-label svg{width:18px;height:18px;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none}.ds-down{stroke:#5366CA}.ds-up{stroke:#237F77}.ds-total{display:block;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}@media(prefers-color-scheme:dark){.ds-pair{background:#1C2029;border-color:#2C3240}.ds-tile{color:#E3E7F1}.ds-label{color:#A2A9B9}.ds-down{stroke:#98A8FF}.ds-up{stroke:#65CBBD}}"
     },
     {
-      "name": "Engine metric row",
+      "name": "Runtime metric row",
       "kind": "custom",
       "refersTo": "panel",
-      "description": "Label/value alignment within the engine panel; divider is 1dp and value uses tabular figures.",
-      "html": "<div class=\"ds-engine\"><span>Resident memory</span><strong>—</strong></div>",
-      "css": ".ds-engine{display:flex;align-items:center;border-bottom:1px solid #E3E7EF;background:#FFFFFF;color:#666E80;font:400 14px sans-serif}.ds-engine span{flex:1;padding:13px 12px 13px 0}.ds-engine strong{flex:1.4;color:#292E3D;text-align:right;padding:13px 0;font-weight:700;font-variant-numeric:tabular-nums}@media(prefers-color-scheme:dark){.ds-engine{background:#1C2029;color:#A2A9B9;border-color:#2C3240}.ds-engine strong{color:#E3E7F1}}"
+      "description": "Concise icon/label and tabular value within Runtime. Full Resident memory meaning remains accessible; shared row geometry and thin divider are preserved.",
+      "html": "<div class=\"ds-engine\"><span aria-label=\"Resident memory\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 6H20V17H4ZM7 9V13M11 9V13M15 9V13M7 17V20M11 17V20M15 17V20M19 17V20\"/></svg>Resident</span><strong>—</strong></div>",
+      "css": ".ds-engine{display:flex;align-items:center;border-bottom:1px solid #E3E7EF;background:#FFFFFF;color:#666E80;font:400 13px sans-serif}.ds-engine span{display:flex;align-items:center;gap:8px;flex:1;padding:13px 12px 13px 0}.ds-engine strong{flex:1.4;color:#292E3D;text-align:right;padding:13px 0;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}@media(prefers-color-scheme:dark){.ds-engine{background:#1C2029;color:#A2A9B9;border-color:#2C3240}.ds-engine strong{color:#E3E7F1}}.ds-engine svg{flex-shrink:0;width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}"
     },
     {
       "name": "YAML editor",
@@ -621,7 +633,7 @@
     "rules": [
       {
         "name": "The Labeled Direction Rule",
-        "body": "Use periwinkle for download and teal for upload, and retain the direction words. Connection tiles show Downloaded then Uploaded; row pairs show Upload then Download. Color never replaces the label.",
+        "body": "Use periwinkle for download and teal for upload. Connection columns show Download then Upload; session pairs put upload before download. Session and proxy measurements use upload/download vector arrows with full accessible labels and tooltips. Direction remains identifiable independently of color.",
         "section": "colors"
       },
       {

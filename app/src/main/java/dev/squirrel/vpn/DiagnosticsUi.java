@@ -38,7 +38,10 @@ final class DiagnosticsUi {
     private final boolean compact;
     final Button connect;
     private final TextView state, detail, profile, uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated;
+    private final TextView tcpUploaded, tcpDownloaded, udpUploaded, udpDownloaded;
     private final TextView connectionNotice;
+    private final TextView connectionHelp;
+    private final ImageButton connectionInfo;
     private final LinearLayout connection;
     private final RuntimeList proxies, sessions;
     private final ChooseOutbound choose;
@@ -68,9 +71,8 @@ final class DiagnosticsUi {
 
         connection = column();
         title(connection, "Connection");
-        if (!compact) add(connection, text("A little clarity for your network.", 14, secondary, false), 4, 18);
         LinearLayout content = compact ? row() : column();
-        add(connection, content, compact ? 12 : 0, 0);
+        add(connection, content, 16, 0);
         LinearLayout controls = panel();
         LinearLayout measurements = column();
         if (compact) {
@@ -82,69 +84,89 @@ final class DiagnosticsUi {
             content.addView(controls, new LinearLayout.LayoutParams(-1, -2));
             add(content, measurements, 16, 0);
         }
-        TextView networkTitle = text("Network status", 15, ink, true);
-        icon(networkTitle, R.drawable.ic_network, primary);
-        if (!compact) controls.addView(networkTitle);
         if (compact) controls.setPadding(dp(12), dp(12), dp(12), dp(12));
+        LinearLayout statusRow = row();
+        statusRow.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout statusText = column();
+        statusText.setPadding(0, 0, dp(12), 0);
         state = text("Disconnected", 20, secondary, true);
         state.setId(R.id.connection_state);
         state.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        add(controls, state, compact ? 0 : 16, 0);
-        detail = text("Ready when you are", 13, secondary, false);
-
-        profile = text("Loading configuration…", 13, secondary, false);
-        profile.setId(R.id.connection_profile);
-        if (!compact) {
-            add(controls, detail, 4, 0);
-            add(controls, profile, 12, 0);
-        }
+        statusText.addView(state);
+        add(statusText, text("Local engine", 12, secondary, false), 4, 0);
+        statusRow.addView(statusText, new LinearLayout.LayoutParams(0, -2, 1));
         connect = action("Connect", toggle, true);
         connect.setId(R.id.connect_vpn);
-        icon(connect, R.drawable.ic_power, onPrimary);
-        // Keep the primary control above wrapping detail text in short viewports.
-        add(controls, connect, compact ? 8 : 16, 0);
-        if (compact) {
-            add(controls, detail, 8, 0);
-            add(controls, profile, 4, 0);
-        }
+        connect.setMinHeight(dp(96));
+        connect.setMinimumHeight(dp(96));
+        statusRow.addView(connect, new LinearLayout.LayoutParams(dp(112), -2));
+        controls.addView(statusRow);
+        detail = text("", 13, secondary, false);
+        detail.setVisibility(View.GONE);
+        add(controls, detail, 12, 0);
+        LinearLayout profileRow = column();
+        add(controls, profileRow, 16, 0);
+        divider(profileRow);
+        profile = text("Loading configuration…", 13, secondary, false);
+        profile.setId(R.id.connection_profile);
+        icon(profile, R.drawable.ic_configuration, secondary);
+        add(profileRow, profile, 12, 0);
 
-        LinearLayout totals = row();
-        LinearLayout down = panel(), up = panel();
-        TextView downLabel = text("Downloaded", 12, secondary, false);
-        TextView upLabel = text("Uploaded", 12, secondary, false);
+        LinearLayout transfers = panel();
+        LinearLayout totals = pairedColumns(transfers);
+        LinearLayout down = (LinearLayout) totals.getChildAt(0);
+        LinearLayout up = (LinearLayout) totals.getChildAt(1);
+        TextView downLabel = text("Download", 12, secondary, false);
+        TextView upLabel = text("Upload", 12, secondary, false);
         icon(downLabel, R.drawable.ic_download, primary);
         icon(upLabel, R.drawable.ic_upload, download);
-        add(down, downLabel, 0, 12);
-        add(up, upLabel, 0, 12);
+        add(down, downLabel, 0, 8);
+        add(up, upLabel, 0, 8);
         uploaded = number("—", 24, ink);
         downloaded = number("—", 24, ink);
         uploaded.setId(R.id.upload_total);
         downloaded.setId(R.id.download_total);
         up.addView(uploaded);
         down.addView(downloaded);
-        add(up, text("Total uploaded", 11, secondary, false), 8, 0);
-        add(down, text("Total downloaded", 11, secondary, false), 8, 0);
-        LinearLayout.LayoutParams first = new LinearLayout.LayoutParams(0, -2, 1);
-        first.setMarginEnd(dp(12));
-        totals.addView(down, first);
-        totals.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
-        measurements.addView(totals);
+        measurements.addView(transfers);
         LinearLayout engine = panel();
         add(measurements, engine, 16, 0);
-        TextView engineTitle = text("Live engine", 16, ink, true);
-        icon(engineTitle, R.drawable.ic_engine, primary);
-        add(engine, engineTitle, 0, 8);
-        tcp = metricRow(engine, "TCP sessions", R.id.tcp_metric);
-        udp = metricRow(engine, "UDP sessions", R.id.udp_metric);
-        aliveTasks = metricRow(engine, "Alive tasks", R.id.alive_tasks_metric);
-        resident = metricRow(engine, "Resident memory", R.id.resident_metric);
-        allocated = metricRow(engine, "Allocated memory", R.id.allocated_metric);
-        connectionNotice = text("Connect to load live traffic and memory.", 12, secondary, false);
+        LinearLayout engineHeader = row();
+        engineHeader.setGravity(Gravity.CENTER_VERTICAL);
+        TextView engineTitle = text("Runtime", 16, ink, true);
+        if (android.os.Build.VERSION.SDK_INT >= 28) engineTitle.setAccessibilityHeading(true);
+        engineHeader.addView(engineTitle, new LinearLayout.LayoutParams(0, -2, 1));
+        connectionInfo = iconAction("About connection metrics", this::toggleConnectionInfo);
+        connectionInfo.setId(R.id.connection_info);
+        engineHeader.addView(connectionInfo, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        engine.addView(engineHeader);
+        connectionHelp = text("VPN active means the local engine is running. Use traffic and proxy probes to check remote availability."
+            + "\n\nTotals cover this engine run and refresh every second. Arrows show upload and download; TCP and UDP count sessions. A dash means a measurement is unavailable."
+            + "\n\nTasks counts live Tokio tasks. Resident is process memory held in RAM; Allocated is memory reported by the allocator."
+            + "\n\nThe app always bypasses the VPN. IPv4 and IPv6 TCP/UDP are supported; ICMP/ping is unsupported.",
+            13, secondary, false);
+        connectionHelp.setId(R.id.connection_help);
+        add(engine, connectionHelp, 0, 12);
+        setConnectionInfoExpanded(false);
+        LinearLayout protocols = pairedColumns(engine);
+        LinearLayout tcpColumn = (LinearLayout) protocols.getChildAt(0);
+        LinearLayout udpColumn = (LinearLayout) protocols.getChildAt(1);
+        tcp = protocolMetric(tcpColumn, "TCP", R.id.tcp_metric);
+        udp = protocolMetric(udpColumn, "UDP", R.id.udp_metric);
+        tcpUploaded = transferMetric(tcpColumn, R.drawable.ic_upload, download);
+        tcpDownloaded = transferMetric(tcpColumn, R.drawable.ic_download, primary);
+        udpUploaded = transferMetric(udpColumn, R.drawable.ic_upload, download);
+        udpDownloaded = transferMetric(udpColumn, R.drawable.ic_download, primary);
+        View spacer = new View(context);
+        engine.addView(spacer, new LinearLayout.LayoutParams(-1, dp(16)));
+        divider(engine);
+        aliveTasks = metricRow(engine, "Tasks", "Alive tasks", R.id.alive_tasks_metric, R.drawable.ic_engine);
+        resident = metricRow(engine, "Resident", "Resident memory", R.id.resident_metric, R.drawable.ic_memory);
+        allocated = metricRow(engine, "Allocated", "Allocated memory", R.id.allocated_metric, R.drawable.ic_allocation);
+        connectionNotice = text("", 12, secondary, false);
         connectionNotice.setId(R.id.connection_metrics_notice);
+        connectionNotice.setVisibility(View.GONE);
         add(engine, connectionNotice, 12, 0);
-        add(connection, text("VPN active reports the local engine state. Remote availability is verified by traffic and probes.",
-            12, secondary, false), 16, 0);
-        add(connection, text("App bypass always enabled · TCP + UDP · IPv4 + IPv6", 12, secondary, false), 8, 16);
         proxies = new RuntimeList(false);
         sessions = new RuntimeList(true);
     }
@@ -170,9 +192,11 @@ final class DiagnosticsUi {
         state.putString("diagnostics.proxyFilter", proxies.filter.getText().toString());
         state.putString("diagnostics.sessionFilter", sessions.filter.getText().toString());
         state.putString("diagnostics.protocol", sessions.protocol);
+        state.putBoolean("diagnostics.connectionHelp", connectionHelp.getVisibility() == View.VISIBLE);
     }
 
     void restoreFilters(android.os.Bundle state) {
+        setConnectionInfoExpanded(state.getBoolean("diagnostics.connectionHelp", false));
         proxies.filter.setText(state.getString("diagnostics.proxyFilter", ""));
         sessions.filter.setText(state.getString("diagnostics.sessionFilter", ""));
         RadioGroup group = sessions.root.findViewById(R.id.protocol_filter);
@@ -196,16 +220,31 @@ final class DiagnosticsUi {
         state.setTextColor(snapshot.phase == AppState.Phase.CONNECTED ? success
             : snapshot.phase == AppState.Phase.ERROR ? error : ink);
         set(detail, snapshot.detail);
-        set(profile, selectedProfile == null ? "Loading configuration…" : "Profile · " + selectedProfile);
-        set(connect, preparing ? "Checking configuration…" : snapshot.busy() ? "Disconnect" : "Connect");
+        detail.setTextColor(snapshot.phase == AppState.Phase.ERROR ? error : secondary);
+        detail.setVisibility(snapshot.phase == AppState.Phase.ERROR
+            || snapshot.phase == AppState.Phase.CONNECTING || snapshot.phase == AppState.Phase.STOPPING
+            ? View.VISIBLE : View.GONE);
+        set(profile, selectedProfile == null ? "Loading configuration…" : selectedProfile);
+        profile.setContentDescription(selectedProfile == null ? "Loading configuration" : "Profile: " + selectedProfile);
+        profile.setTooltipText(profile.getContentDescription());
+        set(connect, preparing ? "Checking…" : snapshot.busy() ? "Disconnect" : "Connect");
+        connect.setContentDescription(preparing ? "Checking configuration" : snapshot.busy() ? "Disconnect VPN" : "Connect VPN");
+        android.graphics.drawable.Drawable power = context.getDrawable(preparing
+            || snapshot.phase == AppState.Phase.CONNECTING || snapshot.phase == AppState.Phase.STOPPING
+            ? R.drawable.ic_hourglass : R.drawable.ic_power).mutate();
+        power.setTintList(connect.getTextColors());
+        power.setBounds(0, 0, dp(28), dp(28));
+        connect.setCompoundDrawablesRelative(null, power, null, null);
+        connect.setCompoundDrawablePadding(dp(8));
         if (lastSnapshot == snapshot) return;
         lastSnapshot = snapshot;
         clearMetrics();
         String message = snapshot.phase == AppState.Phase.CONNECTED ? "Loading live metrics…"
             : snapshot.phase == AppState.Phase.CONNECTING ? "Waiting for the local engine…"
             : snapshot.phase == AppState.Phase.STOPPING ? "Closing the local engine…"
-            : "Connect to load live traffic and memory.";
+            : "";
         notice(connectionNotice, message, false);
+        connectionNotice.setVisibility(message.isEmpty() ? View.GONE : View.VISIBLE);
         proxies.reset(snapshot.phase);
         sessions.reset(snapshot.phase);
     }
@@ -216,6 +255,7 @@ final class DiagnosticsUi {
         JSONArray inbounds = traffic == null ? null : traffic.optJSONArray("inbounds");
         if (inbounds == null) {
             set(uploaded, "—"); set(downloaded, "—"); set(tcp, "—"); set(udp, "—");
+            for (TextView value : new TextView[]{tcpUploaded, tcpDownloaded, udpUploaded, udpDownloaded}) set(value, "—");
         } else {
             for (int i = 0; i < inbounds.length(); i++) {
                 JSONObject item = inbounds.optJSONObject(i);
@@ -225,9 +265,12 @@ final class DiagnosticsUi {
                 udpUp += item.optLong("udp_upload_bytes"); udpDown += item.optLong("udp_download_bytes");
             }
             set(uploaded, bytes(tcpUp + udpUp)); set(downloaded, bytes(tcpDown + udpDown));
-            set(tcp, tcpCount + "\nUp " + bytes(tcpUp) + " · Down " + bytes(tcpDown));
-            set(udp, udpCount + "\nUp " + bytes(udpUp) + " · Down " + bytes(udpDown));
+            set(tcp, Long.toString(tcpCount));
+            set(udp, Long.toString(udpCount));
+            set(tcpUploaded, bytes(tcpUp)); set(tcpDownloaded, bytes(tcpDown));
+            set(udpUploaded, bytes(udpUp)); set(udpDownloaded, bytes(udpDown));
         }
+        describeMetrics();
         set(resident, byteMetric(memory, "resident_bytes"));
         set(allocated, byteMetric(memory, "allocated_bytes"));
         set(aliveTasks, countMetric(response.optJSONObject("tokio_metric"), "num_alive_tasks"));
@@ -235,6 +278,7 @@ final class DiagnosticsUi {
         notice(connectionNotice, incomplete
             ? "Some metrics are unavailable. Retrying automatically."
             : "Live totals for this engine run. Updates every second.", incomplete);
+        connectionNotice.setVisibility(incomplete ? View.VISIBLE : View.GONE);
     }
 
     void renderOutbounds(JSONArray items) { proxies.update(items); }
@@ -271,7 +315,62 @@ final class DiagnosticsUi {
     }
 
     private void clearMetrics() {
-        for (TextView view : new TextView[]{uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated}) set(view, "—");
+        for (TextView view : new TextView[]{uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated,
+                tcpUploaded, tcpDownloaded, udpUploaded, udpDownloaded}) set(view, "—");
+        describeMetrics();
+    }
+
+    private void describeMetrics() {
+        describe(uploaded, "Total uploaded"); describe(downloaded, "Total downloaded");
+        describe(tcp, "TCP sessions"); describe(udp, "UDP sessions");
+        describe(tcpUploaded, "TCP uploaded"); describe(tcpDownloaded, "TCP downloaded");
+        describe(udpUploaded, "UDP uploaded"); describe(udpDownloaded, "UDP downloaded");
+    }
+
+    private void describe(TextView value, String label) {
+        value.setContentDescription(label + ": " + value.getText());
+        value.setTooltipText(value.getContentDescription());
+    }
+
+    private void toggleConnectionInfo() {
+        setConnectionInfoExpanded(connectionHelp.getVisibility() != View.VISIBLE);
+    }
+
+    private void setConnectionInfoExpanded(boolean expanded) {
+        connectionHelp.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        connectionInfo.setImageResource(expanded ? R.drawable.ic_close : R.drawable.ic_info);
+        connectionInfo.setContentDescription(expanded ? "Hide connection details" : "About connection metrics");
+        connectionInfo.setTooltipText(connectionInfo.getContentDescription());
+        if (android.os.Build.VERSION.SDK_INT >= 30) connectionInfo.setStateDescription(expanded ? "Expanded" : "Collapsed");
+    }
+
+    private LinearLayout pairedColumns(LinearLayout parent) {
+        LinearLayout pair = row();
+        LinearLayout left = column(), right = column();
+        left.setPadding(0, 0, dp(12), 0);
+        right.setPadding(dp(12), 0, 0, 0);
+        pair.addView(left, new LinearLayout.LayoutParams(0, -2, 1));
+        pair.addView(right, new LinearLayout.LayoutParams(0, -2, 1));
+        parent.addView(pair);
+        return pair;
+    }
+
+    private TextView protocolMetric(LinearLayout parent, String label, int id) {
+        TextView name = text(label, 12, secondary, false);
+        icon(name, R.drawable.ic_sessions, secondary);
+        add(parent, name, 4, 6);
+        TextView count = number("—", 20, ink);
+        count.setId(id);
+        add(parent, count, 0, 4);
+        return count;
+    }
+
+    private TextView transferMetric(LinearLayout parent, int icon, int tint) {
+        TextView value = text("—", 12, secondary, false);
+        value.setFontFeatureSettings("tnum");
+        icon(value, icon, tint);
+        add(parent, value, 4, 0);
+        return value;
     }
 
     private final class RuntimeList {
@@ -293,37 +392,45 @@ final class DiagnosticsUi {
             root.setBackgroundColor(surface);
             root.setFocusableInTouchMode(true);
             root.setPadding(dp(22), dp(compact ? 12 : 24), dp(22), 0);
-            boolean compactProxies = compact && !isSessions;
-            LinearLayout heading = compactProxies ? row() : root;
-            LinearLayout identity = compactProxies ? column() : root;
+            LinearLayout heading = row();
+            heading.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout identity = compact ? column() : row();
+            identity.setGravity(Gravity.CENTER_VERTICAL);
             title(identity, isSessions ? "Sessions" : "Proxies");
-            if (compactProxies) {
-                heading.setGravity(Gravity.CENTER_VERTICAL);
-                identity.setPadding(0, 0, dp(20), 0);
+            summary.setId(isSessions ? R.id.session_summary : R.id.proxy_summary);
+            icon(summary, isSessions ? R.drawable.ic_sessions : R.drawable.ic_proxies, secondary);
+            if (compact) {
+                add(identity, summary, 2, 0);
+                identity.setPadding(0, 0, dp(16), 0);
                 heading.addView(identity, new LinearLayout.LayoutParams(-2, -2));
-                root.addView(heading, new LinearLayout.LayoutParams(-1, -2));
+            } else {
+                TextView pageTitle = (TextView) identity.getChildAt(0);
+                pageTitle.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1));
+                identity.addView(summary);
+                heading.addView(identity, new LinearLayout.LayoutParams(-1, -2));
             }
-            if (!compact && isSessions) add(root, text("Live TCP and UDP flows, route by route.", 14, secondary, false), 6, 16);
+            root.addView(heading, new LinearLayout.LayoutParams(-1, -2));
             LinearLayout filterArea = compact && isSessions ? row() : column();
-            if (compactProxies) heading.addView(filterArea, new LinearLayout.LayoutParams(0, -2, 1));
-            else add(root, filterArea, compact || !isSessions ? 8 : 0, 0);
+            if (compact) heading.addView(filterArea, new LinearLayout.LayoutParams(0, -2, 1));
+            else add(root, filterArea, 16, 0);
             filter.setId(isSessions ? R.id.session_filter : R.id.proxy_filter);
             filter.setTextColor(ink);
             filter.setHintTextColor(secondary);
             filter.setTextSize(14);
             filter.setSingleLine(true);
             filter.setSelectAllOnFocus(false);
-            filter.setHint(isSessions ? "Filter destination or route" : "Filter outbounds");
+            filter.setHint(isSessions ? "Filter sessions" : "Filter outbounds");
             filter.setContentDescription(isSessions ? "Filter sessions by destination, address, or route"
                 : "Filter outbounds by tag");
             filter.setPadding(dp(14), dp(8), dp(14), dp(8));
             filter.setBackground(fieldBackground());
+            icon(filter, R.drawable.ic_search, secondary);
             filter.setMinimumHeight(dp(48));
             if (compact && isSessions) {
                 LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
                 params.setMarginEnd(dp(16));
                 filterArea.addView(filter, params);
-            } else add(filterArea, filter, 0, compactProxies ? 0 : 8);
+            } else add(filterArea, filter, 0, compact ? 0 : 8);
             filter.addTextChangedListener(new TextWatcher() {
                 @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
                 @Override public void onTextChanged(CharSequence s, int start, int before, int count) { publish(); }
@@ -351,9 +458,7 @@ final class DiagnosticsUi {
                 if (compact) filterArea.addView(choices, new LinearLayout.LayoutParams(0, -2, 1));
                 else filterArea.addView(choices);
             }
-            summary.setId(isSessions ? R.id.session_summary : R.id.proxy_summary);
-            add(compactProxies ? identity : root, summary, compactProxies ? 2 : 8, compactProxies ? 0 : 8);
-            if (compactProxies) heading.setPadding(0, 0, 0, dp(8));
+            heading.setPadding(0, 0, 0, dp(8));
             actionNotice.setVisibility(View.GONE);
             actionNotice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
             add(root, actionNotice, 0, 8);
@@ -466,9 +571,11 @@ final class DiagnosticsUi {
             }
             adapter.submit(visible);
             int count = isSessions ? visible.size() : matching.size();
-            set(summary, available ? (query.isEmpty() && !isSessions ? all.size() + " " + noun()
-                : count + " of " + all.size() + " " + noun()) + " · live"
-                : "Live data pending");
+            boolean filtered = !query.isEmpty() || isSessions && !protocol.equals("All");
+            set(summary, available ? filtered ? count + " / " + all.size() : Integer.toString(all.size()) : "—");
+            summary.setContentDescription(available ? count + " of " + all.size() + " " + noun() + ", live"
+                : "Live " + noun() + " pending");
+            summary.setTooltipText(summary.getContentDescription());
             empty.setVisibility(visible.isEmpty() ? View.VISIBLE : View.GONE);
             if (available && visible.isEmpty()) notice(empty, all.isEmpty()
                 ? isSessions ? "No active sessions. TCP and UDP flows will appear when traffic starts."
@@ -537,7 +644,7 @@ final class DiagnosticsUi {
     }
 
     private final class SessionRow extends RecyclerView.ViewHolder {
-        final TextView title, route, info, up, down, latency;
+        final TextView title, route, info, up, down, latency, halfClosed;
 
         SessionRow() {
             super(column());
@@ -561,10 +668,13 @@ final class DiagnosticsUi {
             title.setTextIsSelectable(true);
             identity.addView(title);
             route = text("", 13, primary, true);
+            icon(route, R.drawable.ic_route, primary);
             add(identity, route, 5, 8);
             LinearLayout pair = row();
             up = number("", 14, download);
             down = number("", 14, primary);
+            icon(up, R.drawable.ic_upload, download);
+            icon(down, R.drawable.ic_download, primary);
             up.setPadding(0, dp(6), dp(8), dp(6));
             down.setPadding(dp(8), dp(6), 0, dp(6));
             pair.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
@@ -572,9 +682,19 @@ final class DiagnosticsUi {
             measurements.addView(pair);
             latency = text("", 13, secondary, false);
             latency.setFontFeatureSettings("tnum");
-            add(measurements, latency, 6, 0);
+            icon(latency, R.drawable.ic_probe, secondary);
             info = text("", 12, secondary, false);
-            add(measurements, info, 6, 12);
+            info.setFontFeatureSettings("tnum");
+            icon(info, R.drawable.ic_clock, secondary);
+            LinearLayout timing = row();
+            latency.setPadding(0, dp(6), dp(8), dp(6));
+            info.setPadding(dp(8), dp(6), 0, dp(6));
+            timing.addView(latency, new LinearLayout.LayoutParams(0, -2, 1));
+            timing.addView(info, new LinearLayout.LayoutParams(0, -2, 1));
+            add(measurements, timing, 0, 8);
+            halfClosed = text("Half closed", 12, secondary, false);
+            icon(halfClosed, R.drawable.ic_half_closed, secondary);
+            add(measurements, halfClosed, 0, 12);
         }
 
         void bind(JSONObject item) {
@@ -584,17 +704,22 @@ final class DiagnosticsUi {
             set(title, destination + ":" + value(item, "dst_port"));
             set(route, value(item, "protocol").toUpperCase(Locale.ROOT) + " · "
                 + value(item, "inbound") + " → " + value(item, "outbound"));
-            set(up, "Upload\n" + byteMetric(item, "upload_bytes"));
-            set(down, "Download\n" + byteMetric(item, "download_bytes"));
-            set(latency, "First response  " + metric(item, "first_response_ms", " ms"));
-            set(info, "Duration  " + (item.isNull("duration_ms") ? "—" : item.optLong("duration_ms") / 1000 + " s")
-                + (item.optBoolean("half_closed") ? " · Half closed" : ""));
+            route.setContentDescription("Protocol " + value(item, "protocol").toUpperCase(Locale.ROOT)
+                + ", inbound " + value(item, "inbound") + ", outbound " + value(item, "outbound"));
+            route.setTooltipText(route.getContentDescription());
+            set(up, byteMetric(item, "upload_bytes"));
+            set(down, byteMetric(item, "download_bytes"));
+            set(latency, metric(item, "first_response_ms", " ms"));
+            set(info, item.isNull("duration_ms") ? "—" : item.optLong("duration_ms") / 1000 + " s");
+            describe(up, "Uploaded"); describe(down, "Downloaded");
+            describe(latency, "First response"); describe(info, "Duration");
+            halfClosed.setVisibility(item.optBoolean("half_closed") ? View.VISIBLE : View.GONE);
         }
     }
 
     private final class ProxyRow extends RecyclerView.ViewHolder {
         final RuntimeList owner;
-        final TextView name, subtitle, up, down;
+        final TextView name, subtitle, members, up, down;
         final LinearLayout quality;
         final ImageButton select, test;
         DisplayItem entry;
@@ -621,7 +746,14 @@ final class DiagnosticsUi {
             identity.addView(name);
             subtitle = text("", 12, secondary, false);
             subtitle.setFontFeatureSettings("tnum");
-            add(identity, subtitle, 2, 0);
+            LinearLayout subtitleRow = row();
+            subtitleRow.setGravity(Gravity.CENTER_VERTICAL);
+            subtitleRow.addView(subtitle, new LinearLayout.LayoutParams(0, -2, 1));
+            members = text("", 12, secondary, false);
+            members.setPadding(dp(8), 0, 0, 0);
+            icon(members, R.drawable.ic_proxies, secondary);
+            subtitleRow.addView(members);
+            add(identity, subtitleRow, 2, 0);
             heading.addView(identity, new LinearLayout.LayoutParams(0, -2, 1));
             test = iconAction("", () -> probe.accept(value(entry.item, "tag")));
             heading.addView(test, new LinearLayout.LayoutParams(dp(48), dp(48)));
@@ -657,24 +789,28 @@ final class DiagnosticsUi {
             JSONArray options = selector == null ? null : selector.optJSONArray("outbounds");
             select.setEnabled(!selecting && !selected && (!heading || options != null && options.length() > 0));
             select.setSelected(selected);
-            select.setImageResource(heading ? R.drawable.ic_proxies
+            select.setImageResource(selecting ? R.drawable.ic_hourglass : heading ? R.drawable.ic_proxies
                 : selected ? R.drawable.ic_check_circle : R.drawable.ic_circle);
             select.setContentDescription(heading ? "Choose proxy for " + tag
                 : (selected ? "Selected " : "Select ") + tag + " for " + value(entry.parent, "tag"));
             select.setTooltipText(select.getContentDescription());
             boolean pending = owner.pendingProbes.contains(tag);
             test.setEnabled(!pending);
-            test.setImageResource(pending ? R.drawable.ic_hourglass : R.drawable.ic_probe);
+            test.setImageResource(pending ? R.drawable.ic_hourglass : R.drawable.ic_refresh);
             test.setContentDescription((pending ? "Probing " : "Probe latency for ") + tag);
             test.setTooltipText(test.getContentDescription());
             JSONObject measurements = entry.item.optJSONObject("quality");
             JSONObject sample = measurements == null ? null : measurements.optJSONObject("sq_conn_stats");
             JSONObject result = measurements == null ? null : measurements.optJSONObject("probe");
+            members.setVisibility(heading ? View.VISIBLE : View.GONE);
             if (heading) {
                 JSONArray members = selector.optJSONArray("outbounds");
-                set(subtitle, value(selector, "selected") + " · " + (members == null ? 0 : members.length()) + " outbounds");
+                set(subtitle, value(selector, "selected"));
                 subtitle.setContentDescription("Selected " + value(selector, "selected") + ", "
                     + (members == null ? 0 : members.length()) + " outbounds");
+                set(this.members, Integer.toString(members == null ? 0 : members.length()));
+                this.members.setContentDescription((members == null ? 0 : members.length()) + " outbounds");
+                this.members.setTooltipText(this.members.getContentDescription());
                 icon(subtitle, R.drawable.ic_check_circle, primary);
             } else {
                 String latency = result == null ? "Untested" : "ok".equals(result.optString("status"))
@@ -683,6 +819,7 @@ final class DiagnosticsUi {
                 subtitle.setContentDescription("Probe latency: " + latency);
                 icon(subtitle, R.drawable.ic_probe, secondary);
             }
+            subtitle.setTooltipText(subtitle.getContentDescription());
             quality.setVisibility(!heading && sample != null ? View.VISIBLE : View.GONE);
             JSONObject uplink = sample == null ? null : sample.optJSONObject("uplink");
             JSONObject downlink = sample == null ? null : sample.optJSONObject("downlink");
@@ -738,10 +875,13 @@ final class DiagnosticsUi {
         root.addView(view);
     }
 
-    private TextView metricRow(LinearLayout parent, String label, int id) {
+    private TextView metricRow(LinearLayout parent, String label, String description, int id, int icon) {
         LinearLayout line = row();
         line.setGravity(Gravity.CENTER_VERTICAL);
-        TextView name = text(label, 14, secondary, false);
+        TextView name = text(label, 13, secondary, false);
+        name.setContentDescription(description);
+        name.setTooltipText(description);
+        icon(name, icon, secondary);
         name.setPadding(0, dp(13), dp(12), dp(13));
         TextView value = number("—", 14, ink);
         value.setId(id);

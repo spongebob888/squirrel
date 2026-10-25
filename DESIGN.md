@@ -133,6 +133,13 @@ components:
     typography: '{typography.action}'
     rounded: '{rounded.action}'
     padding: 10dp 12dp
+  button-connection:
+    backgroundColor: '{colors.primary-light}'
+    textColor: '{colors.on-primary-light}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
+    padding: 10dp 12dp
+    width: 112dp
   button-outline:
     backgroundColor: '{colors.panel-light}'
     textColor: '{colors.ink-light}'
@@ -187,6 +194,13 @@ components:
     typography: '{typography.action}'
     rounded: '{rounded.action}'
     padding: 10dp 12dp
+  button-connection-dark:
+    backgroundColor: '{colors.primary-dark}'
+    textColor: '{colors.on-primary-dark}'
+    typography: '{typography.action}'
+    rounded: '{rounded.action}'
+    padding: 10dp 12dp
+    width: 112dp
   button-outline-dark:
     backgroundColor: '{colors.panel-dark}'
     textColor: '{colors.ink-dark}'
@@ -282,7 +296,7 @@ The palette is cool and restrained, with accents reserved for actions, selected 
 - **Secondary Slate** (`secondary-light` / `secondary-dark`): explanatory copy, metadata, hints and disabled text.
 - **Fine Outline** (`outline-light` / `outline-dark`): panel/field/button strokes, engine dividers and native ripple tint.
 
-**The Labeled Direction Rule.** Use periwinkle for download and teal for upload. Connection tiles show Downloaded then Uploaded; session pairs show Upload then Download. Compact proxy measurements use upload/download vector arrows with full accessible labels and tooltips. Direction remains identifiable independently of color.
+**The Labeled Direction Rule.** Use periwinkle for download and teal for upload. Connection columns show Download then Upload; session pairs put upload before download. Session and proxy measurements use upload/download vector arrows with full accessible labels and tooltips. Direction remains identifiable independently of color.
 
 ## Typography
 
@@ -295,7 +309,7 @@ The palette is cool and restrained, with accents reserved for actions, selected 
 - **Headline / headline-compact:** main destination titles, with a smaller role for configuration heights below (480dp).
 - **API title / result-title:** the standalone administration title and its result heading.
 - **Brand / core-mark:** the header’s Squirrel identity and small SHADOWQUIC identifier; the core mark alone uses explicit tracking.
-- **State / section / panel-title:** connection state, engine/outbound/session headings and the Network status panel title.
+- **State / section / panel-title:** connection state, Runtime/session headings and proxy row names. The inherited panel-title token now serves the proxy row title.
 - **Body / support / action / route:** ordinary copy and inputs, explanatory metadata, native action labels and bold selection/route labels. Regular navigation uses support-sized text; selected navigation is bold.
 - **Caption / micro:** operational caveats, measurement labels, tile captions and bottom-navigation labels. Selected bottom labels are bold.
 - **Total / measurement:** Connection’s transfer totals and smaller row/engine measurements. Probe latency also enables tabular figures at support size and normal weight.
@@ -311,7 +325,7 @@ Navigation follows available Android configuration size: below **600dp width**, 
 
 Page horizontal padding is (22dp). Normal diagnostic pages begin at (24dp), short pages at (12dp). Panel padding is normally (16dp); panel gaps are (12dp) or (16dp). The shared spacing scale is in frontmatter; values are Android dp rather than browser pixels. Engine label/value rows allocate widths 1:1.4, use (13dp) vertical padding and align values to the end. Lists use outlined, content-wrapping records with (12dp) gaps, preserving long names and bracketed IPv6 destinations. RecyclerView stable diff updates keep reading position without item animations.
 
-Diagnostics compact mode is **screenHeightDp < 480**. Titles shrink, list descriptions disappear, and Connection puts controls beside measurements at widths 1:1.5 with a (16dp) gap. The compact control panel uses (12dp) padding, omits the redundant Network status heading and orders state, full-height action, detail, then profile. The action remains at least (48dp), ahead of wrapping copy. Session rows separate identity from measurements at 1:1.3. Compact Sessions places text filtering and protocol choices side by side. Compact Proxies places its title and live count beside the filter to preserve list height. These are height adaptations, independent of navigation width thresholds.
+Diagnostics compact mode is **screenHeightDp < 480**. Titles shrink, list descriptions disappear, and Connection puts controls beside measurements at widths 1:1.5 with a (16dp) gap. The compact Connection control panel uses (12dp) padding. State and the power action share its first row; pending/error detail and the separated profile row follow. The power action retains its documented minimum height while wrapping copy expands the panel. Portrait and taller tablet layouts stack the control panel above measurements. Session rows separate identity from measurements at 1:1.3. Compact Sessions places text filtering and protocol choices side by side. Compact Proxies places its title and icon count beside the filter to preserve list height. These are height adaptations, independent of navigation width thresholds.
 
 Configuration stacks controls above its flexible editor below **600dp width**. At or above that width, a scrollable control sidebar has width **min(360dp, screenWidthDp / 2 − 36dp)**, followed by a (24dp) gap and the flexible editor. Below **500dp measured page height**, a non-wide editor page hides the redundant heading/profile label and uses (12dp) top padding. Logs hides its heading below **450dp measured page height**, retaining filter/live/export controls and a flexible selectable viewer. These measured-height adaptations preserve editing space when the IME resizes the app.
 
@@ -327,7 +341,7 @@ Ordinary panels, buttons and navigation are flat. Fill contrast and fine (1dp) o
 
 Actions, selected navigation backgrounds and route chips share small (8dp) corners. Panels, filters, source panes and API fields share larger (12dp) corners. Outlined actions use a (1dp) border; filled primary and disabled actions omit it. Panel strokes and keyed engine dividers use the fine outline role.
 
-The reference squirrel is copied as vector geometry in `ic_squirrelboard.xml`, including its blue rounded-square ground and white squirrel stroke; native line icons use vector XML, an (18dp) rendered size and an (8dp) label gap. Bottom navigation moves the icon above the label with a (4dp) gap. Do not substitute text glyphs for these icons. No shipping raster is introduced by this visual system.
+The reference squirrel is copied as vector geometry in `ic_squirrelboard.xml`, including its blue rounded-square ground and white squirrel stroke; native line icons use vector XML, normally an (18dp) rendered size and an (8dp) label gap. Connection’s power action uses a larger top icon as documented below. Bottom navigation moves the icon above the label with a (4dp) gap. Do not substitute text glyphs for these icons. No shipping raster is introduced by this visual system.
 
 ## Components
 
@@ -335,19 +349,25 @@ The reference squirrel is copied as vector geometry in `ic_squirrelboard.xml`, i
 
 Compact rectangular actions with modest rounding. Primary actions use periwinkle and action-contrast text; secondary actions use panel fill, slate text and a thin outline. Both have (8dp) corners, (10dp 12dp) padding and a minimum (48dp) height. API actions locally use (14dp) horizontal padding. Native outline-tinted ripples provide pressed feedback; disabled actions use canvas fill and secondary text, with no elevation. Preserve pending labels and disabled controls during work.
 
+### Connection control and disclosure
+
+Connection pairs its labeled local-engine state with a power action, then places the selected profile beneath a divider. The primary action uses the `button-connection` width, the shared action corners and padding, a minimum (96dp) height and a top vector icon (28dp) with an (8dp) label gap. Power changes to an hourglass during preparation or transition; the visible action and accessible name follow the engine state. Detail appears inline for pending and error states. Ordinary disconnected/connected states omit repeated explanatory copy.
+
+The Runtime header has a (48dp) information action. Its help starts collapsed and expands inline before the TCP/UDP measurements; the icon changes from information to close, with matching action names, tooltips and an expanded/collapsed accessibility state on supported Android versions. Disclosure state survives supported recreation. Help explains local-engine scope, measurement semantics and packet support without covering or hiding metric widgets. All metrics remain in the scrollable page in both states.
+
 ### Chips
 
 Proxy members use circular selection controls. A checked circle and periwinkle outline identify the active member; the accessible name includes “Selected” and its selector. Selector headers show the current member and member count. Sessions retain plain route text.
 
 ### Cards / Containers
 
-Connection status, paired transfer totals, engine detail and proxy/session rows use panel fill with (12dp) corners and a (1dp) outline. Normal internal padding is (16dp). Session records use (16dp 16dp 4dp) outer padding and manage bottom spacing inside. Proxy records use (12dp 8dp) padding and (8dp) gaps. Compact Connection uses its documented smaller padding and control-first order.
+Connection controls, the shared transfer panel, Runtime detail and proxy/session rows use panel fill with (12dp) corners and a (1dp) outline. Normal internal padding is (16dp). Session records use (16dp 16dp 4dp) outer padding and manage bottom spacing inside. Proxy records use (12dp 8dp) padding and (8dp) gaps. Compact Connection uses its documented smaller padding and control-first order.
 
 ### Proxy selectors and outbound quality
 
 Following `../squirrelboard`, selectors appear first, each immediately followed by its configured members in configuration order. Members are directly selectable; a selector's radio icon also opens the native chooser. Ordinary outbounds follow under All outbounds. Shared members have independent row identities per selector and retain their own selected state. Live refreshes preserve scroll position, and searching a member retains its selector context. Searching a selector shows its members.
 
-Each proxy row shows its name, a lightning icon with the cached HTTP probe result, and a (48dp) icon action to probe again. Pending probes show an hourglass and disable duplicate requests across all copies of the outbound. A pending selection disables that selector's controls until the request finishes; the checkmark changes only after a successful refreshed snapshot. Failures remain visible in the page's action notice.
+Each proxy row shows its name, a lightning icon with the cached HTTP probe result, and a (48dp) refresh-icon action to probe again. Selector headers retain the checked selected-member name and show their member count beside an outbound icon. Pending probes show an hourglass and disable duplicate requests across all copies of the outbound. A pending selection uses an hourglass and disables that selector's controls until the request finishes; the selected outline and accessible state retain the last confirmed selection. The checkmark changes only after a successful refreshed snapshot. Failures remain visible in the page's action notice.
 
 When a QUIC sample exists, a compact measurement line shows upload and download arrows, integer RTT in milliseconds, and packet-loss percentage. RTT and probe milliseconds round to the nearest integer; zero stays zero and invalid or missing RTT stays an em dash. Full measurement meanings are available through accessibility labels and tooltips. Rows without transport samples omit that line. Probe states remain explicit: Untested, Timed out, or Failed. Names wrap, and controls keep (48dp) targets at larger text sizes. No explanatory subtitle or repeated Outbound/Upload RTT/Download RTT/Packet loss labels appear on this page.
 
@@ -355,13 +375,17 @@ When a QUIC sample exists, a compact measurement line shows upload and download 
 
 Filters use panel fill, slate text, secondary hints, a fine outline, (12dp) corners, (8dp 14dp) padding and a minimum (48dp) height. API text fields locally use (10dp) vertical padding. Native cursor, error, selection and IME behavior remain. Only the YAML editor establishes an explicit (2dp) focused periwinkle stroke; other fields keep their native behavior.
 
+Sessions and Proxies filters include a leading search vector and concise hints. Their page headings pair the title with an icon/count; a filtered list shows matched / total, while pending data shows a dash. Full live-data and count semantics remain accessible and available as tooltips. Short viewports place the title/count block beside the filter area; Sessions also retains its native All/TCP/UDP choices beside the text filter. Taller layouts put filters below the title row. Repeated descriptive subtitles and a separate live-summary line are omitted.
+
 ### Navigation
 
 All three layouts share quiet-sidebar fill, outlined-ripple feedback, selected periwinkle text/icons, selection-wash background and (8dp) corners. Selected labels are bold. Bottom destinations are equal width; horizontal tabs scroll to the selected destination; expanded rail rows are start-aligned. API tools remains in the header overflow with native Back navigation.
 
 ### Transfer and engine measurements
 
-Connection shows two equally sized outlined tiles, Downloaded first and Uploaded second, separated by (12dp). Totals use slate tabular figures, with periwinkle/teal direction icons and explicit labels. Proxy/session row pairs put upload left in teal and download right in periwinkle; proxy rows use arrows with accessible labels while session rows retain visible labels. Engine rows use plain key/value alignment and thin dividers. Missing values use an em dash; zero remains an actual measurement.
+Connection shows one outlined transfer panel with equal Download and Upload columns, in that order. Each column has (12dp) inner-edge padding. Totals use slate tabular figures, with periwinkle/teal direction icons and concise visible labels. Runtime repeats equal TCP/UDP columns with session counts and arrow-led upload/download totals, followed by Tasks, Resident and Allocated icon/value rows. Every measurement remains visible in the scrollable layout; full meanings remain available through accessibility labels and tooltips. The healthy refresh explanation is omitted; loading, partial and failed metric notices remain inline. Proxy/session row pairs put upload left in teal and download right in periwinkle, using arrows and accessible labels. Engine rows use plain key/value alignment and thin dividers. Missing values use an em dash; zero remains an actual measurement.
+
+Session records keep the selectable destination and full protocol/inbound/outbound route, with a route vector. Arrow-led transfer totals share a row; lightning-led first-response time and clock-led duration share the next row. These concise measurements retain their full names in accessibility labels and tooltips. A half-circle icon and the explicit Half closed label appear only for that state. All measurements remain in each record; no expansion is required. Existing compact identity/measurement columns and stable RecyclerView refresh behavior remain.
 
 ### Source workspaces
 
