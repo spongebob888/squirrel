@@ -173,7 +173,7 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
                 .getJSONObject("quality").getJSONObject("probe");
             assertEquals(url, result.getString("url"));
             assertEquals("ok", result.getString("status"));
-            assertTrue(onMain(() -> ((TextView) main.findViewById(R.id.proxy_summary)).getText().toString().contains("live")));
+            assertTrue(onMain(() -> main.findViewById(R.id.proxy_summary).getContentDescription().toString().contains("live")));
         } finally {
             NativeBridge.stop();
             AppState.set(previous.phase, previous.detail);

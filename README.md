@@ -16,7 +16,7 @@ An Android VPN powered by the local ShadowQUIC Rust core. Android 8.0+; ARM64 ph
 
 Use the pinned Nix development environment on **x86_64 Linux**, following the Android SDK composition used by Homesick. `nix/flake.nix` and `nix/flake.lock` supply JDK 21, Rust with both Android targets, Python, native build tools, Android SDK/build tools 36, NDK **28.2.13676358**, and the emulator with a Google APIs x86_64 system image. A separate Android Studio installation, mutable SDK, or `steam-run` is not required. The composition accepts the Android SDK licenses through Nixpkgs configuration.
 
-The native crate imports [ShadowQUIC v0.4.5 from GitHub](https://github.com/spongebob888/shadowquic/tree/v0.4.5)
+The native crate imports [ShadowQUIC v0.4.6 from GitHub](https://github.com/spongebob888/shadowquic/tree/v0.4.6)
 as a Cargo Git dependency. `native/Cargo.toml` selects the release tag and
 `native/Cargo.lock` pins its exact commit. Cargo downloads the source into its
 Git cache on first use and reuses it for subsequent builds. Updating the core
@@ -44,7 +44,7 @@ ShadowQUIC includes Android TUN support and fake-IP restoration upstream, accept
 ## Continuous integration and releases
 
 Every push to `main` runs `.github/workflows/alpha.yml` on GitHub Actions using
-`nix develop ./nix`. It resolves the pinned ShadowQUIC `v0.4.5` dependency, checks Rust formatting,
+`nix develop ./nix`. It resolves the pinned ShadowQUIC `v0.4.6` dependency, checks Rust formatting,
 runs Rust unit tests, and builds/lints the universal ARM64/x86_64 release APK, then signs and verifies it.
 Successful runs publish an `alpha-<run-number>-<attempt>` GitHub prerelease with
 an APK, SHA-256 checksums, and both source commit IDs. Each push runs independently;
@@ -90,7 +90,7 @@ Back up the keystore and passwords privately; keep the same key for future updat
 Missing secrets stop CI before building. Signing uses a temporary keystore that is
 removed on exit, and `apksigner verify` must pass before publication.
 The workflow sets version code to its run number. Main-branch builds use version
-name `0.1.0-alpha.<run-number>.<attempt>`; tagged builds use the tag without its
+name `0.1.1-alpha.<run-number>.<attempt>`; tagged builds use the tag without its
 leading `v`. Reruns retain the same version code.
 
 For local signing, export the same four variables, build with
