@@ -87,7 +87,7 @@ jobs:
           Automated Squirrel $SQUIRREL_VERSION_NAME build from $GITHUB_REF.
 
           - Squirrel commit: $GITHUB_SHA
-          - ShadowQUIC v0.4.6 commit: $SHADOWQUIC_REVISION
+          - ShadowQUIC v0.4.7 commit: $SHADOWQUIC_REVISION
           - Universal APK: ARM64 and x86_64; Android 8.0 or later.
           - Release APK signed with the persistent repository signing key.
             Subsequent builds signed with this key can update the app in place.

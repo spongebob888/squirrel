@@ -8,7 +8,7 @@ name = "squirrel"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-shadowquic = { git = "https://github.com/spongebob888/shadowquic.git", tag = "v0.4.6", default-features = false, features = [
+shadowquic = { git = "https://github.com/spongebob888/shadowquic.git", tag = "v0.4.7", default-features = false, features = [
     "shadowquic-quinn",
     "sunnyquic-noq",
     "ring",
@@ -35,7 +35,7 @@ libc = "0.2"
 rcgen = "0.14"
 
 [target.'cfg(target_os = "android")'.dependencies]
-shadowquic = { git = "https://github.com/spongebob888/shadowquic.git", tag = "v0.4.6", features = ["jemalloc"] }
+shadowquic = { git = "https://github.com/spongebob888/shadowquic.git", tag = "v0.4.7", features = ["jemalloc"] }
 
 [profile.release]
 opt-level = "s"

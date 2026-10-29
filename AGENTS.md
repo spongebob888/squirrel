@@ -11,7 +11,7 @@
 
 ## Build, Test, and Development Commands
 
-Use JDK 17/21, Rust stable with edition 2024 support, Python 3, Android SDK 36, and NDK `28.2.13676358`. Set `JAVA_HOME` and `ANDROID_HOME`. The native crate imports ShadowQUIC directly from GitHub tag `v0.4.6`; `native/Cargo.lock` pins its exact commit. Cargo manages the dependency checkout.
+Use JDK 17/21, Rust stable with edition 2024 support, Python 3, Android SDK 36, and NDK `28.2.13676358`. Set `JAVA_HOME` and `ANDROID_HOME`. The native crate imports ShadowQUIC directly from GitHub tag `v0.4.7`; `native/Cargo.lock` pins its exact commit. Cargo manages the dependency checkout.
 
 Run from the repository root:
 
