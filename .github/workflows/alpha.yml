@@ -34,7 +34,7 @@ jobs:
             version_name="${version_name:-$release_tag}"
           else
             release_tag="alpha-$GITHUB_RUN_NUMBER-$GITHUB_RUN_ATTEMPT"
-            version_name="0.1.1-alpha.$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT"
+            version_name="0.1.2-alpha.$GITHUB_RUN_NUMBER.$GITHUB_RUN_ATTEMPT"
           fi
           {
             echo "RELEASE_TAG=$release_tag"

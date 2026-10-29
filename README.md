@@ -90,7 +90,7 @@ Back up the keystore and passwords privately; keep the same key for future updat
 Missing secrets stop CI before building. Signing uses a temporary keystore that is
 removed on exit, and `apksigner verify` must pass before publication.
 The workflow sets version code to its run number. Main-branch builds use version
-name `0.1.1-alpha.<run-number>.<attempt>`; tagged builds use the tag without its
+name `0.1.2-alpha.<run-number>.<attempt>`; tagged builds use the tag without its
 leading `v`. Reruns retain the same version code.
 
 For local signing, export the same four variables, build with

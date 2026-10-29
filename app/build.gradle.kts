@@ -15,8 +15,8 @@ android {
         applicationId = "dev.squirrel.vpn"
         minSdk = 26
         targetSdk = 36
-        versionCode = System.getenv("SQUIRREL_VERSION_CODE")?.toInt() ?: 2
-        versionName = System.getenv("SQUIRREL_VERSION_NAME") ?: "0.1.1"
+        versionCode = System.getenv("SQUIRREL_VERSION_CODE")?.toInt() ?: 3
+        versionName = System.getenv("SQUIRREL_VERSION_NAME") ?: "0.1.2"
         ndk { abiFilters += (System.getenv("ANDROID_ABIS") ?: "arm64-v8a,x86_64").split(",") }
         testInstrumentationRunner = "android.test.InstrumentationTestRunner"
     }
