@@ -644,7 +644,7 @@ final class DiagnosticsUi {
     }
 
     private final class SessionRow extends RecyclerView.ViewHolder {
-        final TextView title, route, info, up, down, latency, halfClosed;
+        final TextView title, protocolBadge, route, info, up, down, latency, halfClosed;
 
         SessionRow() {
             super(column());
@@ -666,7 +666,17 @@ final class DiagnosticsUi {
             }
             title = text("", 16, ink, true);
             title.setTextIsSelectable(true);
-            identity.addView(title);
+            LinearLayout heading = row();
+            heading.setGravity(Gravity.TOP);
+            protocolBadge = text("", 12, primary, true);
+            protocolBadge.setGravity(Gravity.CENTER);
+            protocolBadge.setPadding(dp(8), dp(4), dp(8), dp(4));
+            protocolBadge.setBackground(shape(container, 8));
+            LinearLayout.LayoutParams badgeParams = new LinearLayout.LayoutParams(-2, -2);
+            badgeParams.setMarginEnd(dp(10));
+            heading.addView(protocolBadge, badgeParams);
+            heading.addView(title, new LinearLayout.LayoutParams(0, -2, 1));
+            identity.addView(heading);
             route = text("", 13, primary, true);
             icon(route, R.drawable.ic_route, primary);
             add(identity, route, 5, 8);
@@ -680,9 +690,9 @@ final class DiagnosticsUi {
             pair.addView(up, new LinearLayout.LayoutParams(0, -2, 1));
             pair.addView(down, new LinearLayout.LayoutParams(0, -2, 1));
             measurements.addView(pair);
-            latency = text("", 13, secondary, false);
+            latency = text("", 13, primary, true);
             latency.setFontFeatureSettings("tnum");
-            icon(latency, R.drawable.ic_probe, secondary);
+            icon(latency, R.drawable.ic_probe, primary);
             info = text("", 12, secondary, false);
             info.setFontFeatureSettings("tnum");
             icon(info, R.drawable.ic_clock, secondary);
@@ -702,8 +712,9 @@ final class DiagnosticsUi {
             String destination = domain.isEmpty() ? value(item, "dst_ip") : domain;
             if (domain.isEmpty() && destination.contains(":")) destination = "[" + destination + "]";
             set(title, destination + ":" + value(item, "dst_port"));
-            set(route, value(item, "protocol").toUpperCase(Locale.ROOT) + " · "
-                + value(item, "inbound") + " → " + value(item, "outbound"));
+            set(protocolBadge, value(item, "protocol").toUpperCase(Locale.ROOT));
+            protocolBadge.setContentDescription("Protocol " + protocolBadge.getText());
+            set(route, value(item, "inbound") + " → " + value(item, "outbound"));
             route.setContentDescription("Protocol " + value(item, "protocol").toUpperCase(Locale.ROOT)
                 + ", inbound " + value(item, "inbound") + ", outbound " + value(item, "outbound"));
             route.setTooltipText(route.getContentDescription());

@@ -367,7 +367,7 @@ The Runtime header has a (48dp) information action. Its help starts collapsed an
 
 ### Chips
 
-Proxy members use circular selection controls. A checked circle and periwinkle outline identify the active member; the accessible name includes “Selected” and its selector. Selector headers show the current member and member count. Sessions retain plain route text.
+Proxy members use circular selection controls. A checked circle and periwinkle outline identify the active member; the accessible name includes “Selected” and its selector. Selector headers show the current member and member count. Sessions pair a small tonal protocol badge with the destination and retain plain route text below it.
 
 ### Cards / Containers
 
@@ -395,7 +395,7 @@ All three layouts share quiet-sidebar fill, outlined-ripple feedback, selected p
 
 Connection shows one outlined transfer panel with equal Download and Upload columns, in that order. Each column has (12dp) inner-edge padding. Totals use slate tabular figures, with periwinkle/teal direction icons and concise visible labels. Runtime repeats equal TCP/UDP columns with session counts and arrow-led upload/download totals, followed by Tasks, Resident and Allocated icon/value rows. Every measurement remains visible in the scrollable layout; full meanings remain available through accessibility labels and tooltips. The healthy refresh explanation is omitted; loading, partial and failed metric notices remain inline. Proxy/session row pairs put upload left in teal and download right in periwinkle, using arrows and accessible labels. Engine rows use plain key/value alignment and thin dividers. Missing values use an em dash; zero remains an actual measurement.
 
-Session records keep the selectable destination and full protocol/inbound/outbound route, with a route vector. Arrow-led transfer totals share a row; lightning-led first-response time and clock-led duration share the next row. These concise measurements retain their full names in accessibility labels and tooltips. A half-circle icon and the explicit Half closed label appear only for that state. All measurements remain in each record; no expansion is required. Existing compact identity/measurement columns and stable RecyclerView refresh behavior remain.
+Session records keep the selectable destination and full protocol/inbound/outbound information. A compact protocol badge uses the selection wash, primary text, (8dp) corners and (8dp 4dp) padding beside the destination; the route vector and inbound/outbound names follow below. Arrow-led transfer totals share a row, with teal upload values and primary download values. Lightning-led first-response values use primary color and stronger weight, while clock-led duration remains secondary on the next row. These concise measurements retain their full names in accessibility labels and tooltips. A half-circle icon and the explicit Half closed label appear only for that state. All measurements remain in each record; no expansion is required. Existing compact identity/measurement columns and stable RecyclerView refresh behavior remain.
 
 ### Source workspaces
 
