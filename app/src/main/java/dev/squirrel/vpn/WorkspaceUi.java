@@ -72,24 +72,18 @@ final class WorkspaceUi {
         controls.addView(profileActions);
 
         configActions = theme.row();
-        weighted(configActions, theme.action("Import file", importFile, false), 1.05f, true);
+        weighted(configActions, theme.action("Import file", importFile, false), 1, true);
         downloadButton = theme.action("Download URL", download, false);
         downloadButton.setId(R.id.download_config);
-        weighted(configActions, downloadButton, 1.3f, true);
+        weighted(configActions, downloadButton, 1, false);
         Button saveConfig = theme.action("Save", save, false);
         saveConfig.setId(R.id.config_save);
-        weighted(configActions, saveConfig, 0.75f, false);
-        add(controls, configActions, 12, 0);
         configNotice = theme.text("Import or edit YAML, then Save or Connect to apply.", 13, theme.secondary, false);
         configNotice.setId(R.id.config_notice);
         configNotice.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
-        add(controls, configNotice, 12, 0);
 
-        LinearLayout document = theme.panel();
         configTools = theme.row();
         configTools.setGravity(Gravity.CENTER_VERTICAL);
-        TextView yaml = theme.text("YAML · UTF-8", 12, theme.secondary, true);
-        configTools.addView(yaml, new LinearLayout.LayoutParams(0, -2, 1));
         more = theme.action("More", () -> {}, false);
         more.setId(R.id.config_more);
         more.setContentDescription("More configuration actions");
@@ -106,8 +100,6 @@ final class WorkspaceUi {
             });
             menu.show();
         });
-        configTools.addView(more, new LinearLayout.LayoutParams(theme.dp(88), -2));
-        add(document, configTools, 0, 12);
         editor = new EditText(theme.context);
         editor.setId(R.id.config_editor);
         editor.setTextSize(13);
@@ -139,8 +131,12 @@ final class WorkspaceUi {
         editButton = theme.action("Edit YAML", this::openEditor, true);
         editButton.setId(R.id.config_edit);
         theme.icon(editButton, R.drawable.ic_configuration, theme.onPrimary);
-        document.addView(editButton, new LinearLayout.LayoutParams(-1, -2));
-        add(controls, document, 16, 0);
+        weighted(configTools, editButton, 1.8f, true);
+        weighted(configTools, saveConfig, 1, true);
+        weighted(configTools, more, 1, false);
+        add(controls, configTools, 12, 0);
+        add(controls, configNotice, 12, 0);
+        add(controls, configActions, 24, 0);
         android.widget.FrameLayout.LayoutParams controlsParams = new android.widget.FrameLayout.LayoutParams(
             wide ? theme.dp(Math.min(720, theme.context.getResources().getConfiguration().screenWidthDp - 44)) : -1, -2,
             Gravity.TOP | Gravity.CENTER_HORIZONTAL);

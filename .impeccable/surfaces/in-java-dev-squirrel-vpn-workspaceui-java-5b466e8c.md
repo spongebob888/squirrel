@@ -20,7 +20,7 @@ OWN-WORLD: Cool gray canvas, white/charcoal outlined panes, slate ink, periwinkl
 
 STORY: Choose a profile, bring in configuration, edit and save it without losing the draft. Inspect a readable log tail, filter or pause its display, and export all retained logs independently of the view filter.
 
-FIRST VIEWPORT: Configuration places its title above a profile row and import/download/save toolbar, followed by status and a compact YAML action panel. Edit YAML opens a secure full-height editor window on phones and short landscape displays, or a centered editing panel on tablets. The editor has Save and Close actions; closing retains the draft. Logs places title, scoped filter/export controls, live switch and status above a large selectable monospace viewer. All destinations share the existing header and adaptive navigation.
+FIRST VIEWPORT: Configuration places its title above a profile row, then a single Edit YAML/Save/More row, status and paired Import file/Download URL actions. The primary editing entry is directly below the profile, without a surrounding panel or repeated YAML format label. Edit YAML opens a secure full-height editor window on phones and short landscape displays, or a centered editing panel on tablets. The editor has Save and Close actions; closing retains the draft. Logs places title, scoped filter/export controls, live switch and status above a large selectable monospace viewer. All destinations share the existing header and adaptive navigation.
 
 FORM: Native adaptation of user-pinned ../squirrelboard, superseding the earlier atlas seed. Exact tokens and responsive thresholds are recorded in DESIGN.md and its schemaVersion 2 sidecar.
 
@@ -59,3 +59,11 @@ visible text and preserves multiline styles; style-only updates also refresh.
 Pause, read-error snapshots, tail-following, filter focus and original-file exports
 retain their existing behavior. Verification for this refinement covers focused
 formatter/workspace tests and native phone/tablet appearance captures.
+
+## Distill refinement
+
+Keep all operations directly available. Group Edit YAML, Save and More immediately
+after profile selection, with Edit YAML as the sole filled action. Remove the
+extra YAML action container and format caption; keep the status live region and
+place the equal-width source actions beneath it. No action moves into a new menu,
+and the secure editor, drafts, busy-state disabling and diagnostics are unchanged.
