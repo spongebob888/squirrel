@@ -52,3 +52,15 @@ first-response/duration values; Half closed stays explicit. Proxy group headers
 show the selected member and an icon/count; a refresh icon runs the existing
 HTTP probe while cached latency retains its lightning icon. Full measurement
 meanings remain in accessibility labels and tooltips. No data is disclosed away.
+
+## Adaptive proxy grid
+
+The user requested two or more proxies in one row. Proxy members and ordinary
+outbounds share an adaptive 1–4 column grid, based on the actual list width with
+168dp minimum card width scaled by max(1, font scale). Keep 8dp gutters and row
+gaps. Selector headers and All outbounds span every column; retain configuration
+order, selector context while filtering, shared-member identities and refresh
+position. Names wrap on their own line, latency remains visible, and upload/
+download quality values stack. Selection and probe controls sit in the card footer
+with 48dp targets; selector headers keep their inline chooser and probe controls.
+Larger type and narrow windows reduce columns. No measurements are hidden.

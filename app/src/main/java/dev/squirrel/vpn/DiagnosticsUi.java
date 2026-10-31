@@ -21,6 +21,7 @@ import android.widget.RadioGroup;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import java.util.ArrayList;
@@ -465,9 +466,46 @@ final class DiagnosticsUi {
             empty.setId(isSessions ? R.id.session_empty : R.id.proxy_empty);
             empty.setAccessibilityLiveRegion(View.ACCESSIBILITY_LIVE_REGION_POLITE);
             add(root, empty, 18, 16);
-            RecyclerView list = new RecyclerView(context);
+            RecyclerView list = new RecyclerView(context) {
+                @Override protected void onSizeChanged(int width, int height, int oldWidth, int oldHeight) {
+                    super.onSizeChanged(width, height, oldWidth, oldHeight);
+                    if (!(getLayoutManager() instanceof GridLayoutManager)) return;
+                    GridLayoutManager grid = (GridLayoutManager) getLayoutManager();
+                    float fontScale = context.getResources().getConfiguration().fontScale;
+                    int minimum = dp(Math.round(168 * Math.max(1, fontScale)));
+                    int available = width - getPaddingLeft() - getPaddingRight();
+                    int columns = Math.max(1, Math.min(4, (available + dp(8)) / (minimum + dp(8))));
+                    if (columns != grid.getSpanCount()) {
+                        grid.setSpanCount(columns);
+                        invalidateItemDecorations();
+                    }
+                }
+            };
             list.setId(isSessions ? R.id.session_rows : R.id.proxy_rows);
-            list.setLayoutManager(new LinearLayoutManager(context));
+            if (isSessions) {
+                list.setLayoutManager(new LinearLayoutManager(context));
+            } else {
+                GridLayoutManager grid = new GridLayoutManager(context, 1);
+                grid.setSpanSizeLookup(new GridLayoutManager.SpanSizeLookup() {
+                    @Override public int getSpanSize(int position) {
+                        return adapter.getItemViewType(position) == 0 ? 1 : grid.getSpanCount();
+                    }
+                });
+                list.setLayoutManager(grid);
+                list.addItemDecoration(new RecyclerView.ItemDecoration() {
+                    @Override public void getItemOffsets(android.graphics.Rect out, View view,
+                            RecyclerView parent, RecyclerView.State state) {
+                        GridLayoutManager.LayoutParams params = (GridLayoutManager.LayoutParams) view.getLayoutParams();
+                        int columns = grid.getSpanCount();
+                        if (params.getSpanSize() == columns) return;
+                        int start = dp(8) * params.getSpanIndex() / columns;
+                        int end = dp(8) - dp(8) * (params.getSpanIndex() + 1) / columns;
+                        boolean rtl = parent.getLayoutDirection() == View.LAYOUT_DIRECTION_RTL;
+                        out.left = rtl ? end : start;
+                        out.right = rtl ? start : end;
+                    }
+                });
+            }
             list.setAdapter(adapter);
             list.setItemAnimator(null);
             list.setClipToPadding(false);
@@ -632,9 +670,13 @@ final class DiagnosticsUi {
                 if (android.os.Build.VERSION.SDK_INT >= 28) heading.setAccessibilityHeading(true);
                 return new RecyclerView.ViewHolder(heading) {};
             }
-            return owner.isSessions ? new SessionRow() : new ProxyRow(owner);
+            return owner.isSessions ? new SessionRow() : new ProxyRow(owner, type == 2);
         }
-        @Override public int getItemViewType(int position) { return items.get(position).section == null ? 0 : 1; }
+        @Override public int getItemViewType(int position) {
+            DisplayItem item = items.get(position);
+            if (item.section != null) return 1;
+            return !owner.isSessions && item.parent == null && item.item.optJSONObject("selector") != null ? 2 : 0;
+        }
         @Override public void onBindViewHolder(RecyclerView.ViewHolder row, int position) {
             if (items.get(position).section != null) set((TextView) row.itemView, items.get(position).section);
             else if (row instanceof ProxyRow) ((ProxyRow) row).bind(items.get(position));
@@ -735,7 +777,7 @@ final class DiagnosticsUi {
         final ImageButton select, test;
         DisplayItem entry;
 
-        ProxyRow(RuntimeList owner) {
+        ProxyRow(RuntimeList owner, boolean groupHeader) {
             super(column());
             this.owner = owner;
             LinearLayout body = (LinearLayout) itemView;
@@ -750,9 +792,9 @@ final class DiagnosticsUi {
                 choose.choose(value(parent, "tag"), parent.optJSONObject("selector"),
                     entry.parent == null ? null : value(entry.item, "tag"));
             });
-            heading.addView(select, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            if (groupHeader) heading.addView(select, new LinearLayout.LayoutParams(dp(48), dp(48)));
             LinearLayout identity = column();
-            identity.setPadding(dp(8), 0, dp(8), 0);
+            if (groupHeader) identity.setPadding(dp(8), 0, dp(8), 0);
             name = text("", 15, ink, true);
             identity.addView(name);
             subtitle = text("", 12, secondary, false);
@@ -767,19 +809,28 @@ final class DiagnosticsUi {
             add(identity, subtitleRow, 2, 0);
             heading.addView(identity, new LinearLayout.LayoutParams(0, -2, 1));
             test = iconAction("", () -> probe.accept(value(entry.item, "tag")));
-            heading.addView(test, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            if (groupHeader) heading.addView(test, new LinearLayout.LayoutParams(dp(48), dp(48)));
             body.addView(heading);
-            quality = row();
+            quality = groupHeader ? row() : column();
             up = text("", 13, download, false);
             down = text("", 13, primary, false);
             for (TextView measurement : new TextView[]{up, down}) {
                 measurement.setFontFeatureSettings("tnum");
                 measurement.setPadding(0, dp(4), dp(8), 0);
-                quality.addView(measurement, new LinearLayout.LayoutParams(0, -2, 1));
+                quality.addView(measurement, new LinearLayout.LayoutParams(-1, -2));
             }
             icon(up, R.drawable.ic_upload, download);
             icon(down, R.drawable.ic_download, primary);
             body.addView(quality);
+            if (!groupHeader) {
+                body.addView(new View(context), new LinearLayout.LayoutParams(-1, 0, 1));
+                LinearLayout actions = row();
+                actions.setGravity(Gravity.CENTER_VERTICAL);
+                actions.addView(select, new LinearLayout.LayoutParams(dp(48), dp(48)));
+                actions.addView(new View(context), new LinearLayout.LayoutParams(0, 1, 1));
+                actions.addView(test, new LinearLayout.LayoutParams(dp(48), dp(48)));
+                add(body, actions, 8, 0);
+            }
         }
 
         void bind(DisplayItem entry) {

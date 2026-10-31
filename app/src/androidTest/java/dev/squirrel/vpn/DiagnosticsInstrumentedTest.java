@@ -17,6 +17,7 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.TextView;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.viewpager2.widget.ViewPager2;
@@ -190,6 +191,54 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             assertEquals(6, list.getAdapter().getItemCount());
             ((EditText) activity.findViewById(R.id.proxy_filter)).setText("Proxy");
             assertEquals(4, list.getAdapter().getItemCount());
+            return null;
+        });
+    }
+
+    public void testProxyGridReflowsAndKeepsSelectorHeadingsFullWidth() throws Exception {
+        launch();
+        page(MainActivity.PROXIES);
+        onMain(() -> {
+            ui.renderState(connected(), false, "Synthetic fixture");
+            ui.renderOutbounds(proxyFixture());
+            RecyclerView list = rows(R.id.proxy_rows);
+            ViewGroup.LayoutParams params = list.getLayoutParams();
+            params.width = ui.dp(720);
+            list.setLayoutParams(params);
+            return null;
+        });
+        getInstrumentation().waitForIdleSync();
+        onMain(() -> {
+            RecyclerView list = rows(R.id.proxy_rows);
+            GridLayoutManager grid = (GridLayoutManager) list.getLayoutManager();
+            assertTrue(grid.getSpanCount() >= 2);
+            View header = list.findViewHolderForAdapterPosition(0).itemView;
+            View first = list.findViewHolderForAdapterPosition(1).itemView;
+            View second = list.findViewHolderForAdapterPosition(2).itemView;
+            assertEquals(list.getWidth(), header.getWidth());
+            assertEquals(first.getTop(), second.getTop());
+            assertTrue(first.getWidth() < header.getWidth());
+            View select = described(first, "Selected relay-a for Proxy");
+            View probe = described(first, "Probe latency for relay-a");
+            assertTrue(select.getWidth() >= ui.dp(48) && select.getHeight() >= ui.dp(48));
+            assertTrue(probe.getWidth() >= ui.dp(48) && probe.getHeight() >= ui.dp(48));
+            View direct = list.findViewHolderForAdapterPosition(3).itemView;
+            int[] probeLocation = new int[2], directLocation = new int[2];
+            probe.getLocationInWindow(probeLocation);
+            described(direct, "Probe latency for direct").getLocationInWindow(directLocation);
+            assertEquals("Probe actions align despite different metric content", probeLocation[1], directLocation[1]);
+            // A following selector starts a new row even after a partially filled group.
+            assertEquals(grid.getSpanCount(), grid.getSpanSizeLookup().getSpanSize(4));
+            ViewGroup.LayoutParams params = list.getLayoutParams();
+            params.width = ui.dp(320);
+            list.setLayoutParams(params);
+            return null;
+        });
+        getInstrumentation().waitForIdleSync();
+        onMain(() -> {
+            RecyclerView list = rows(R.id.proxy_rows);
+            assertEquals(1, ((GridLayoutManager) list.getLayoutManager()).getSpanCount());
+            assertEquals(list.getWidth(), list.findViewHolderForAdapterPosition(1).itemView.getWidth());
             return null;
         });
     }
