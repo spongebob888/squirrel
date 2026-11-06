@@ -158,7 +158,7 @@ Usernames and outbound/member tags are exact keys; surrounding spaces are preser
 
 Server connections use the outbound's transport, authentication, TLS and socket settings. A configured `addr-resolver` uses its DNS backend directly through a temporary loopback listener; it does not start the profile's listeners, router or VPN. Fake-IP address resolvers are rejected. Referenced certificates must already be readable on the Android device, as with the VPN profile.
 
-**Local runtime** requires the VPN engine to be running. It exposes bundled REST operations: outbounds, connections, traffic, memory, selector get/set and outbound HTTP probing. Results are JSON snapshots. Selector changes require confirmation and apply to new sessions; restarting restores the configured selection. Probe timeouts accept 1–60000 ms, and the client waits for that interval. The existing Proxies tab remains the everyday selection/probe interface.
+**Local runtime** requires the VPN engine to be running with `restful-api` enabled. It exposes bundled REST operations: outbounds, connections, traffic, memory, selector get/set and outbound HTTP probing. Results are JSON snapshots. Selector changes require confirmation and apply to new sessions; restarting restores the configured selection. Probe timeouts accept 1–60000 ms, and the client waits for that interval. The existing Proxies tab remains the everyday selection/probe interface.
 
 The built-in **Direct test** profile exercises the packet engine without a remote server. It forwards directly and does not provide an encrypted remote tunnel. ICMP/ping is not supported by the core's TCP/UDP stack.
 
@@ -181,7 +181,9 @@ android:
   dns-servers: [1.1.1.1, 1.0.0.1]
 ```
 
-Squirrel replaces any `restful-api` entry in the runtime-only config with a private listener at `127.0.0.1:19090` for the live screens. It generates and stores a random bearer token in private app preferences. Exported and saved YAML is unchanged.
+Squirrel respects the YAML `restful-api` section, including `bind-addr`, `secret`, `tag`, `ui-path`, and `ui-download-url`. If the key is missing, Squirrel supplies a runtime default at `127.0.0.1:9090` without authentication so live screens and local API tools work. Saved and exported YAML is unchanged. An explicit `restful-api: null` disables the REST listener. Omitting `secret` or setting it to an empty string disables bearer authentication. The bundled profiles explicitly enable the same default listener.
+
+Live screens and local API tools use the running session's configured address and secret; edits and profile switches take effect after reconnecting. Wildcard listeners (`0.0.0.0` and `[::]`) are accessed through loopback by the app and can also accept connections from other devices. Browser clients can use the API with CORS and the configured bearer token, if any; `ui-path` enables the upstream dashboard. Use a fixed, nonzero port for app diagnostics: upstream does not expose the assigned port when binding to port `0`. With REST disabled, the VPN still works, while live diagnostics and local API operations are unavailable.
 
 Both default routes (`0.0.0.0/0`, `::/0`) enter the VPN. DNS packets to these addresses follow the configured outbound/router, just like other UDP/TCP traffic. Defaults are the two addresses above. For local fake-IP DNS, use the core's inline Lua routing to send port 53 traffic to the configured DNS service. Imported `protect-path` values are cleared because UID bypass handles socket protection here.
 

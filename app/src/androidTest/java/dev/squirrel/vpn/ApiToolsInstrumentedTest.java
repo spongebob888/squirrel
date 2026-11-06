@@ -197,10 +197,11 @@ public final class ApiToolsInstrumentedTest extends InstrumentationTestCase {
         Os.socketpair(OsConstants.AF_UNIX, OsConstants.SOCK_DGRAM, 0, app, core);
         AppState.Snapshot previous = AppState.get();
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core); ServerSocket http = new ServerSocket(0)) {
-            String config = "outbounds: [{tag: direct, type: direct}, {tag: ' direct ', type: direct}, {tag: ' choice / one ', type: selector, outbounds: [direct, ' direct ']}]\n";
+            String config = "outbounds: [{tag: direct, type: direct}, {tag: ' direct ', type: direct}, {tag: ' choice / one ', type: selector, outbounds: [direct, ' direct ']}]\n"
+                + "restful-api: {bind-addr: '127.0.0.1:19091', secret: synthetic-test-only}\n";
             NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(getInstrumentation().getTargetContext(), config),
                 new File(getInstrumentation().getTargetContext().getCacheDir(), "api-local-test.log").getPath());
-            ShadowQuicApi api = new ShadowQuicApi(getInstrumentation().getTargetContext());
+            ShadowQuicApi api = new ShadowQuicApi();
             boolean ready = false;
             for (int i = 0; i < 40; i++) {
                 try { api.get("/traffic"); ready = true; break; } catch (Exception e) { Thread.sleep(50); }
@@ -235,8 +236,16 @@ public final class ApiToolsInstrumentedTest extends InstrumentationTestCase {
             getInstrumentation().waitForIdleSync();
             onMain(() -> { activity.outboundTag.setText(" choice / one "); activity.selectedMember.setText(" direct "); activity.run.performClick(); return null; });
             getInstrumentation().waitForIdleSync();
-            AccessibilityNodeInfo root = getInstrumentation().getUiAutomation().getRootInActiveWindow();
-            assertNotNull(root); assertFalse(root.findAccessibilityNodeInfosByText("\\u0020direct\\u0020").isEmpty());
+            long dialogDeadline = SystemClock.uptimeMillis() + 3000;
+            boolean memberVisible = false;
+            while (SystemClock.uptimeMillis() < dialogDeadline) {
+                AccessibilityNodeInfo root = getInstrumentation().getUiAutomation().getRootInActiveWindow();
+                if (root != null && !root.findAccessibilityNodeInfosByText("\\u0020direct\\u0020").isEmpty()) {
+                    memberVisible = true; break;
+                }
+                Thread.sleep(30);
+            }
+            assertTrue("Confirmation must show the exact member tag", memberVisible);
             dialogButton(true); awaitIdle();
             assertEquals(" direct ", api.get(selection).getString("selected"));
             AppState.set(AppState.Phase.DISCONNECTED, "Synthetic fixture");

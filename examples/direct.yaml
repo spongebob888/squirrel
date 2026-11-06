@@ -5,4 +5,6 @@ outbounds:
     tag: direct
 android:
   dns-servers: [1.1.1.1, 1.0.0.1]
+restful-api:
+  bind-addr: 127.0.0.1:9090
 log-level: debug

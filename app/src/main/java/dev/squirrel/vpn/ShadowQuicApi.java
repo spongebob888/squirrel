@@ -1,6 +1,5 @@
 package dev.squirrel.vpn;
 
-import android.content.Context;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -8,14 +7,24 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 final class ShadowQuicApi {
-    private static final String BASE = "http://127.0.0.1:19090/api/v1";
+    private final String base;
     private final String secret;
 
-    ShadowQuicApi(Context context) {
-        secret = context.getSharedPreferences("runtime", Context.MODE_PRIVATE).getString("local_api_secret", "");
+    ShadowQuicApi() throws IOException {
+        String settings = NativeBridge.runtimeApiSettings();
+        if ("null".equals(settings)) throw new IOException("REST API is disabled in the running configuration.");
+        try {
+            JSONObject api = new JSONObject(settings);
+            base = api.getString("baseUrl");
+            secret = api.getString("secret");
+        } catch (JSONException error) {
+            throw new IOException("Cannot read the running REST API settings", error);
+        }
+        if (new URL(base).getPort() == 0) throw new IOException("Use a fixed restful-api port for app diagnostics.");
     }
 
     JSONObject get(String path) throws Exception { return request("GET", path, null); }
@@ -36,12 +45,12 @@ final class ShadowQuicApi {
     }
 
     JSONObject request(String method, String path, JSONObject body, int timeoutMs) throws Exception {
-        HttpURLConnection connection = (HttpURLConnection) new URL(BASE + path).openConnection();
+        HttpURLConnection connection = (HttpURLConnection) new URL(base + path).openConnection();
         try {
             connection.setRequestMethod(method);
             connection.setConnectTimeout(1800);
             connection.setReadTimeout(timeoutMs);
-            connection.setRequestProperty("Authorization", "Bearer " + secret);
+            if (!secret.isEmpty()) connection.setRequestProperty("Authorization", "Bearer " + secret);
             connection.setRequestProperty("Accept", "application/json");
             if (body != null) {
                 connection.setDoOutput(true);

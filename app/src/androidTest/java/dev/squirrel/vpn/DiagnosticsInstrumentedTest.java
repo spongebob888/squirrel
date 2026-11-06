@@ -336,9 +336,10 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core)) {
             NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context,
                 "outbounds: [{tag: direct, type: direct}, {tag: backup, type: direct}, "
-                    + "{tag: 'choice / one', type: selector, outbounds: [direct, backup]}]\n"),
+                    + "{tag: 'choice / one', type: selector, outbounds: [direct, backup]}]\n"
+                    + "restful-api: {bind-addr: '127.0.0.1:19092'}\n"),
                 new File(context.getCacheDir(), "inline-selection-test.log").getPath());
-            ShadowQuicApi api = new ShadowQuicApi(context);
+            ShadowQuicApi api = new ShadowQuicApi();
             JSONObject response = null;
             for (int attempt = 0; attempt < 80; attempt++) {
                 try { response = api.get("/outbounds"); break; }

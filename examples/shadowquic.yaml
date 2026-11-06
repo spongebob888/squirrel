@@ -1,7 +1,7 @@
 # Based on ShadowQUIC shadowquic/config_examples/tun_cn.yaml.
 # Replace the server, credentials, and server-name before connecting.
 # Set the LAN DNS upstream addresses below to your network gateway if needed.
-# Squirrel sets a private, authenticated REST listener in the runtime copy.
+# The REST listener, optional secret, and dashboard settings are used as written.
 inbounds:
 - type: socks
   tag: socks-in

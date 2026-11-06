@@ -46,7 +46,7 @@ public final class ConfigProfilesInstrumentedTest extends InstrumentationTestCas
         assertEquals("1.1.1.1", vpn.getJSONArray("dns").getString(0));
         assertEquals(new File(root, "data/geosite.redb").getAbsolutePath(),
             config.getJSONObject("router").getJSONArray("database").getJSONObject(1).getString("path"));
-        assertEquals("127.0.0.1:19090", config.getJSONObject("restful-api").getString("bind-addr"));
+        assertEquals("127.0.0.1:9090", config.getJSONObject("restful-api").getString("bind-addr"));
         ConfigStore.save(context, CONFIG);
         assertEquals(CONFIG, ConfigStore.read(context));
     }

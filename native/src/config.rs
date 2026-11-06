@@ -52,21 +52,24 @@ pub fn normalize_database_paths(text: &str, private_root: &Path) -> Result<Strin
     serde_json::to_string(&document).map_err(|error| error.to_string())
 }
 
-pub fn prepare_android_config(
-    text: &str,
-    private_root: &Path,
-    api_secret: &str,
-) -> Result<String, String> {
-    if api_secret.is_empty() {
-        return Err("Android API secret must not be empty".into());
+#[cfg(any(target_os = "android", test))]
+pub fn api_client_settings(cfg: &Config) -> Value {
+    let Some(api) = &cfg.restful_api else {
+        return Value::Null;
+    };
+    let mut address = api.bind_addr;
+    // Wildcards are listener addresses; the app connects through loopback.
+    if address.ip().is_unspecified() {
+        address.set_ip(if address.is_ipv4() {
+            std::net::Ipv4Addr::LOCALHOST.into()
+        } else {
+            std::net::Ipv6Addr::LOCALHOST.into()
+        });
     }
-    let normalized = normalize_database_paths(text, private_root)?;
-    let mut document = document(&normalized)?;
-    document["restful-api"] = json!({
-        "bind-addr": "127.0.0.1:19090",
-        "secret": api_secret,
-    });
-    serde_json::to_string(&document).map_err(|error| error.to_string())
+    json!({
+        "baseUrl": format!("http://{address}/api/v1"),
+        "secret": api.secret.as_deref().unwrap_or(""),
+    })
 }
 
 pub fn parse(text: &str) -> Result<(Config, Value), String> {
@@ -79,6 +82,10 @@ pub fn parse(text: &str) -> Result<(Config, Value), String> {
     if settings.keys().any(|k| k != "dns-servers") {
         return Err("Unknown android setting; supported: dns-servers".into());
     }
+    // Supply a listener for app diagnostics only when the YAML omits the key.
+    // An explicit null keeps REST disabled; configured sections stay intact.
+    root.entry("restful-api")
+        .or_insert_with(|| json!({"bind-addr": "127.0.0.1:9090"}));
     let dns: Vec<String> = match settings.get("dns-servers") {
         Some(value) => serde_json::from_value(value.clone())
             .map_err(|_| "dns-servers must be a list of IP addresses")?,
@@ -295,8 +302,7 @@ mod tests {
         let template = include_str!("../../app/src/main/assets/example.yaml");
         assert_eq!(template, include_str!("../../examples/shadowquic.yaml"));
         let original = document(template).unwrap();
-        let prepared =
-            prepare_android_config(template, Path::new("/private/files"), "test-token").unwrap();
+        let prepared = normalize_database_paths(template, Path::new("/private/files")).unwrap();
         let runtime = document(&prepared).unwrap();
         let (cfg, vpn) = parse(&prepared).unwrap();
         assert_eq!(cfg.inbounds.len(), 2);
@@ -312,9 +318,95 @@ mod tests {
             cfg.router.database[1].path(),
             Path::new("/private/files/data/geosite.redb")
         );
-        assert_eq!(
-            runtime["restful-api"],
-            json!({"bind-addr": "127.0.0.1:19090", "secret": "test-token"})
+        assert_eq!(runtime["restful-api"], original["restful-api"]);
+    }
+
+    #[test]
+    fn preserves_rest_api_options_and_disabled_configs() {
+        for section in [
+            "",
+            "restful-api: null",
+            "restful-api: {bind-addr: '0.0.0.0:9099', secret: synthetic-test-only, tag: dashboard, ui-path: /private/ui, ui-download-url: 'https://example.com/ui.html'}",
+            "restful-api: {bind-addr: '[::]:9091', secret: ''}",
+            "restful-api: {bind-addr: '127.0.0.1:0'}",
+        ] {
+            let text = format!(
+                "{DIRECT}\n{section}\nrouter: {{database: [{{type: country, tag: db, path: country.mmdb}}]}}"
+            );
+            let prepared = normalize_database_paths(&text, Path::new("/private/files")).unwrap();
+            assert_eq!(
+                document(&prepared).unwrap()["restful-api"],
+                document(&text).unwrap()["restful-api"]
+            );
+            parse(&prepared).unwrap();
+        }
+        // An invalid REST section must reach core validation, not be replaced.
+        for section in ["restful-api: {}", "restful-api: {bind-addr: invalid}"] {
+            let prepared = normalize_database_paths(
+                &format!("{DIRECT}\n{section}"),
+                Path::new("/private/files"),
+            )
+            .unwrap();
+            assert!(parse(&prepared).is_err());
+        }
+    }
+
+    #[test]
+    fn api_client_uses_configured_address_and_authentication() {
+        for (bind, host) in [
+            ("0.0.0.0:9099", "127.0.0.1:9099"),
+            ("[::]:9099", "[::1]:9099"),
+            ("[::1]:9099", "[::1]:9099"),
+            ("192.0.2.1:9099", "192.0.2.1:9099"),
+        ] {
+            let (cfg, _) = parse(&format!(
+                "{DIRECT}\nrestful-api: {{bind-addr: '{bind}', secret: synthetic-test-only}}"
+            ))
+            .unwrap();
+            assert_eq!(
+                api_client_settings(&cfg),
+                json!({"baseUrl": format!("http://{host}/api/v1"), "secret": "synthetic-test-only"})
+            );
+        }
+        for secret in ["", ", secret: ''", ", secret: null"] {
+            let (cfg, _) = parse(&format!(
+                "{DIRECT}\nrestful-api: {{bind-addr: '127.0.0.1:9090'{secret}}}"
+            ))
+            .unwrap();
+            assert_eq!(api_client_settings(&cfg)["secret"], "");
+        }
+        assert!(
+            api_client_settings(&parse(&format!("{DIRECT}\nrestful-api: null")).unwrap().0)
+                .is_null()
         );
+    }
+
+    #[test]
+    fn supplies_default_rest_listener_only_when_key_is_missing() {
+        for extra in [
+            "",
+            "\nrouter: {database: [{type: country, tag: db, path: country.mmdb}]}",
+        ] {
+            let text = format!("{DIRECT}{extra}");
+            let prepared = normalize_database_paths(&text, Path::new("/private/files")).unwrap();
+            let (cfg, _) = parse(&prepared).unwrap();
+            assert_eq!(
+                api_client_settings(&cfg),
+                json!({
+                    "baseUrl": "http://127.0.0.1:9090/api/v1", "secret": ""
+                })
+            );
+            let api = cfg.restful_api.unwrap();
+            assert!(api.ui_path.is_none());
+            assert!(
+                !document(&prepared)
+                    .unwrap()
+                    .as_object()
+                    .unwrap()
+                    .contains_key("restful-api")
+            );
+        }
+        let (disabled, _) = parse(&format!("{DIRECT}\nrestful-api: null")).unwrap();
+        assert!(disabled.restful_api.is_none());
     }
 }

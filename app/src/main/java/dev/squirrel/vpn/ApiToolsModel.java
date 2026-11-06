@@ -122,7 +122,7 @@ final class ApiToolsModel {
         worker.execute(() -> {
             try {
                 if (AppState.get() != session) throw new IOException("The VPN session changed. Run the request again.");
-                JSONObject response = new ShadowQuicApi(context).request(method, path, body, timeoutMs);
+                JSONObject response = new ShadowQuicApi().request(method, path, body, timeoutMs);
                 String pretty = response.toString(2);
                 post(() -> {
                     if (AppState.get() != session) { result = "Response discarded because the VPN session changed."; finish(result, true); }

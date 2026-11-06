@@ -402,7 +402,7 @@ public final class MainActivity extends Activity {
         if (!apiRead.compareAndSet(false, true)) return;
         apiExecutor.execute(() -> {
             try {
-                ShadowQuicApi api = new ShadowQuicApi(this);
+                ShadowQuicApi api = new ShadowQuicApi();
                 JSONObject value = page == CONNECTION
                     ? api.connectionStats()
                     : api.get(page == PROXIES ? "/outbounds" : "/connections");
@@ -459,7 +459,7 @@ public final class MainActivity extends Activity {
         apiActionExecutor.execute(() -> {
             try {
                 if (AppState.get() != connection) return;
-                new ShadowQuicApi(this).put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
+                new ShadowQuicApi().put("/outbounds/" + ShadowQuicApi.segment(selectorTag) + "/selection",
                     new JSONObject().put("selected", member));
                 post(() -> {
                     if (AppState.get() != connection) return;
@@ -488,7 +488,7 @@ public final class MainActivity extends Activity {
         apiActionExecutor.execute(() -> {
             try {
                 if (AppState.get() != connection) return;
-                new ShadowQuicApi(this).request("POST", "/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
+                new ShadowQuicApi().request("POST", "/outbounds/" + ShadowQuicApi.segment(tag) + "/probe",
                     new JSONObject().put("url", target).put("timeout_ms", AppSettings.PROBE_TIMEOUT_MS),
                     AppSettings.PROBE_TIMEOUT_MS + 3000);
                 post(() -> {

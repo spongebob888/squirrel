@@ -19,6 +19,7 @@ struct Session {
     runtime: Runtime,
     stop: oneshot::Sender<()>,
     task: JoinHandle<()>,
+    api_settings: serde_json::Value,
 }
 static SESSION: Mutex<Option<Session>> = Mutex::new(None);
 
@@ -29,6 +30,7 @@ fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
         return Err("VPN core is already running".into());
     }
     let (mut cfg, _) = config::parse(text)?;
+    let api_settings = config::api_client_settings(&cfg);
     {
         use std::{os::fd::BorrowedFd, sync::Arc};
         if fd < 0 {
@@ -75,6 +77,7 @@ fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
             runtime,
             stop,
             task,
+            api_settings,
         });
         Ok(())
     }
@@ -92,6 +95,7 @@ fn stop() -> Result<(), String> {
         runtime,
         stop,
         mut task,
+        ..
     }) = session
     {
         let _ = stop.send(());
@@ -152,20 +156,17 @@ pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_normalizeDatabasePaths
 }
 
 #[unsafe(no_mangle)]
-pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_prepareConfig(
+pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_runtimeApiSettings(
     mut env: JNIEnv,
     _: JClass,
-    text: JString,
-    private_root: JString,
-    api_secret: JString,
 ) -> jstring {
     guarded(&mut env, |env| {
-        let prepared = config::prepare_android_config(
-            &string(env, text)?,
-            std::path::Path::new(&string(env, private_root)?),
-            &string(env, api_secret)?,
-        )?;
-        env.new_string(prepared)
+        let slot = SESSION.lock().unwrap_or_else(|p| p.into_inner());
+        let session = slot
+            .as_ref()
+            .filter(|session| !session.task.is_finished())
+            .ok_or("The VPN engine is not running")?;
+        env.new_string(session.api_settings.to_string())
             .map(|s| s.into_raw())
             .map_err(|e| e.to_string())
     })
