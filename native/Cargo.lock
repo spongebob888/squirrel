@@ -2313,8 +2313,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic"
-version = "0.4.7"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.7#3b8af96bf0c97d409e9a59dbb716280a7c5136bb"
+version = "0.4.9"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.9#a3e05be43fbceadd986f57542fae7124b9649409"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -2376,8 +2376,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic-macros"
-version = "0.4.7"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.7#3b8af96bf0c97d409e9a59dbb716280a7c5136bb"
+version = "0.4.9"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.9#a3e05be43fbceadd986f57542fae7124b9649409"
 dependencies = [
  "proc-macro2",
  "quote",
