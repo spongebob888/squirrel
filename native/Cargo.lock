@@ -836,6 +836,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d50a92467f8ba5dd6e3ee5d4bd04d73ab2e4e1c44474a0674821dfce14b79bc"
 dependencies = [
  "futures-core",
+ "futures-sink",
  "futures-task",
  "pin-project-lite",
  "slab",
@@ -2301,6 +2302,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sha1"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aacc4cc499359472b4abe1bf11d0b12e688af9a805fa5e3016f9a386dc2d0214"
+dependencies = [
+ "cfg-if 1.0.5",
+ "cpufeatures 0.3.1",
+ "digest",
+]
+
+[[package]]
 name = "sha2"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2313,8 +2325,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic"
-version = "0.4.9"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.9#a3e05be43fbceadd986f57542fae7124b9649409"
+version = "0.4.10"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.10#677b7344bda3e8144e775b532f1cb0c11db09e1a"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -2325,6 +2337,7 @@ dependencies = [
  "clap",
  "educe",
  "etherparse",
+ "futures-util",
  "http-body-util",
  "hyper",
  "hyper-util",
@@ -2365,6 +2378,7 @@ dependencies = [
  "time",
  "tokio",
  "tokio-rustls-jls",
+ "tokio-tungstenite",
  "tracing",
  "tracing-subscriber",
  "tun-rs",
@@ -2376,8 +2390,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic-macros"
-version = "0.4.9"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.9#a3e05be43fbceadd986f57542fae7124b9649409"
+version = "0.4.10"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.10#677b7344bda3e8144e775b532f1cb0c11db09e1a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2477,7 +2491,7 @@ dependencies = [
 
 [[package]]
 name = "squirrel-core"
-version = "0.1.3"
+version = "0.1.4"
 dependencies = [
  "jni",
  "libc",
@@ -2744,6 +2758,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-tungstenite"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "17a073bfed563fa236697a068031408a93cd9522e08abf9933ead3e73411bd71"
+dependencies = [
+ "futures-util",
+ "log",
+ "tokio",
+ "tungstenite",
+]
+
+[[package]]
 name = "tokio-util"
 version = "0.7.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2847,6 +2873,22 @@ dependencies = [
  "widestring",
  "windows-sys 0.61.2",
  "winreg",
+]
+
+[[package]]
+name = "tungstenite"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e48ac77174b19c110a50ab2128b24215ac9cb40e0e12e093fb602d175c569d22"
+dependencies = [
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand",
+ "sha1",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
