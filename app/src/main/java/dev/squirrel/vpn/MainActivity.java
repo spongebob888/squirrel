@@ -39,7 +39,7 @@ import org.json.JSONObject;
 
 public final class MainActivity extends Activity {
     private static final int IMPORT = 10, EXPORT_LOG = 11, VPN_PERMISSION = 12, EXPORT_CONFIG = 13;
-    static final int CONNECTION = 0, PROXIES = 1, CONFIGURATION = 2, LOGS = 3, SESSIONS = 4;
+    static final int CONNECTION = 0, PROXIES = 1, CONFIGURATION = 2, SESSIONS = 3, LOGS = 4;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final ExecutorService network = Executors.newSingleThreadExecutor();
@@ -53,10 +53,13 @@ public final class MainActivity extends Activity {
     private LinearLayout root, appHeader;
     private boolean expandedNavigation, bottomNavigation;
     private EditText editor;
-    private Button connectionTab, configTab, proxyTab, sessionsTab, logsTab, downloadButton, profileButton;
+    private Button connectionTab, configTab, proxyTab, sessionsTab, downloadButton, profileButton;
     private LinearLayout configActions, configTools, profileActions;
     private HorizontalScrollView tabScroll;
     private ViewPager2 pager;
+    private View logPage;
+    private android.widget.ImageButton logsBack;
+    private android.window.OnBackInvokedCallback logsBackCallback;
     private boolean showingLogs, preparing, loadingConfig = true, downloading;
     private String exportedConfig, remoteUrl = "";
     private ConfigProfiles.State profileState;
@@ -127,6 +130,10 @@ public final class MainActivity extends Activity {
             android.content.res.ColorStateList.valueOf(diagnostics.outline), null, null));
         tools.setOnClickListener(view -> {
             android.widget.PopupMenu menu = new android.widget.PopupMenu(diagnostics.context, tools);
+            menu.getMenu().add(0, R.id.logs_menu, 0, "Logs").setEnabled(!showingLogs).setOnMenuItemClickListener(item -> {
+                openLogs();
+                return true;
+            });
             menu.getMenu().add("Settings").setOnMenuItemClickListener(item -> {
                 startActivity(new Intent(this, SettingsActivity.class));
                 return true;
@@ -148,13 +155,11 @@ public final class MainActivity extends Activity {
         configTab = button(bottomNavigation ? "Config" : "Configuration", () -> showPage(CONFIGURATION));
         proxyTab = button("Proxies", () -> showPage(PROXIES));
         sessionsTab = button("Sessions", () -> showPage(SESSIONS));
-        logsTab = button("Logs", () -> showPage(LOGS));
         connectionTab.setId(R.id.connection_tab);
         configTab.setId(R.id.configuration_tab);
         proxyTab.setId(R.id.proxies_tab);
         sessionsTab.setId(R.id.sessions_tab);
-        logsTab.setId(R.id.logs_tab);
-        for (Button tab : new Button[]{connectionTab, proxyTab, configTab, logsTab, sessionsTab}) {
+        for (Button tab : new Button[]{connectionTab, proxyTab, configTab, sessionsTab}) {
             tab.setStateListAnimator(null);
             tab.setElevation(0);
             tab.setTextSize(bottomNavigation ? 11 : 13);
@@ -183,15 +188,23 @@ public final class MainActivity extends Activity {
 
         pager = new ViewPager2(this);
         pager.setId(R.id.pages);
-        pager.setOffscreenPageLimit(4);
+        pager.setOffscreenPageLimit(3);
         View[] pages = {diagnostics.connectionPage(), diagnostics.proxiesPage(), configurationPage(),
-            logsPage(), diagnostics.sessionsPage()};
+            diagnostics.sessionsPage()};
         pager.setAdapter(new PageAdapter(pages));
         pager.registerOnPageChangeCallback(new ViewPager2.OnPageChangeCallback() {
             @Override public void onPageSelected(int page) { selectTab(page); }
         });
-        if (expandedNavigation) navigationBody.addView(pager, new LinearLayout.LayoutParams(0, -1, 1));
-        else root.addView(pager, new LinearLayout.LayoutParams(-1, 0, 1));
+        FrameLayout content = new FrameLayout(this);
+        content.addView(pager, new FrameLayout.LayoutParams(-1, -1));
+        logPage = logsPage();
+        logPage.setVisibility(View.GONE);
+        content.addView(logPage, new FrameLayout.LayoutParams(-1, -1));
+        logsBack = diagnostics.iconAction("Back", this::closeLogs);
+        logsBack.setId(R.id.logs_back);
+        logsBack.setImageResource(R.drawable.ic_arrow_back);
+        if (expandedNavigation) navigationBody.addView(content, new LinearLayout.LayoutParams(0, -1, 1));
+        else root.addView(content, new LinearLayout.LayoutParams(-1, 0, 1));
         if (bottomNavigation) root.addView(tabScroll);
         int page = saved == null ? CONNECTION : saved.getInt("selectedPage", CONNECTION);
         Object retained = getLastNonConfigurationInstance();
@@ -204,7 +217,11 @@ public final class MainActivity extends Activity {
         if (page < 0 || page >= pages.length) page = CONNECTION;
         pager.setCurrentItem(page, false);
         selectTab(page);
-        if (saved != null) { diagnostics.restoreFilters(saved); workspace.restoreState(saved); }
+        if (saved != null) {
+            diagnostics.restoreFilters(saved);
+            workspace.restoreState(saved);
+            if (saved.getBoolean("showingLogs")) openLogs();
+        }
         renderStatus();
     }
 
@@ -238,9 +255,52 @@ public final class MainActivity extends Activity {
         @Override public int getItemCount() { return pages.length; }
     }
 
-    private void showPage(int page) { pager.setCurrentItem(page, true); }
+    private void showPage(int page) {
+        if (showingLogs) closeLogs();
+        pager.setCurrentItem(page, true);
+    }
+
+    void openLogs() {
+        if (showingLogs) return;
+        showingLogs = true;
+        pager.setVisibility(View.GONE);
+        tabScroll.setVisibility(View.GONE);
+        logPage.setVisibility(View.VISIBLE);
+        appHeader.addView(logsBack, 0, new LinearLayout.LayoutParams(dp(48), dp(48)));
+        diagnostics.clearFilterFocus();
+        editor.clearFocus();
+        getSystemService(InputMethodManager.class).hideSoftInputFromWindow(root.getWindowToken(), 0);
+        if (Build.VERSION.SDK_INT >= 33) {
+            logsBackCallback = this::closeLogs;
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, logsBackCallback);
+        }
+    }
+
+    void closeLogs() {
+        if (!showingLogs) return;
+        showingLogs = false;
+        workspace.clearLogFilterFocus();
+        logPage.setVisibility(View.GONE);
+        pager.setVisibility(View.VISIBLE);
+        tabScroll.setVisibility(View.VISIBLE);
+        appHeader.removeView(logsBack);
+        if (Build.VERSION.SDK_INT >= 33 && logsBackCallback != null) {
+            getOnBackInvokedDispatcher().unregisterOnBackInvokedCallback(logsBackCallback);
+            logsBackCallback = null;
+        }
+        getSystemService(InputMethodManager.class).hideSoftInputFromWindow(root.getWindowToken(), 0);
+    }
+
+    boolean isShowingLogs() { return showingLogs; }
+
+    @android.annotation.SuppressLint("GestureBackNavigation") // Android 8–12 fallback; newer Android uses the callback above.
+    @Override public void onBackPressed() {
+        if (showingLogs) closeLogs();
+        else super.onBackPressed();
+    }
+
     private void selectTab(int page) {
-        showingLogs = page == LOGS;
         root.setBackgroundColor(diagnostics.surface);
         appHeader.setBackgroundColor(diagnostics.header);
         brand.setTextColor(diagnostics.ink);
@@ -253,7 +313,7 @@ public final class MainActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(lightNavigation
             ? visibility | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
             : visibility & ~(View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR));
-        Button[] tabs = {connectionTab, proxyTab, configTab, logsTab, sessionsTab};
+        Button[] tabs = {connectionTab, proxyTab, configTab, sessionsTab};
         for (int i = 0; i < tabs.length; i++) {
             boolean selected = i == page;
             tabs[i].setSelected(selected);
@@ -265,7 +325,7 @@ public final class MainActivity extends Activity {
             tabs[i].setBackground(new android.graphics.drawable.RippleDrawable(
                 android.content.res.ColorStateList.valueOf(diagnostics.outline), background, null));
             int[] icons = {R.drawable.ic_overview, R.drawable.ic_proxies, R.drawable.ic_configuration,
-                R.drawable.ic_logs, R.drawable.ic_sessions};
+                R.drawable.ic_sessions};
             diagnostics.icon(tabs[i], icons[i], selected ? diagnostics.primary : diagnostics.secondary);
             if (bottomNavigation) {
                 android.graphics.drawable.Drawable icon = tabs[i].getCompoundDrawablesRelative()[0];
@@ -274,7 +334,7 @@ public final class MainActivity extends Activity {
             }
         }
         if (!expandedNavigation && !bottomNavigation) tabs[page].post(() -> tabScroll.smoothScrollTo(tabs[page].getLeft() - dp(12), 0));
-        if (page != LOGS) workspace.clearLogFilterFocus();
+        if (!showingLogs) workspace.clearLogFilterFocus();
         if (page != CONFIGURATION) {
             editor.clearFocus();
             diagnostics.clearFilterFocus();
@@ -394,7 +454,7 @@ public final class MainActivity extends Activity {
     }
 
     private void refreshApi() {
-        if (pager == null) return;
+        if (pager == null || showingLogs) return;
         AppState.Snapshot connection = AppState.get();
         if (connection.phase != AppState.Phase.CONNECTED) return;
         int page = pager.getCurrentItem();
@@ -692,6 +752,7 @@ public final class MainActivity extends Activity {
     @Override protected void onPause() { main.removeCallbacks(refresh); super.onPause(); }
     @Override protected void onSaveInstanceState(Bundle state) {
         state.putInt("selectedPage", pager.getCurrentItem());
+        state.putBoolean("showingLogs", showingLogs);
         diagnostics.saveFilters(state);
         workspace.saveState(state);
         super.onSaveInstanceState(state);

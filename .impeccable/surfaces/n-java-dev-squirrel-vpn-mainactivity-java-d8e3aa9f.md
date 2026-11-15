@@ -7,7 +7,7 @@ related_targets: ["app/src/main/java/dev/squirrel/vpn/DiagnosticsUi.java","app/s
 
 # Squirrelboard redesign
 
-Mode: Operate. Scope: all five native destinations, navigation, dialogs and API tools.
+Mode: Operate. Scope: four primary destinations and secondary Logs, navigation, dialogs and API tools.
 The user pins the visual reference to ../squirrelboard and requires every existing feature.
 Preserve profile/editor actions, filters, live diagnostics, secure capture, asynchronous work and VPN lifecycle.
 
@@ -16,7 +16,7 @@ Preserve profile/editor actions, filters, live diagnostics, secure capture, asyn
 THESIS: Squirrelboard's precise dashboard language brought to the native VPN workspace.
 OWN-WORLD: Cool gray canvas, white outlined panels, slate ink, periwinkle selection and teal transfer accents; 8dp actions and 12dp panels, system sans and tabular figures. Follow system dark appearance with the reference's charcoal palette.
 STORY: Read local engine status, connect, inspect transfer totals and engine details, then select routes, inspect sessions, edit YAML or read logs.
-FIRST VIEWPORT: White compact brand bar with the text-only Squirrel wordmark, five native bottom destinations on phones, horizontal tabs in landscape and vertical navigation on expanded screens, Connection heading, a state/power control panel, one paired transfer panel, then an outlined Runtime panel with all metrics. The Connection-specific contract below supersedes the original tile composition. Native scrolling and swipe navigation remain. Signature: paired transfer columns repeat the reference's periwinkle/teal measurement grammar without invented chart data.
+FIRST VIEWPORT: White compact brand bar with the text-only Squirrel wordmark, four native bottom destinations on phones, horizontal tabs in landscape and vertical navigation on expanded screens, Connection heading, a state/power control panel, separate Download/Upload speed-and-curve subpanels, then an outlined Runtime panel with all metrics. The Connection-specific contract below supersedes the original tile composition. Native scrolling and swipe navigation remain. Signature: paired transfer columns repeat the reference's periwinkle/teal measurement grammar without invented chart data.
 FORM: User-pinned squirrelboard dashboard; code-led native adaptation. The concept roll is superseded by the explicit reference. seed: none (user-pinned reference).
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
@@ -27,7 +27,7 @@ owns Connection composition. The user requested more icons and less text, then
 confirmed “Keep all metrics visible.” State and the power action share a row;
 pending/error detail and the separated profile follow. The power action is
 112dp wide with a 96dp minimum height, inherited 8dp corners and a 28dp top icon.
-Totals share one Download/Upload panel. Runtime retains all TCP/UDP, task and
+Download and Upload each have an outlined subpanel with current speed, total and independent speed curve. Runtime retains all TCP/UDP, task and
 memory measurements. Explanatory help starts collapsed and expands inline
 before TCP/UDP; the info action becomes close. No metric widget is hidden by
 the disclosure, and its state survives supported recreation.
@@ -85,3 +85,11 @@ import, download and template loading open the panel for review. Supported
 activity recreation restores its open state, source selection, scroll, focus
 and IME visibility with retained drafts. This locally supersedes the inline
 editor composition while preserving the Squirrelboard materials.
+
+## Logs navigation
+
+Logs opens from More options outside the four-page pager. It keeps the existing
+viewer styling and controls, hides primary navigation, and adds a 48dp Back
+action in the brand header. Toolbar and system Back return to the previous tab
+with drafts intact. The open log screen, filter and live setting survive
+supported recreation. No palette, layout system or other screen is redesigned.

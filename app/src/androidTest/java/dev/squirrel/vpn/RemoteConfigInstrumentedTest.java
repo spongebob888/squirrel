@@ -61,12 +61,18 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         String draft = "# Unsaved draft\noutbounds: []\n";
         onMain(() -> { editor().setText(draft); return null; });
         swipe(true);
-        awaitPage(MainActivity.LOGS);
+        awaitPage(MainActivity.SESSIONS);
         swipe(false);
         awaitPage(MainActivity.CONFIGURATION);
         assertEquals(draft, onMain(() -> editor().getText().toString()));
-        onMain(() -> { activity.findViewById(R.id.logs_tab).performClick(); return null; });
-        awaitPage(MainActivity.LOGS);
+        onMain(() -> {
+            activity.openLogs();
+            WorkspaceUi workspace = WorkspaceTestViews.workspace(activity);
+            workspace.logFilter.setText("WARN");
+            workspace.live.setChecked(false);
+            return null;
+        });
+        assertTrue(onMain(() -> activity.isShowingLogs()));
         Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(MainActivity.class.getName(), null, false);
         onMain(() -> { activity.recreate(); return null; });
         MainActivity replacement = (MainActivity) getInstrumentation().waitForMonitorWithTimeout(monitor, 5000);
@@ -74,9 +80,12 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         assertNotNull("Activity was not recreated", replacement);
         activity = replacement;
         awaitReady();
-        awaitPage(MainActivity.LOGS);
+        assertTrue(onMain(() -> activity.isShowingLogs()));
+        assertEquals("WARN", onMain(() -> WorkspaceTestViews.workspace(activity).logFilter.getText().toString()));
+        assertFalse(onMain(() -> WorkspaceTestViews.workspace(activity).live.isChecked()));
         assertEquals(draft, onMain(() -> editor().getText().toString()));
-        onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
+        onMain(() -> { activity.findViewById(R.id.logs_back).performClick(); return null; });
+        assertFalse(onMain(() -> activity.isShowingLogs()));
         awaitPage(MainActivity.CONFIGURATION);
     }
 

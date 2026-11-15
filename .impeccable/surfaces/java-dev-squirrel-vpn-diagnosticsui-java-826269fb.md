@@ -17,7 +17,7 @@ Preserve all metrics, pending and failure states, secure capture and VPN lifecyc
 THESIS: Make connection control and measured activity readable through icons and concise labels, removing repeated explanations from the working screen.
 OWN-WORLD: Retain the pinned cool canvas, outlined native panels, periwinkle download/action and teal upload, system sans and tabular numbers. Change this screen's composition, not the app's identity.
 STORY: Identify state and profile, tap power, then scan traffic, TCP/UDP sessions, tasks and memory. An initially collapsed information action reveals inline help about local-engine scope and measurement semantics before the TCP/UDP measurements; it toggles to a close action and preserves disclosure state across recreation.
-FIRST VIEWPORT: A Connection heading leads to a horizontal state/power composition and a compact profile row. One paired transfer panel precedes Runtime: TCP and UDP columns with arrow-led totals, then three concise icon/value rows. Short/wide screens place controls beside metrics; normal and large type scroll without clipping. Signature interaction: the power control changes its icon and accessible action with the engine state, with errors kept inline.
+FIRST VIEWPORT: A Connection heading leads to a horizontal state/power composition and a compact profile row. Separate Download and Upload subpanels precede Runtime: TCP and UDP columns with arrow-led totals, then Tasks and a paired memory row. Short/wide screens place controls beside metrics; normal and large type scroll without clipping. Signature interaction: the power control changes its icon and accessible action with the engine state, with errors kept inline.
 FORM: Code-led, precisely scoped icon-first redesign within the existing user-pinned visual world; seed: none (user-pinned reference).
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
@@ -28,9 +28,9 @@ The user explicitly requested more icons and less text, then confirmed: “Keep 
 The state and power action share the control panel’s first row. The action is
 112dp wide, at least 96dp tall and uses the inherited 8dp action corners, a
 28dp top vector icon and an 8dp label gap. Pending/error detail and a separated
-profile row follow. Transfer totals share one outlined panel with equal
-Download/Upload columns. Runtime keeps TCP/UDP session counts, both protocols’
-upload/download totals, Tasks, Resident and Allocated visible. Missing values
+profile row follow. Traffic uses two equal outlined Download/Upload subpanels, each with its own
+current speed, retained total and smooth filled speed curve. Runtime keeps TCP/UDP session counts, both protocols’
+upload/download totals, Tasks plus Resident and Allocated side by side in one shared memory row. Missing values
 remain dashes and metric failures remain inline.
 
 At `screenHeightDp < 480`, controls and measurements use 1:1.5 columns with a
@@ -64,3 +64,21 @@ position. Names wrap on their own line, latency remains visible, and upload/
 download quality values stack. Selection and probe controls sit in the card footer
 with 48dp targets; selector headers keep their inline chooser and probe controls.
 Larger type and narrow windows reduce columns. No measurements are hidden.
+
+## Independent traffic subpanels
+
+The user requests FlClash-style speed/curve composition within the existing UI.
+Download precedes Upload; the two 12dp-corner outlined panels have equal widths,
+12dp padding and a 12dp gutter. Header labels retain direction icons. Speeds use
+24sp tabular figures with units at 55% size, totals use 12sp secondary text, and
+each native curve is 64dp high. Curves use independent scales, periwinkle/teal
+strokes and a 0x18-alpha fill. No synthetic history or animation is shipped.
+Rates use elapsed monotonic time between successful byte-counter snapshots;
+up to 30 measured samples are retained, not a fixed 30-second window. First
+samples show unknown speed. Missing traffic, read failure, an engine transition,
+counter decrease, non-increasing sample time or a gap over five seconds clears
+rates and curves. Zero speed is a valid measurement. All existing totals/runtime
+metrics remain visible, and Logs stays in More options.
+
+The user requests Resident and Allocated memory in one row. Keep equal columns
+with each icon/label above its existing value, after Tasks; preserve all metrics.

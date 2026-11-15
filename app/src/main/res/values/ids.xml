@@ -12,7 +12,8 @@
     <item name="configuration_tab" type="id" />
     <item name="proxies_tab" type="id" />
     <item name="sessions_tab" type="id" />
-    <item name="logs_tab" type="id" />
+    <item name="logs_menu" type="id" />
+    <item name="logs_back" type="id" />
     <item name="config_editor" type="id" />
     <item name="config_notice" type="id" />
     <item name="config_profile" type="id" />
@@ -67,4 +68,10 @@
     <item name="settings_save" type="id" />
     <item name="settings_status" type="id" />
     <item name="settings_scroll" type="id" />
+    <item name="download_panel" type="id" />
+    <item name="upload_panel" type="id" />
+    <item name="download_speed" type="id" />
+    <item name="upload_speed" type="id" />
+    <item name="download_curve" type="id" />
+    <item name="upload_curve" type="id" />
 </resources>

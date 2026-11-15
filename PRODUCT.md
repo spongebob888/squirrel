@@ -34,8 +34,10 @@ security, anonymity, or reliability claims have been established.
 
 - Native Android app, Android 8.0 and later; ARM64 phones and x86_64 emulators.
   No root is required.
-- Five existing destinations: Connection, Proxies, Configuration, Logs, and
-  Sessions, with tab and swipe navigation.
+- Four primary destinations: Connection, Proxies, Configuration, and Sessions,
+  with tab and swipe navigation. Logs opens from More options as a secondary
+  screen. Back restores the previous tab and draft; recreation preserves the
+  open log screen, filter and live-update setting.
 - Infrequent API administration lives on a standalone API tools page reached
   through the header overflow menu, rather than another main tab.
 - The same menu opens Settings for the app-wide default HTTP latency-probe URL.
@@ -70,7 +72,8 @@ security, anonymity, or reliability claims have been established.
   the editor contents; successful downloads enter the editor for review.
 - IPv4 and IPv6 TCP/UDP forwarding uses ShadowQUIC outbounds and Lua routing.
   Exactly one TUN interface is supported. ICMP/ping is unsupported.
-- Connection information includes memory, traffic totals, TCP/UDP session
+- Connection information includes separate Download/Upload speed and curve panels,
+  memory, traffic totals, TCP/UDP session
   counts, and the Tokio runtime alive-task count from `/api/v1/tokio_metric`.
   Missing runtime metrics stay unknown while other available metrics remain
   visible. Proxy tools expose outbound selection, HTTP probe latency, QUIC RTT,

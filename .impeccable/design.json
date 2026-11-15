@@ -413,8 +413,8 @@
         "purpose": "Observed native micro role."
       },
       "total": {
-        "displayName": "Total",
-        "purpose": "Connection transfer totals; tabular figures."
+        "displayName": "Traffic speed",
+        "purpose": "Current Connection traffic speeds, tabular figures; totals use the12sp caption role."
       },
       "measurement": {
         "displayName": "Measurement",
@@ -513,19 +513,20 @@
     "nativeBehavior": {
       "feedback": "Native RippleDrawable tinted by outline, zero button elevation and no state animator; browser previews approximate active/focus only.",
       "typography": "No fixed line-height or custom font asset. Action weight inherits native Button. Selected nav is bold; bottom labels are 11sp.",
-      "dataSemantics": "Download uses primary/periwinkle; upload uses legacy diagnostic_download/teal. Connection totals remain ink. Missing is em dash, never fabricated zero.",
+      "dataSemantics": "Download curves/icons use primary/periwinkle; upload uses legacy diagnostic_download/teal. Speed figures remain ink and totals use secondary text. Curves have independent vertical scales and stroke color at 0x18 alpha as fill. Missing is an em dash with no curve, never a fabricated zero. History contains up to 30 measured samples, not a guaranteed 30-second window.",
       "secureWorkspaces": "FLAG_SECURE, private storage, masking, asynchronous workers, per-profile drafts, confirmation and no replay remain intact.",
       "logSnapshot": "Pause retains snapshot; read failure retains content; follow tail only when at bottom; filter resets to top. Export reads all retained logs.",
       "sourceSelection": "Primary color at 20% alpha (0x33), native text selection and cursor behavior.",
       "sourceLineSpacing": "YAML +2dp; logs/API results +3dp; multiplier 1.",
       "assetProvenance": "ic_squirrelboard.xml faithfully copies local ../squirrelboard/public/favicon.svg geometry as native vector. Other interface icons are native vector XML; no shipping raster.",
       "connectionDisclosure": "Initially collapsed help expands inline before TCP/UDP metrics and toggles info/close icons, action names, tooltips and expanded/collapsed state on supported Android versions. Disclosure state survives supported recreation; every metric widget remains in the scrollable layout.",
-      "connectionMetrics": "Shared Download/Upload totals panel; Runtime TCP/UDP session counts and upload/download totals, followed by Tasks, Resident and Allocated rows. Normal refresh explanation is omitted; pending, incomplete and failed metric notices remain inline.",
+      "connectionMetrics": "Independent outlined Download/Upload subpanels, each with a 24sp current speed, 55%-size unit, 12sp total and 64dp native smooth speed curve. A 12dp gutter separates 12dp-padded panels. Runtime TCP/UDP counts/totals remain visible, followed by Tasks and one shared Resident/Allocated memory row. Memory labels/icons sit above their 14sp values in equal columns. Rates use monotonic elapsed time between successful counter snapshots; up to 30 samples. Missing data, read failures, engine transitions, counter decreases, non-increasing time or gaps over five seconds clear both histories. First samples establish a baseline. Unknown is a dash; zero remains valid.",
       "diagnosticListHeaders": "Sessions and Proxies use icon/count headings and search-icon filters. Matched / total appears when filtered; pending data is a dash. Full count/live semantics remain accessible and in tooltips. Compact title/count blocks sit beside filter controls; no repeated subtitle or separate live-summary row.",
       "sessionMeasurements": "Selectable destination and full protocol/route remain. Upload/download arrows accompany totals; lightning first-response and clock duration share a second row. Full measurement names remain accessible and in tooltips. Half closed retains an explicit label and half-circle icon. No metrics require expansion.",
       "proxyControls": "Selector headers show checked selected-member text plus outbound-icon member counts. Refresh icons trigger existing HTTP probes; cached probe latency retains lightning. Pending probes and selector actions use disabled hourglasses, preserving the last confirmed selection and all transport measurements.",
       "yamlPanel": "Edit YAML opens a native Dialog over the scrollable controls page. Save validates asynchronously and remains open. Close and native Back retain the draft; outside taps do not dismiss. Successful import, download and template loading open it for review. Both windows retain FLAG_SECURE. Activity recreation restores open state, selection, scroll, focus and IME visibility with retained per-profile drafts; no new process-death persistence or autosave.",
-      "yamlPanelShortViewport": "Measured inner height below 300dp hides profile/status context; title, Save, Close and source remain. Initial open does not force the IME; restored focus/IME follows saved state."
+      "yamlPanelShortViewport": "Measured inner height below 300dp hides profile/status context; title, Save, Close and source remain. Initial open does not force the IME; restored focus/IME follows saved state.",
+      "logNavigation": "Logs opens from More options outside the four-tab pager. Primary navigation hides and a 48dp Back action appears; toolbar/system Back restores the previous tab and draft. Recreation preserves the open screen, filter and live-update setting. Existing viewer styling is unchanged."
     },
     "rampPolicy": "Eight-step OKLCH ramps are synthesized for panel visualization only. Actual native colors are exclusively the DESIGN.md frontmatter/day-night resources; ramp steps are not shipping tokens.",
     "sourceEvidence": [
@@ -603,12 +604,12 @@
       "css": ".ds-panel{font:400 14px sans-serif;color:#292E3D;background:#FFFFFF;border:1px solid #E3E7EF;border-radius:12px;padding:16px;box-shadow:none}.ds-status{display:flex;align-items:center;gap:12px;justify-content:space-between}.ds-state{font-size:20px}.ds-detail{font-size:12px;color:#666E80;margin:4px 0 0}.ds-power{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;flex-shrink:0;width:112px;min-height:96px;padding:10px 12px;border:0;border-radius:8px;background:#5366CA;color:#FFFFFF;font:400 13px sans-serif;cursor:pointer}.ds-power svg{width:28px;height:28px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}.ds-power:hover{cursor:pointer}.ds-power:active:not(:disabled){background-image:linear-gradient(#E3E7EF66,#E3E7EF66)}.ds-power:focus-visible{outline:auto}.ds-power:disabled{background:#F7F8FA;color:#666E80;cursor:default}.ds-profile{margin-top:16px;padding-top:12px;border-top:1px solid #E3E7EF;color:#666E80;font-size:13px}@media(prefers-color-scheme:dark){.ds-panel{background:#1C2029;color:#E3E7F1;border-color:#2C3240}.ds-detail,.ds-profile{color:#A2A9B9}.ds-profile{border-color:#2C3240}.ds-power{background:#98A8FF;color:#171D32}.ds-power:disabled{background:#14171E;color:#A2A9B9}}"
     },
     {
-      "name": "Paired transfer panel",
+      "name": "Download and Upload subpanels",
       "kind": "custom",
       "refersTo": "panel",
-      "description": "One outlined panel, equal Download then Upload columns with 12dp inner-edge padding. Slate 24sp totals retain tabular figures; no sample traffic is implied.",
-      "html": "<div class=\"ds-pair\"><section class=\"ds-tile\"><span class=\"ds-label\"><svg class=\"ds-down\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 7V17H17M7 17L19 5\"/></svg>Download</span><strong class=\"ds-total\">—</strong></section><section class=\"ds-tile\"><span class=\"ds-label\"><svg class=\"ds-up\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M7 7H17V17M17 7L5 19\"/></svg>Upload</span><strong class=\"ds-total\">—</strong></section></div>",
-      "css": ".ds-pair{display:flex;padding:16px;border:1px solid #E3E7EF;border-radius:12px;background:#FFFFFF;font-family:sans-serif}.ds-tile{flex:1;min-width:0;color:#292E3D}.ds-tile:first-child{padding-right:12px}.ds-tile:last-child{padding-left:12px}.ds-label{display:flex;align-items:center;gap:8px;color:#666E80;font-size:12px;margin-bottom:8px}.ds-label svg{width:18px;height:18px;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;fill:none}.ds-down{stroke:#5366CA}.ds-up{stroke:#237F77}.ds-total{display:block;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}@media(prefers-color-scheme:dark){.ds-pair{background:#1C2029;border-color:#2C3240}.ds-tile{color:#E3E7F1}.ds-label{color:#A2A9B9}.ds-down{stroke:#98A8FF}.ds-up{stroke:#65CBBD}}"
+      "description": "Two independently outlined 12dp-padded panels with a 12dp gutter. Each shows direction, 24sp speed (units at55%), 12sp total and64dp curve. Preview shows the empty state; no sample traffic is implied.",
+      "html": "<div class=\"ds-pair\"><section class=\"ds-tile\"><span class=\"ds-label\">Download</span><strong class=\"ds-speed\">—</strong><div class=\"ds-total\">Total —</div><div class=\"ds-curve\" aria-label=\"Waiting for traffic measurements\"></div></section><section class=\"ds-tile\"><span class=\"ds-label\">Upload</span><strong class=\"ds-speed\">—</strong><div class=\"ds-total\">Total —</div><div class=\"ds-curve\" aria-label=\"Waiting for traffic measurements\"></div></section></div>",
+      "css": ".ds-pair{display:flex;gap:12px;font-family:sans-serif}.ds-tile{flex:1;min-width:0;padding:12px;border:1px solid #E3E7EF;border-radius:12px;background:#FFFFFF;color:#292E3D}.ds-label{display:block;color:#666E80;font-size:12px;margin-bottom:8px}.ds-speed{display:block;min-height:32px;font-size:24px;font-weight:700;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.ds-total{margin-top:4px;color:#666E80;font-size:12px}.ds-curve{height:64px;margin-top:12px}@media(prefers-color-scheme:dark){.ds-tile{background:#1C2029;border-color:#2C3240;color:#E3E7F1}.ds-label,.ds-total{color:#A2A9B9}}"
     },
     {
       "name": "Runtime metric row",
@@ -671,7 +672,7 @@
       }
     ],
     "dos": [
-      "**Do** use the matched day/night resource roles across all five destinations, API tools and app-owned dialogs.",
+      "**Do** use the matched day/night resource roles across the four primary destinations, Logs, API tools and app-owned dialogs.",
       "**Do** retain direction labels, tabular numbers and explicit unavailable, empty, error and busy states.",
       "**Do** use native sp scaling, dp geometry and at least 48dp for action and filter touch targets.",
       "**Do** keep Connection’s primary action before wrapping detail/profile text in short viewports.",

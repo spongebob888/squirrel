@@ -36,6 +36,39 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
     private MainActivity activity;
     private DiagnosticsUi ui;
 
+    public void testTrafficPanelsShowRatesAndClearStaleCurves() throws Exception {
+        launch();
+        onMain(() -> {
+            ui.renderState(connected(), false, "Synthetic fixture");
+            ui.renderNetworkStats(metrics());
+            assertEquals("—", label(R.id.download_speed));
+            assertEquals("—", label(R.id.upload_speed));
+            ViewGroup down = activity.findViewById(R.id.download_panel);
+            ViewGroup up = activity.findViewById(R.id.upload_panel);
+            assertNotNull(down.findViewById(R.id.download_speed));
+            assertNotNull(down.findViewById(R.id.download_curve));
+            assertNull(down.findViewById(R.id.upload_curve));
+            assertNotNull(up.findViewById(R.id.upload_speed));
+            assertNotNull(up.findViewById(R.id.upload_curve));
+            assertEquals("28.4 MiB", label(R.id.upload_total));
+            return null;
+        });
+        Thread.sleep(20);
+        onMain(() -> {
+            ui.renderNetworkStats(metrics());
+            assertEquals("0 B/s", label(R.id.upload_speed));
+            assertEquals("0 B/s", label(R.id.download_speed));
+            assertTrue(activity.findViewById(R.id.download_curve).getContentDescription().toString().contains("1 measured samples"));
+            ui.renderNetworkStats(new JSONObject().put("traffic", new JSONObject().put("inbounds", new JSONArray())));
+            assertEquals("—", label(R.id.upload_speed));
+            assertEquals("—", label(R.id.download_speed));
+            ui.unavailable(MainActivity.CONNECTION, "Synthetic unavailable response");
+            assertTrue(activity.findViewById(R.id.upload_curve).getContentDescription().toString().contains("0 measured samples"));
+            assertEquals("—", label(R.id.upload_total));
+            return null;
+        });
+    }
+
     public void testMissingMetricsStayUnknownAndDisconnectClearsLiveValues() throws Exception {
         launch();
         onMain(() -> {
@@ -413,6 +446,21 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
         });
         capture("disconnected");
         onMain(() -> { ui.renderState(connected(), false, "Synthetic fixture"); ui.renderNetworkStats(metrics()); return null; });
+        long uploadDelta = 0, downloadDelta = 0;
+        for (int i = 0; i < 16; i++) {
+            Thread.sleep(80);
+            uploadDelta += 1200 + (i % 5) * 300;
+            downloadDelta += 4000 + (i % 4) * 2000;
+            final long uploaded = uploadDelta, downloaded = downloadDelta;
+            onMain(() -> {
+                JSONObject sample = metrics();
+                JSONObject inbound = sample.getJSONObject("traffic").getJSONArray("inbounds").getJSONObject(0);
+                inbound.put("tcp_upload_bytes", inbound.getLong("tcp_upload_bytes") + uploaded);
+                inbound.put("tcp_download_bytes", inbound.getLong("tcp_download_bytes") + downloaded);
+                ui.renderNetworkStats(sample);
+                return null;
+            });
+        }
         capture("phone");
         android.widget.ScrollView connectionScroll = onMain(() -> {
             View view = activity.findViewById(R.id.alive_tasks_metric);

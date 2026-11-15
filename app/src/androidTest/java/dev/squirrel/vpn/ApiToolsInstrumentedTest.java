@@ -61,7 +61,7 @@ public final class ApiToolsInstrumentedTest extends InstrumentationTestCase {
             onMain(() -> { activity.finish(); return null; }); getInstrumentation().waitForIdleSync();
             getInstrumentation().runOnMainSync(() -> {
                 androidx.viewpager2.widget.ViewPager2 pager = main.findViewById(R.id.pages);
-                assertEquals(5, pager.getAdapter().getItemCount()); assertEquals(MainActivity.PROXIES, pager.getCurrentItem());
+                assertEquals(4, pager.getAdapter().getItemCount()); assertEquals(MainActivity.PROXIES, pager.getCurrentItem());
             });
         } finally { getInstrumentation().runOnMainSync(main::finish); }
     }

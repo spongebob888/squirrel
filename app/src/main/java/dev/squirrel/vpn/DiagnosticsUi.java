@@ -41,6 +41,9 @@ final class DiagnosticsUi {
     private final TextView state, detail, profile, uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated;
     private final TextView tcpUploaded, tcpDownloaded, udpUploaded, udpDownloaded;
     private final TextView connectionNotice;
+    private final TextView uploadSpeed, downloadSpeed;
+    private final TrafficHistory trafficHistory = new TrafficHistory();
+    private final TrafficCurve uploadCurve, downloadCurve;
     private final TextView connectionHelp;
     private final ImageButton connectionInfo;
     private final LinearLayout connection;
@@ -113,23 +116,49 @@ final class DiagnosticsUi {
         icon(profile, R.drawable.ic_configuration, secondary);
         add(profileRow, profile, 12, 0);
 
-        LinearLayout transfers = panel();
-        LinearLayout totals = pairedColumns(transfers);
-        LinearLayout down = (LinearLayout) totals.getChildAt(0);
-        LinearLayout up = (LinearLayout) totals.getChildAt(1);
+        LinearLayout transfers = row();
+        transfers.setBaselineAligned(false);
+        LinearLayout down = panel(), up = panel();
+        down.setId(R.id.download_panel);
+        up.setId(R.id.upload_panel);
+        for (LinearLayout card : new LinearLayout[]{down, up}) card.setPadding(dp(12), dp(12), dp(12), dp(12));
+        LinearLayout.LayoutParams downParams = new LinearLayout.LayoutParams(0, -1, 1);
+        downParams.setMarginEnd(dp(12));
+        transfers.addView(down, downParams);
+        transfers.addView(up, new LinearLayout.LayoutParams(0, -1, 1));
         TextView downLabel = text("Download", 12, secondary, false);
         TextView upLabel = text("Upload", 12, secondary, false);
         icon(downLabel, R.drawable.ic_download, primary);
         icon(upLabel, R.drawable.ic_upload, download);
         add(down, downLabel, 0, 8);
         add(up, upLabel, 0, 8);
-        uploaded = number("—", 24, ink);
-        downloaded = number("—", 24, ink);
+        downloadSpeed = number("—", 24, ink);
+        uploadSpeed = number("—", 24, ink);
+        downloadSpeed.setId(R.id.download_speed);
+        uploadSpeed.setId(R.id.upload_speed);
+        for (TextView speed : new TextView[]{downloadSpeed, uploadSpeed}) speed.setMinHeight(dp(32));
+        down.addView(downloadSpeed);
+        up.addView(uploadSpeed);
+        uploaded = number("—", 12, secondary);
+        downloaded = number("—", 12, secondary);
         uploaded.setId(R.id.upload_total);
         downloaded.setId(R.id.download_total);
-        up.addView(uploaded);
-        down.addView(downloaded);
+        for (boolean isUpload : new boolean[]{false, true}) {
+            LinearLayout total = row();
+            total.addView(text("Total ", 12, secondary, false));
+            total.addView(isUpload ? uploaded : downloaded);
+            add(isUpload ? up : down, total, 4, 0);
+        }
+        downloadCurve = new TrafficCurve(context, trafficHistory, false, primary);
+        uploadCurve = new TrafficCurve(context, trafficHistory, true, download);
+        downloadCurve.setId(R.id.download_curve);
+        uploadCurve.setId(R.id.upload_curve);
+        add(down, downloadCurve, 12, 0);
+        add(up, uploadCurve, 12, 0);
+        downloadCurve.getLayoutParams().height = dp(64);
+        uploadCurve.getLayoutParams().height = dp(64);
         measurements.addView(transfers);
+        renderRates();
         LinearLayout engine = panel();
         add(measurements, engine, 16, 0);
         LinearLayout engineHeader = row();
@@ -142,7 +171,7 @@ final class DiagnosticsUi {
         engineHeader.addView(connectionInfo, new LinearLayout.LayoutParams(dp(48), dp(48)));
         engine.addView(engineHeader);
         connectionHelp = text("VPN active means the local engine is running. Use traffic and proxy probes to check remote availability."
-            + "\n\nTotals cover this engine run and refresh every second. Arrows show upload and download; TCP and UDP count sessions. A dash means a measurement is unavailable."
+            + "\n\nTotals cover this engine run. Speeds use the change between live traffic samples. Each curve shows up to 30 measured speeds and uses its own scale; the curve restarts after a gap over five seconds. TCP and UDP count sessions. A dash means a measurement is unavailable."
             + "\n\nTasks counts live Tokio tasks. Resident is process memory held in RAM; Allocated is memory reported by the allocator."
             + "\n\nThe app always bypasses the VPN. IPv4 and IPv6 TCP/UDP are supported; ICMP/ping is unsupported.",
             13, secondary, false);
@@ -162,8 +191,12 @@ final class DiagnosticsUi {
         engine.addView(spacer, new LinearLayout.LayoutParams(-1, dp(16)));
         divider(engine);
         aliveTasks = metricRow(engine, "Tasks", "Alive tasks", R.id.alive_tasks_metric, R.drawable.ic_engine);
-        resident = metricRow(engine, "Resident", "Resident memory", R.id.resident_metric, R.drawable.ic_memory);
-        allocated = metricRow(engine, "Allocated", "Allocated memory", R.id.allocated_metric, R.drawable.ic_allocation);
+        LinearLayout memory = pairedColumns(engine);
+        memory.setPadding(0, dp(12), 0, 0);
+        resident = memoryMetric((LinearLayout) memory.getChildAt(0), "Resident", "Resident memory",
+            R.id.resident_metric, R.drawable.ic_memory);
+        allocated = memoryMetric((LinearLayout) memory.getChildAt(1), "Allocated", "Allocated memory",
+            R.id.allocated_metric, R.drawable.ic_allocation);
         connectionNotice = text("", 12, secondary, false);
         connectionNotice.setId(R.id.connection_metrics_notice);
         connectionNotice.setVisibility(View.GONE);
@@ -255,6 +288,8 @@ final class DiagnosticsUi {
         long tcpCount = 0, udpCount = 0, tcpUp = 0, tcpDown = 0, udpUp = 0, udpDown = 0;
         JSONArray inbounds = traffic == null ? null : traffic.optJSONArray("inbounds");
         if (inbounds == null) {
+            trafficHistory.clear();
+            renderRates();
             set(uploaded, "—"); set(downloaded, "—"); set(tcp, "—"); set(udp, "—");
             for (TextView value : new TextView[]{tcpUploaded, tcpDownloaded, udpUploaded, udpDownloaded}) set(value, "—");
         } else {
@@ -265,6 +300,8 @@ final class DiagnosticsUi {
                 tcpUp += item.optLong("tcp_upload_bytes"); tcpDown += item.optLong("tcp_download_bytes");
                 udpUp += item.optLong("udp_upload_bytes"); udpDown += item.optLong("udp_download_bytes");
             }
+            trafficHistory.record(android.os.SystemClock.elapsedRealtimeNanos(), tcpUp + udpUp, tcpDown + udpDown);
+            renderRates();
             set(uploaded, bytes(tcpUp + udpUp)); set(downloaded, bytes(tcpDown + udpDown));
             set(tcp, Long.toString(tcpCount));
             set(udp, Long.toString(udpCount));
@@ -315,7 +352,35 @@ final class DiagnosticsUi {
         }
     }
 
+    private void renderRates() {
+        renderRate(uploadSpeed, trafficHistory.uploadRate(), "Upload speed");
+        renderRate(downloadSpeed, trafficHistory.downloadRate(), "Download speed");
+        describeCurve(uploadCurve, "Upload", trafficHistory.uploadRate());
+        describeCurve(downloadCurve, "Download", trafficHistory.downloadRate());
+    }
+
+    private void renderRate(TextView view, double rate, String description) {
+        String value = Double.isNaN(rate) ? "—" : bytes(Math.round(rate)) + "/s";
+        if (!TextUtils.equals(view.getText(), value)) {
+            android.text.SpannableString styled = new android.text.SpannableString(value);
+            int unit = value.lastIndexOf(' ');
+            if (unit >= 0) styled.setSpan(new android.text.style.RelativeSizeSpan(0.55f), unit + 1, value.length(),
+                android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            view.setText(styled);
+        }
+        view.setContentDescription(description + ": " + (Double.isNaN(rate) ? "unavailable" : value));
+        view.setTooltipText(view.getContentDescription());
+    }
+
+    private void describeCurve(TrafficCurve curve, String direction, double rate) {
+        curve.setContentDescription(direction + " speed history: " + trafficHistory.size() + " measured samples"
+            + (Double.isNaN(rate) ? ", waiting for traffic measurements" : ", latest " + bytes(Math.round(rate)) + "/s"));
+        curve.invalidate();
+    }
+
     private void clearMetrics() {
+        trafficHistory.clear();
+        renderRates();
         for (TextView view : new TextView[]{uploaded, downloaded, tcp, udp, aliveTasks, resident, allocated,
                 tcpUploaded, tcpDownloaded, udpUploaded, udpDownloaded}) set(view, "—");
         describeMetrics();
@@ -935,6 +1000,18 @@ final class DiagnosticsUi {
         TextView view = text(label, compact ? 22 : 26, ink, true);
         if (android.os.Build.VERSION.SDK_INT >= 28) view.setAccessibilityHeading(true);
         root.addView(view);
+    }
+
+    private TextView memoryMetric(LinearLayout parent, String label, String description, int id, int icon) {
+        TextView name = text(label, 13, secondary, false);
+        name.setContentDescription(description);
+        name.setTooltipText(description);
+        icon(name, icon, secondary);
+        parent.addView(name);
+        TextView value = number("—", 14, ink);
+        value.setId(id);
+        add(parent, value, 6, 0);
+        return value;
     }
 
     private TextView metricRow(LinearLayout parent, String label, String description, int id, int icon) {

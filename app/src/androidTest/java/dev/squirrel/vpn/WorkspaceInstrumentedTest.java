@@ -44,6 +44,50 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
     private MainActivity activity;
     private WorkspaceUi workspace;
 
+    public void testLogsOpenFromMoreAndBackPreservesDraftAndFilter() throws Exception {
+        launch();
+        page(MainActivity.CONFIGURATION);
+        String draft = "# log navigation draft\noutbounds: []\n";
+        onMain(() -> {
+            workspace.editor.setText(draft);
+            assertEquals(4, ((ViewPager2) activity.findViewById(R.id.pages)).getAdapter().getItemCount());
+            ViewGroup tabs = (ViewGroup) activity.findViewById(R.id.connection_tab).getParent();
+            assertEquals(4, tabs.getChildCount());
+            activity.findViewById(R.id.api_tools_menu).performClick();
+            return null;
+        });
+        Thread.sleep(350);
+        AccessibilityNodeInfo item = findText("Logs");
+        assertNotNull("Logs menu item", item);
+        android.graphics.Rect bounds = new android.graphics.Rect();
+        item.getBoundsInScreen(bounds);
+        item.recycle();
+        long time = SystemClock.uptimeMillis();
+        android.view.MotionEvent down = android.view.MotionEvent.obtain(time, time,
+            android.view.MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.centerY(), 0);
+        android.view.MotionEvent up = android.view.MotionEvent.obtain(time, time + 50,
+            android.view.MotionEvent.ACTION_UP, bounds.centerX(), bounds.centerY(), 0);
+        try { getInstrumentation().sendPointerSync(down); getInstrumentation().sendPointerSync(up); }
+        finally { down.recycle(); up.recycle(); }
+        getInstrumentation().waitForIdleSync();
+        assertTrue(onMain(() -> activity.isShowingLogs()));
+        assertFalse(onMain(() -> activity.findViewById(R.id.connection_tab).isShown()));
+        onMain(() -> { workspace.logFilter.setText("WARN"); workspace.live.setChecked(false); return null; });
+        Thread.sleep(350);
+        assertTrue(getInstrumentation().getUiAutomation().performGlobalAction(
+            android.accessibilityservice.AccessibilityService.GLOBAL_ACTION_BACK));
+        long deadline = SystemClock.uptimeMillis() + 3000;
+        while (SystemClock.uptimeMillis() < deadline && onMain(() -> activity.isShowingLogs())) Thread.sleep(50);
+        assertFalse(onMain(() -> activity.isShowingLogs()));
+        assertEquals(MainActivity.CONFIGURATION, (int) onMain(() -> ((ViewPager2) activity.findViewById(R.id.pages)).getCurrentItem()));
+        assertEquals(draft, onMain(() -> workspace.editor.getText().toString()));
+        page(MainActivity.LOGS);
+        assertEquals("WARN", onMain(() -> workspace.logFilter.getText().toString()));
+        assertFalse(onMain(() -> workspace.live.isChecked()));
+        onMain(() -> { activity.findViewById(R.id.logs_back).performClick(); return null; });
+        assertFalse(onMain(() -> activity.isShowingLogs()));
+    }
+
     private static final String RICH_LOGS = "— service.log —\n"
         + "2026-10-19T08:42:01Z Synthetic review fixture\n"
         + "2026-10-19T08:42:02Z Local engine started\n\n"
@@ -349,7 +393,14 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
     }
 
     private void page(int page) throws Exception {
-        onMain(() -> { ((ViewPager2) activity.findViewById(R.id.pages)).setCurrentItem(page, false); return null; });
+        onMain(() -> {
+            if (page == MainActivity.LOGS) activity.openLogs();
+            else {
+                if (activity.isShowingLogs()) activity.closeLogs();
+                ((ViewPager2) activity.findViewById(R.id.pages)).setCurrentItem(page, false);
+            }
+            return null;
+        });
         getInstrumentation().waitForIdleSync();
     }
 
@@ -361,7 +412,7 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
     private void capture(String name, Runnable showOverlay) throws Exception {
         onMain(() -> {
             int page = ((ViewPager2) activity.findViewById(R.id.pages)).getCurrentItem();
-            assertTrue(page == MainActivity.CONFIGURATION || page == MainActivity.LOGS);
+            assertTrue(page == MainActivity.CONFIGURATION || activity.isShowingLogs());
             assertTrue("Editor contains non-fixture data", YAML.equals(workspace.editor.getText().toString()));
             assertTrue("Profile contains non-fixture data", "Synthetic fixture".contentEquals(workspace.profileButton.getText()));
             activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SECURE);
