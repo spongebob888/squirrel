@@ -52,6 +52,8 @@ security, anonymity, or reliability claims have been established.
 
 ## Capabilities and Constraints
 
+- Connection and Configuration share the profile picker and selected profile.
+  Selection on Connection stays on that screen and preserves per-profile drafts.
 - Multiple named profiles support creation, duplication, renaming, deletion,
   selection, import, editing, validation, saving, and export. At least one profile
   remains. Saved selection persists across restarts; unsaved per-profile drafts

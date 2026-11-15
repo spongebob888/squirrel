@@ -74,4 +74,7 @@
     <item name="upload_speed" type="id" />
     <item name="download_curve" type="id" />
     <item name="upload_curve" type="id" />
+    <item name="profile_picker" type="id" />
+    <item name="profile_picker_list" type="id" />
+    <item name="profile_picker_close" type="id" />
 </resources>

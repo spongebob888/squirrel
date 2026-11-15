@@ -170,7 +170,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         }
     }
 
-    public void testProfileSwitchingPreservesSeparateDraftsAndRestoresSelection() throws Exception {
+    public void testConnectionProfilePickerPreservesDraftsAndRestoresSelection() throws Exception {
         android.content.Context context = getInstrumentation().getTargetContext();
         String original = ConfigProfiles.list(context).selectedId;
         String suffix = Long.toString(System.nanoTime());
@@ -181,15 +181,15 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
             b = ConfigProfiles.create(context, nameB, "# B\n" + CONFIG).selectedId;
             ConfigProfiles.select(context, a);
             launch();
-            onMain(() -> { activity.findViewById(R.id.configuration_tab).performClick(); return null; });
-            awaitPage(MainActivity.CONFIGURATION);
+            awaitPage(MainActivity.CONNECTION);
+            assertEquals(nameA, onMain(() -> ((TextView) activity.findViewById(R.id.connection_profile)).getText().toString()));
             String draftA = "# Draft A\n" + CONFIG;
             String draftB = "# Draft B\n" + CONFIG;
             onMain(() -> { editor().setText(draftA); return null; });
-            switchProfile(nameB);
+            switchConnectionProfile(nameB);
             assertEquals("# B\n" + CONFIG, onMain(() -> editor().getText().toString()));
             onMain(() -> { editor().setText(draftB); return null; });
-            switchProfile(nameA);
+            switchConnectionProfile(nameA);
             assertEquals(draftA, onMain(() -> editor().getText().toString()));
             Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(MainActivity.class.getName(), null, false);
             onMain(() -> { activity.recreate(); return null; });
@@ -198,7 +198,7 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
             assertNotNull(activity);
             awaitReady();
             assertEquals(draftA, onMain(() -> editor().getText().toString()));
-            switchProfile(nameB);
+            switchConnectionProfile(nameB);
             assertEquals(draftB, onMain(() -> editor().getText().toString()));
             assertEquals(b, ConfigProfiles.list(context).selectedId);
             assertEquals(CONFIG, ConfigProfiles.read(context, a));
@@ -276,6 +276,15 @@ public final class RemoteConfigInstrumentedTest extends InstrumentationTestCase 
         }
         fail("Cannot click " + text);
     }
+    private void switchConnectionProfile(String name) throws Exception {
+        assertTrue(onMain(() -> activity.findViewById(R.id.connection_profile).isEnabled()));
+        clickAccessible("dev.squirrel.vpn:id/connection_profile");
+        clickText(name);
+        awaitProfile(name);
+        awaitPage(MainActivity.CONNECTION);
+        assertEquals(name, onMain(() -> ((TextView) activity.findViewById(R.id.connection_profile)).getText().toString()));
+    }
+
     private void switchProfile(String name) throws Exception {
         onMain(() -> { WorkspaceTestViews.workspace(activity).closeEditor(); activity.findViewById(R.id.config_profile).performClick(); return null; });
         clickText(name);

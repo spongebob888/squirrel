@@ -17,7 +17,7 @@ Preserve all metrics, pending and failure states, secure capture and VPN lifecyc
 THESIS: Make connection control and measured activity readable through icons and concise labels, removing repeated explanations from the working screen.
 OWN-WORLD: Retain the pinned cool canvas, outlined native panels, periwinkle download/action and teal upload, system sans and tabular numbers. Change this screen's composition, not the app's identity.
 STORY: Identify state and profile, tap power, then scan traffic, TCP/UDP sessions, tasks and memory. An initially collapsed information action reveals inline help about local-engine scope and measurement semantics before the TCP/UDP measurements; it toggles to a close action and preserves disclosure state across recreation.
-FIRST VIEWPORT: A Connection heading leads to a horizontal state/power composition and a compact profile row. Separate Download and Upload subpanels precede Runtime: TCP and UDP columns with arrow-led totals, then Tasks and a paired memory row. Short/wide screens place controls beside metrics; normal and large type scroll without clipping. Signature interaction: the power control changes its icon and accessible action with the engine state, with errors kept inline.
+FIRST VIEWPORT: A Connection heading leads to a horizontal state/power composition and a compact profile row. Separate Download and Upload subpanels precede Runtime: TCP and UDP columns with arrow-led totals, then one shared Tasks/Allocated/Resident row. Short/wide screens place controls beside metrics; normal and large type scroll without clipping. Signature interaction: the power control changes its icon and accessible action with the engine state, with errors kept inline.
 FORM: Code-led, precisely scoped icon-first redesign within the existing user-pinned visual world; seed: none (user-pinned reference).
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
@@ -30,7 +30,7 @@ The state and power action share the control panel’s first row. The action is
 28dp top vector icon and an 8dp label gap. Pending/error detail and a separated
 profile row follow. Traffic uses two equal outlined Download/Upload subpanels, each with its own
 current speed, retained total and smooth filled speed curve. Runtime keeps TCP/UDP session counts, both protocols’
-upload/download totals, Tasks plus Resident and Allocated side by side in one shared memory row. Missing values
+upload/download totals, Tasks, Allocated and Resident side by side in one shared summary row. Missing values
 remain dashes and metric failures remain inline.
 
 At `screenHeightDp < 480`, controls and measurements use 1:1.5 columns with a
@@ -80,5 +80,20 @@ counter decrease, non-increasing sample time or a gap over five seconds clears
 rates and curves. Zero speed is a valid measurement. All existing totals/runtime
 metrics remain visible, and Logs stays in More options.
 
-The user requests Resident and Allocated memory in one row. Keep equal columns
-with each icon/label above its existing value, after Tasks; preserve all metrics.
+The user requests Tasks, Allocated memory and Resident memory in one row. Keep
+three equal columns in that order, with 8dp gaps and each icon/label above its
+existing value; preserve all metrics.
+
+The Connection profile item opens the existing profile chooser directly, with
+a native 48dp button, leading configuration icon, trailing chevron and transparent
+ripple. Busy loading/download/validation states disable it. Selection stays on
+Connection, synchronizes Configuration and preserves per-profile drafts. An
+already running VPN uses the new selection on the next connection.
+
+The shared secure profile picker uses a rounded 24dp panel, 72dp-minimum
+content-wrapping rows, tonal configuration badges and checked periwinkle selection.
+It rises from the bottom on phones and centers at 600dp width, with a bounded
+scrolling list and a 48dp Close action. Opening is 220ms with a bounded four-row
+stagger; selection exits over 120ms before dispatch. Disabled Android animations
+skip motion. Back/Close/outside leave selection unchanged; repeated taps dispatch
+at most once. Connected users see the reconnect hint.

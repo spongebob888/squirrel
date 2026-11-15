@@ -111,9 +111,18 @@ final class DiagnosticsUi {
         LinearLayout profileRow = column();
         add(controls, profileRow, 16, 0);
         divider(profileRow);
-        profile = text("Loading configuration…", 13, secondary, false);
+        profile = action("Loading configuration…", () -> {}, false);
         profile.setId(R.id.connection_profile);
+        profile.setGravity(Gravity.START | Gravity.CENTER_VERTICAL);
+        profile.setPadding(0, 0, dp(4), 0);
+        profile.setBackground(new android.graphics.drawable.RippleDrawable(
+            ColorStateList.valueOf(outline), null, shape(container, 8)));
+        profile.setEnabled(false);
         icon(profile, R.drawable.ic_configuration, secondary);
+        android.graphics.drawable.Drawable chevron = context.getDrawable(R.drawable.ic_expand_more).mutate();
+        chevron.setTint(primary);
+        chevron.setBounds(0, 0, dp(18), dp(18));
+        profile.setCompoundDrawablesRelative(profile.getCompoundDrawablesRelative()[0], null, chevron, null);
         add(profileRow, profile, 12, 0);
 
         LinearLayout transfers = row();
@@ -190,13 +199,21 @@ final class DiagnosticsUi {
         View spacer = new View(context);
         engine.addView(spacer, new LinearLayout.LayoutParams(-1, dp(16)));
         divider(engine);
-        aliveTasks = metricRow(engine, "Tasks", "Alive tasks", R.id.alive_tasks_metric, R.drawable.ic_engine);
-        LinearLayout memory = pairedColumns(engine);
-        memory.setPadding(0, dp(12), 0, 0);
-        resident = memoryMetric((LinearLayout) memory.getChildAt(0), "Resident", "Resident memory",
-            R.id.resident_metric, R.drawable.ic_memory);
-        allocated = memoryMetric((LinearLayout) memory.getChildAt(1), "Allocated", "Allocated memory",
+        LinearLayout summary = row();
+        summary.setBaselineAligned(false);
+        summary.setPadding(0, dp(12), 0, 0);
+        LinearLayout taskColumn = column(), allocatedColumn = column(), residentColumn = column();
+        for (LinearLayout cell : new LinearLayout[]{taskColumn, allocatedColumn, residentColumn}) {
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, -2, 1);
+            if (cell != residentColumn) params.setMarginEnd(dp(8));
+            summary.addView(cell, params);
+        }
+        engine.addView(summary);
+        aliveTasks = summaryMetric(taskColumn, "Tasks", "Alive tasks", R.id.alive_tasks_metric, R.drawable.ic_engine);
+        allocated = summaryMetric(allocatedColumn, "Allocated", "Allocated memory",
             R.id.allocated_metric, R.drawable.ic_allocation);
+        resident = summaryMetric(residentColumn, "Resident", "Resident memory",
+            R.id.resident_metric, R.drawable.ic_memory);
         connectionNotice = text("", 12, secondary, false);
         connectionNotice.setId(R.id.connection_metrics_notice);
         connectionNotice.setVisibility(View.GONE);
@@ -216,6 +233,9 @@ final class DiagnosticsUi {
 
     View proxiesPage() { return proxies.root; }
     View sessionsPage() { return sessions.root; }
+
+    void setProfileAction(Runnable action) { profile.setOnClickListener(view -> action.run()); }
+    void setProfileEnabled(boolean enabled) { profile.setEnabled(enabled); }
 
     void clearFilterFocus() {
         proxies.filter.clearFocus();
@@ -259,7 +279,8 @@ final class DiagnosticsUi {
             || snapshot.phase == AppState.Phase.CONNECTING || snapshot.phase == AppState.Phase.STOPPING
             ? View.VISIBLE : View.GONE);
         set(profile, selectedProfile == null ? "Loading configuration…" : selectedProfile);
-        profile.setContentDescription(selectedProfile == null ? "Loading configuration" : "Profile: " + selectedProfile);
+        profile.setContentDescription(selectedProfile == null ? "Loading configuration"
+            : "Select configuration. Current: " + selectedProfile);
         profile.setTooltipText(profile.getContentDescription());
         set(connect, preparing ? "Checking…" : snapshot.busy() ? "Disconnect" : "Connect");
         connect.setContentDescription(preparing ? "Checking configuration" : snapshot.busy() ? "Disconnect VPN" : "Connect VPN");
@@ -1002,7 +1023,7 @@ final class DiagnosticsUi {
         root.addView(view);
     }
 
-    private TextView memoryMetric(LinearLayout parent, String label, String description, int id, int icon) {
+    private TextView summaryMetric(LinearLayout parent, String label, String description, int id, int icon) {
         TextView name = text(label, 13, secondary, false);
         name.setContentDescription(description);
         name.setTooltipText(description);
@@ -1011,25 +1032,6 @@ final class DiagnosticsUi {
         TextView value = number("—", 14, ink);
         value.setId(id);
         add(parent, value, 6, 0);
-        return value;
-    }
-
-    private TextView metricRow(LinearLayout parent, String label, String description, int id, int icon) {
-        LinearLayout line = row();
-        line.setGravity(Gravity.CENTER_VERTICAL);
-        TextView name = text(label, 13, secondary, false);
-        name.setContentDescription(description);
-        name.setTooltipText(description);
-        icon(name, icon, secondary);
-        name.setPadding(0, dp(13), dp(12), dp(13));
-        TextView value = number("—", 14, ink);
-        value.setId(id);
-        value.setGravity(Gravity.END);
-        value.setPadding(0, dp(13), 0, dp(13));
-        line.addView(name, new LinearLayout.LayoutParams(0, -2, 1));
-        line.addView(value, new LinearLayout.LayoutParams(0, -2, 1.4f));
-        parent.addView(line);
-        divider(parent);
         return value;
     }
 

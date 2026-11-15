@@ -46,6 +46,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService apiExecutor = Executors.newSingleThreadExecutor();
     private final ExecutorService apiActionExecutor = Executors.newSingleThreadExecutor();
     private ConfigDownloader downloader;
+    private ProfilePickerDialog profilePicker;
     private final AtomicBoolean logRead = new AtomicBoolean(), apiRead = new AtomicBoolean();
     private TextView brand;
     private DiagnosticsUi diagnostics;
@@ -97,6 +98,7 @@ public final class MainActivity extends Activity {
         // Configs may contain credentials; keep them out of recents and screenshots.
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         diagnostics = new DiagnosticsUi(this, this::toggleVpn, this::chooseOutbound, this::probeOutbound);
+        diagnostics.setProfileAction(this::chooseProfile);
         workspace = new WorkspaceUi(this, diagnostics, this::chooseProfile, this::manageProfiles,
             this::importFile, this::downloadConfig, () -> save(false), this::exportConfig,
             () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
@@ -346,6 +348,7 @@ public final class MainActivity extends Activity {
         AppState.Snapshot state = AppState.get();
         diagnostics.renderState(state, preparing, profileState == null ? null : profileState.selected().name);
         boolean ready = !loadingConfig && !downloading && !preparing && profileId != null;
+        diagnostics.setProfileEnabled(ready && profileState != null);
         diagnostics.connect.setEnabled(state.phase != AppState.Phase.STOPPING && (state.busy() || ready));
         editor.setEnabled(ready);
         workspace.renderEditorState(ready, preparing);
@@ -392,18 +395,11 @@ public final class MainActivity extends Activity {
     private void chooseProfile() {
         if (profileState == null || loadingConfig || preparing || downloading) return;
         ConfigProfiles.State state = profileState;
-        String[] names = new String[state.profiles.size()];
-        int selected = 0;
-        for (int i = 0; i < names.length; i++) {
-            ConfigProfiles.Profile profile = state.profiles.get(i);
-            names[i] = profile.name;
-            if (profile.id.equals(profileId)) selected = i;
-        }
-        new AlertDialog.Builder(diagnostics.context).setTitle("Configurations").setSingleChoiceItems(names, selected, (dialog, which) -> {
-            dialog.dismiss();
-            String id = state.profiles.get(which).id;
+        if (profilePicker != null && profilePicker.isShowing()) return;
+        profilePicker = new ProfilePickerDialog(this, diagnostics, state, profileId, AppState.get().busy(), id -> {
             if (!id.equals(profileId)) loadProfile(() -> ConfigProfiles.select(this, id), null);
-        }).setNegativeButton("Cancel", null).show();
+        });
+        profilePicker.show();
     }
 
     private void manageProfiles() {
@@ -758,6 +754,7 @@ public final class MainActivity extends Activity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        if (profilePicker != null) profilePicker.dismiss();
         workspace.destroy();
         if (downloader != null) downloader.cancel();
         main.removeCallbacksAndMessages(null);
