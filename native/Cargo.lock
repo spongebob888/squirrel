@@ -954,6 +954,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
 
 [[package]]
+name = "hotpath"
+version = "0.31.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f41c413153d29c7665f7a1a21b1fed9816c9be794fc7e58f48d420ce3e60b403"
+dependencies = [
+ "hotpath-macros",
+ "tokio",
+]
+
+[[package]]
+name = "hotpath-macros"
+version = "0.31.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "183e2530804a17d4aeef73a9d613a6977ad220cc11a1cd9312b9b6e52852ead4"
+
+[[package]]
 name = "http"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2325,8 +2341,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic"
-version = "0.4.10"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.10#677b7344bda3e8144e775b532f1cb0c11db09e1a"
+version = "0.4.11"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.11#635c223fccf3eca9670bb0df53b8c6228eece85c"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -2338,6 +2354,7 @@ dependencies = [
  "educe",
  "etherparse",
  "futures-util",
+ "hotpath",
  "http-body-util",
  "hyper",
  "hyper-util",
@@ -2390,8 +2407,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic-macros"
-version = "0.4.10"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.10#677b7344bda3e8144e775b532f1cb0c11db09e1a"
+version = "0.4.11"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.11#635c223fccf3eca9670bb0df53b8c6228eece85c"
 dependencies = [
  "proc-macro2",
  "quote",
