@@ -150,6 +150,19 @@ final class ConfigProfiles {
             return state;
         } catch (JSONException error) { throw new IOException("Cannot read configuration profiles", error); }
     }
+    static String availableName(State state, String suggested) {
+        String base = suggested.trim();
+        for (int n = 1; ; n++) {
+            String suffix = n == 1 ? "" : " (" + n + ")";
+            int end = Math.min(base.length(), 64 - suffix.length());
+            if (end > 0 && Character.isHighSurrogate(base.charAt(end - 1))) end--;
+            String candidate = base.substring(0, end).trim() + suffix;
+            boolean used = false;
+            for (Profile profile : state.profiles) if (profile.name.equalsIgnoreCase(candidate)) used = true;
+            if (!used) return candidate;
+        }
+    }
+
     private static String checkedName(State state, String id, String name) throws IOException {
         name = name.trim();
         if (name.isEmpty() || name.length() > 64) throw new IOException("Use a configuration name of 1–64 characters");

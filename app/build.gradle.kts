@@ -2,6 +2,8 @@ plugins { id("com.android.application") }
 
 dependencies {
     implementation("androidx.viewpager2:viewpager2:1.1.0")
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
+    implementation("org.snakeyaml:snakeyaml-engine:2.9")
 }
 
 android {

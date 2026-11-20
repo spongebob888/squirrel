@@ -27,18 +27,24 @@ import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+import com.google.zxing.client.android.Intents;
+import com.google.zxing.common.BitMatrix;
+import com.journeyapps.barcodescanner.ScanOptions;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.snakeyaml.engine.v2.nodes.Node;
 
 public final class MainActivity extends Activity {
-    private static final int IMPORT = 10, EXPORT_LOG = 11, VPN_PERMISSION = 12, EXPORT_CONFIG = 13;
+    private static final int IMPORT = 10, EXPORT_LOG = 11, VPN_PERMISSION = 12, EXPORT_CONFIG = 13, SCAN_NODE = 14;
     static final int CONNECTION = 0, PROXIES = 1, CONFIGURATION = 2, SESSIONS = 3, LOGS = 4;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -65,6 +71,10 @@ public final class MainActivity extends Activity {
     private String exportedConfig, remoteUrl = "";
     private ConfigProfiles.State profileState;
     private String profileId;
+    private ShadowQuicLink scannedNode;
+    private AlertDialog nodeDialog;
+    // Kept in memory with the draft. An empty tag denotes the outbound picker.
+    private String sharingTag;
     private final HashMap<String, AppState.Snapshot> pendingProbes = new HashMap<>();
     private final HashMap<String, AppState.Snapshot> pendingSelections = new HashMap<>();
     private final HashMap<String, String> profileDrafts = new HashMap<>();
@@ -72,7 +82,11 @@ public final class MainActivity extends Activity {
     private static final class Draft {
         final HashMap<String, String> texts;
         final int page;
-        Draft(HashMap<String, String> texts, int page) {
+        final ShadowQuicLink scannedNode;
+        final String sharingTag;
+        Draft(HashMap<String, String> texts, int page, ShadowQuicLink scannedNode, String sharingTag) {
+            this.sharingTag = sharingTag;
+            this.scannedNode = scannedNode;
             this.texts = new HashMap<>(texts); this.page = page;
         }
     }
@@ -101,7 +115,7 @@ public final class MainActivity extends Activity {
         diagnostics.setProfileAction(this::chooseProfile);
         workspace = new WorkspaceUi(this, diagnostics, this::chooseProfile, this::manageProfiles,
             this::importFile, this::downloadConfig, () -> save(false), this::exportConfig,
-            () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
+            this::scanNode, this::exportNode, () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
             () -> createDocument(EXPORT_LOG, "squirrel-logs.txt", "text/plain"));
         expandedNavigation = getResources().getConfiguration().screenWidthDp >= 840
             && getResources().getConfiguration().screenHeightDp >= 480;
@@ -213,9 +227,13 @@ public final class MainActivity extends Activity {
         if (retained instanceof Draft) {
             Draft draft = (Draft) retained;
             profileDrafts.putAll(draft.texts);
+            scannedNode = draft.scannedNode;
+            sharingTag = draft.sharingTag;
             page = draft.page;
         }
-        loadProfile(() -> ConfigProfiles.list(this), null);
+        loadProfile(() -> ConfigProfiles.list(this), null, () -> {
+            if (sharingTag != null) loadShareableNodes();
+        });
         if (page < 0 || page >= pages.length) page = CONNECTION;
         pager.setCurrentItem(page, false);
         selectTab(page);
@@ -367,6 +385,10 @@ public final class MainActivity extends Activity {
     }
 
     private void loadProfile(ProfileOperation operation, String deletedId) {
+        loadProfile(operation, deletedId, null);
+    }
+
+    private void loadProfile(ProfileOperation operation, String deletedId, Runnable afterLoad) {
         rememberDraft();
         loadingConfig = true;
         renderStatus();
@@ -385,6 +407,8 @@ public final class MainActivity extends Activity {
                     setConfigNotice("Save or Connect to apply. Switching profiles keeps drafts until the app closes.", false);
                     loadingConfig = false;
                     renderStatus();
+                    if (afterLoad != null) afterLoad.run();
+                    offerScannedNode();
                 });
             } catch (Exception error) {
                 post(() -> { loadingConfig = false; renderStatus(); showError(error); });
@@ -672,6 +696,132 @@ public final class MainActivity extends Activity {
         downloader = null;
         renderStatus();
     }
+    private void scanNode() {
+        ScanOptions options = new ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+            .setCaptureActivity(NodeScannerActivity.class).setOrientationLocked(false)
+            .setBeepEnabled(false).setBarcodeImageEnabled(false).setPrompt("Scan a ShadowQUIC node QR code");
+        startActivityForResult(options.createScanIntent(this), SCAN_NODE);
+    }
+
+    private void receiveNode(String contents) {
+        if (contents == null) { showError(new IOException("The QR code has no node link.")); return; }
+        try {
+            scannedNode = ShadowQuicLink.parse(contents);
+            offerScannedNode();
+        } catch (IOException e) { showError(e); }
+    }
+
+    private void offerScannedNode() {
+        if (scannedNode == null || loadingConfig || profileState == null) return;
+        ShadowQuicLink link = scannedNode;
+        String title = "Import " + link.name;
+        if (link.fallbackCongestion) title += " (Copa unavailable, using BBR)";
+        String[] targets = {"Add to " + profileState.selected().name, "Create from proxy template"};
+        nodeDialog = new AlertDialog.Builder(diagnostics.context).setTitle(title)
+            .setItems(targets, (dialog, which) -> {
+                scannedNode = null;
+                importNode(link, which == 1);
+            }).setNegativeButton("Cancel", (dialog, which) -> scannedNode = null)
+            .setOnCancelListener(dialog -> scannedNode = null).create();
+        nodeDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+        nodeDialog.show();
+    }
+
+    private void importNode(ShadowQuicLink link, boolean template) {
+        String current = editor.getText().toString();
+        if (template) {
+            String label = ConfigProfiles.availableName(profileState, link.name);
+            loadProfile(() -> ConfigProfiles.create(this, label,
+                nodeYaml(ConfigStore.asset(this, "example.yaml"), link, true)), null, () -> {
+                    setConfigNotice("Created from the proxy template. Changes apply on the next connection.", false);
+                    workspace.openEditor();
+                });
+        } else {
+            runNodeTask(() -> {
+                String yaml = nodeYaml(current, link, false);
+                return () -> {
+                    editor.setText(yaml);
+                    setConfigNotice("Node added to the draft. Save to update this profile.", false);
+                    workspace.openEditor();
+                };
+            });
+        }
+    }
+
+    private String nodeYaml(String base, ShadowQuicLink link, boolean template) throws IOException {
+        try {
+            String yaml = new NodeConfiguration(base).insert(link, template);
+            NativeBridge.validate(ConfigStore.forRuntime(this, yaml));
+            return yaml;
+        } catch (IOException | RuntimeException | LinkageError e) {
+            // YAML and native parser diagnostics may contain excerpts with credentials.
+            throw new IOException("Could not add the node. Check the profile YAML and its endpoint tags.");
+        }
+    }
+
+    private void exportNode() {
+        sharingTag = "";
+        loadShareableNodes();
+    }
+
+    private void loadShareableNodes() {
+        String yaml = editor.getText().toString();
+        runNodeTask(() -> {
+            Map<String, Node> nodes = new NodeConfiguration(yaml).shadowQuicNodes();
+            if (nodes.isEmpty()) throw new IOException("This profile has no ShadowQUIC outbound to share.");
+            String[] tags = nodes.keySet().toArray(new String[0]);
+            return () -> {
+                if (nodes.containsKey(sharingTag)) showNode(nodes.get(sharingTag), sharingTag);
+                else if (tags.length == 1) showNode(nodes.get(tags[0]), tags[0]);
+                else {
+                    nodeDialog = new AlertDialog.Builder(diagnostics.context).setTitle("Choose a node to share")
+                        .setItems(tags, (dialog, which) -> showNode(nodes.get(tags[which]), tags[which]))
+                        .setNegativeButton("Cancel", null).create();
+                    nodeDialog.setOnDismissListener(dialog -> {
+                        if ("".equals(sharingTag)) sharingTag = null;
+                    });
+                    nodeDialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
+                    nodeDialog.show();
+                }
+            };
+        });
+    }
+
+    private void showNode(Node node, String tag) {
+        sharingTag = tag;
+        runNodeTask(() -> {
+            BitMatrix modules = NodeQr.encode(NodeConfiguration.link(node, tag));
+            return () -> {
+                nodeDialog = NodeQr.show(diagnostics, tag, modules);
+                nodeDialog.setOnDismissListener(dialog -> sharingTag = null);
+            };
+        });
+    }
+
+    private interface NodeTask { Runnable prepare() throws IOException; }
+
+    private void runNodeTask(NodeTask task) {
+        loadingConfig = true;
+        renderStatus();
+        io.execute(() -> {
+            Runnable result;
+            try { result = task.prepare(); }
+            catch (IOException e) { result = () -> { sharingTag = null; showError(e); }; }
+            catch (RuntimeException | LinkageError e) {
+                result = () -> {
+                    sharingTag = null;
+                    showError(new IOException("Cannot read the node settings. Check the profile YAML."));
+                };
+            }
+            Runnable finish = result;
+            post(() -> {
+                loadingConfig = false;
+                renderStatus();
+                finish.run();
+            });
+        });
+    }
+
     private void exportConfig() {
         exportedConfig = editor.getText().toString();
         createDocument(EXPORT_CONFIG, "squirrel-config.yaml", "application/yaml");
@@ -705,6 +855,10 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == SCAN_NODE) {
+            if (result == RESULT_OK && data != null) receiveNode(data.getStringExtra(Intents.Scan.RESULT));
+            return;
+        }
         if (request == VPN_PERMISSION) {
             if (result == RESULT_OK) startVpn();
             else Toast.makeText(this, "VPN permission was not granted", Toast.LENGTH_LONG).show();
@@ -755,6 +909,7 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onDestroy() {
         if (profilePicker != null) profilePicker.dismiss();
+        if (nodeDialog != null) nodeDialog.dismiss();
         workspace.destroy();
         if (downloader != null) downloader.cancel();
         main.removeCallbacksAndMessages(null);
@@ -766,7 +921,7 @@ public final class MainActivity extends Activity {
     }
     @Override public Object onRetainNonConfigurationInstance() {
         rememberDraft();
-        return new Draft(profileDrafts, pager.getCurrentItem());
+        return new Draft(profileDrafts, pager.getCurrentItem(), scannedNode, sharingTag);
     }
     private void post(Runnable action) {
         main.post(() -> { if (!isFinishing() && !isDestroyed()) action.run(); });

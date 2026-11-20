@@ -56,20 +56,7 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
             activity.findViewById(R.id.api_tools_menu).performClick();
             return null;
         });
-        Thread.sleep(350);
-        AccessibilityNodeInfo item = findText("Logs");
-        assertNotNull("Logs menu item", item);
-        android.graphics.Rect bounds = new android.graphics.Rect();
-        item.getBoundsInScreen(bounds);
-        item.recycle();
-        long time = SystemClock.uptimeMillis();
-        android.view.MotionEvent down = android.view.MotionEvent.obtain(time, time,
-            android.view.MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.centerY(), 0);
-        android.view.MotionEvent up = android.view.MotionEvent.obtain(time, time + 50,
-            android.view.MotionEvent.ACTION_UP, bounds.centerX(), bounds.centerY(), 0);
-        try { getInstrumentation().sendPointerSync(down); getInstrumentation().sendPointerSync(up); }
-        finally { down.recycle(); up.recycle(); }
-        getInstrumentation().waitForIdleSync();
+        tapMenuItem("Logs");
         assertTrue(onMain(() -> activity.isShowingLogs()));
         assertFalse(onMain(() -> activity.findViewById(R.id.connection_tab).isShown()));
         onMain(() -> { workspace.logFilter.setText("WARN"); workspace.live.setChecked(false); return null; });
@@ -270,6 +257,122 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
         }
     }
 
+    public void testScanNodeIntoDraftSaveShowAndCreateFromTemplate() throws Exception {
+        android.content.Context context = getInstrumentation().getTargetContext();
+        String original = ConfigProfiles.list(context).selectedId;
+        String title = "QR fixture " + System.nanoTime();
+        String id = ConfigProfiles.create(context, title, YAML).selectedId;
+        String created = null;
+        String link = NodeSharingInstrumentedTest.LINK;
+        try {
+            launch();
+            page(MainActivity.CONFIGURATION);
+            onMain(() -> { workspace.editor.append("\n# Draft to keep\n"); return null; });
+            scanFixture(link);
+            clickText("Add to " + title);
+            assertAccessibleText("Node added to the draft");
+            assertEquals(YAML, ConfigProfiles.read(context, id));
+            assertTrue(onMain(() -> workspace.editor.getText().toString().contains("Draft to keep")));
+            onMain(() -> { workspace.editorPanel.save.performClick(); return null; });
+            assertAccessibleText("Saved and validated");
+            assertEquals(1, new NodeConfiguration(ConfigProfiles.read(context, id)).shadowQuicNodes().size());
+            String multi = new NodeConfiguration(ConfigProfiles.read(context, id)).insert(
+                ShadowQuicLink.parse("sq://u:p@other.example.test?sni=example.test#Other"), false);
+            onMain(() -> {
+                workspace.editor.setText(multi);
+                workspace.closeEditor();
+                workspace.more.performClick();
+                return null;
+            });
+            tapMenuItem("Show node QR code");
+            assertAccessibleText("Choose a node to share");
+            clickText(ShadowQuicLink.parse(link).name);
+            assertAccessibleText("Includes the node username and password");
+            android.app.Instrumentation.ActivityMonitor rotation = getInstrumentation().addMonitor(
+                MainActivity.class.getName(), null, false);
+            try {
+                onMain(() -> { activity.recreate(); return null; });
+                activity = (MainActivity) getInstrumentation().waitForMonitorWithTimeout(rotation, 5000);
+                assertNotNull(activity);
+                workspace = onMain(() -> WorkspaceTestViews.workspace(activity));
+            } finally { getInstrumentation().removeMonitor(rotation); }
+            assertAccessibleText("Includes the node username and password");
+            Bitmap rendered = onMain(() -> {
+                Field field = MainActivity.class.getDeclaredField("nodeDialog");
+                field.setAccessible(true);
+                android.app.AlertDialog dialog = (android.app.AlertDialog) field.get(activity);
+                assertTrue((dialog.getWindow().getAttributes().flags & WindowManager.LayoutParams.FLAG_SECURE) != 0);
+                View decor = dialog.getWindow().getDecorView();
+                Bitmap image = Bitmap.createBitmap(decor.getWidth(), decor.getHeight(), Bitmap.Config.ARGB_8888);
+                decor.draw(new android.graphics.Canvas(image));
+                return image;
+            });
+            try {
+                int width = rendered.getWidth(), height = rendered.getHeight();
+                int[] pixels = new int[width * height];
+                rendered.getPixels(pixels, 0, width, 0, 0, width, height);
+                com.google.zxing.RGBLuminanceSource source = new com.google.zxing.RGBLuminanceSource(width, height, pixels);
+                String decoded = new com.google.zxing.qrcode.QRCodeReader().decode(new com.google.zxing.BinaryBitmap(
+                    new com.google.zxing.common.HybridBinarizer(source))).getText();
+                assertEquals(ShadowQuicLink.parse(link).outbound, ShadowQuicLink.parse(decoded).outbound);
+            } finally { rendered.recycle(); }
+            clickText("Close");
+            scanFixture(link);
+            clickText("Create from proxy template");
+            assertAccessibleText("Created from the proxy template");
+            created = ConfigProfiles.list(context).selectedId;
+            assertFalse(id.equals(created));
+            String yaml = ConfigProfiles.read(context, created);
+            assertFalse(yaml.contains("YOUR_PASSWORD"));
+            assertTrue(yaml.contains("geosite-db"));
+            assertEquals(1, new NodeConfiguration(yaml).shadowQuicNodes().size());
+        } finally {
+            if (activity != null) onMain(() -> { activity.finish(); activity = null; return null; });
+            ConfigProfiles.select(context, original);
+            if (created != null && !created.equals(id)) ConfigProfiles.delete(context, created);
+            ConfigProfiles.delete(context, id);
+        }
+    }
+
+    public void testCameraScannerStartsAndCancelKeepsDraft() throws Exception {
+        launch();
+        page(MainActivity.CONFIGURATION);
+        android.app.Instrumentation.ActivityMonitor monitor = getInstrumentation().addMonitor(
+            NodeScannerActivity.class.getName(), null, false);
+        try {
+            onMain(() -> { workspace.more.performClick(); return null; });
+            tapMenuItem("Scan node QR code");
+            NodeScannerActivity scanner = (NodeScannerActivity) getInstrumentation().waitForMonitorWithTimeout(monitor, 5000);
+            assertNotNull("The embedded scanner must open", scanner);
+            assertTrue(onMain(() -> (scanner.getWindow().getAttributes().flags & WindowManager.LayoutParams.FLAG_SECURE) != 0));
+            if (scanner.checkSelfPermission(android.Manifest.permission.CAMERA) == android.content.pm.PackageManager.PERMISSION_GRANTED
+                    && scanner.getPackageManager().hasSystemFeature(android.content.pm.PackageManager.FEATURE_CAMERA_ANY)) {
+                com.journeyapps.barcodescanner.DecoratedBarcodeView view = scanner.findViewById(
+                    com.google.zxing.client.android.R.id.zxing_barcode_scanner);
+                long deadline = SystemClock.uptimeMillis() + 5000;
+                while (!onMain(() -> view.getBarcodeView().isPreviewActive()) && SystemClock.uptimeMillis() < deadline)
+                    Thread.sleep(50);
+                assertTrue("Camera preview must start", onMain(() -> view.getBarcodeView().isPreviewActive()));
+            }
+            onMain(() -> { scanner.finish(); return null; });
+            getInstrumentation().waitForIdleSync();
+            assertEquals(YAML, onMain(() -> workspace.editor.getText().toString()));
+        } finally { getInstrumentation().removeMonitor(monitor); }
+    }
+
+    private void scanFixture(String link) throws Exception {
+        android.app.Instrumentation.ActivityResult result = new android.app.Instrumentation.ActivityResult(
+            android.app.Activity.RESULT_OK, new Intent().putExtra(com.google.zxing.client.android.Intents.Scan.RESULT, link));
+        android.app.Instrumentation.ActivityMonitor scanner =
+            getInstrumentation().addMonitor(NodeScannerActivity.class.getName(), result, true);
+        try {
+            onMain(() -> { workspace.more.performClick(); return null; });
+            tapMenuItem("Scan node QR code");
+            assertAccessibleText("Create from proxy template");
+            assertEquals(1, scanner.getHits());
+        } finally { getInstrumentation().removeMonitor(scanner); }
+    }
+
     /** Real native screenshots, with all visible editor/log values replaced by labeled fixtures. */
     public void testReviewScreenshots() throws Exception {
         launch();
@@ -451,6 +554,24 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
         AccessibilityNodeInfo node = findText(text);
         assertNotNull(text, node);
         node.recycle();
+    }
+
+    private void tapMenuItem(String label) throws Exception {
+        // Wait for the native popup to finish its opening transition before tapping.
+        Thread.sleep(350);
+        AccessibilityNodeInfo item = findText(label);
+        assertNotNull(label, item);
+        android.graphics.Rect bounds = new android.graphics.Rect();
+        item.getBoundsInScreen(bounds);
+        item.recycle();
+        long time = SystemClock.uptimeMillis();
+        android.view.MotionEvent down = android.view.MotionEvent.obtain(time, time,
+            android.view.MotionEvent.ACTION_DOWN, bounds.centerX(), bounds.centerY(), 0);
+        android.view.MotionEvent up = android.view.MotionEvent.obtain(time, time + 50,
+            android.view.MotionEvent.ACTION_UP, bounds.centerX(), bounds.centerY(), 0);
+        try { getInstrumentation().sendPointerSync(down); getInstrumentation().sendPointerSync(up); }
+        finally { down.recycle(); up.recycle(); }
+        getInstrumentation().waitForIdleSync();
     }
 
     private void clickText(String text) throws Exception {

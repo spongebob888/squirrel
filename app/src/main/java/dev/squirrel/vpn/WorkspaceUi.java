@@ -41,7 +41,7 @@ final class WorkspaceUi {
 
     WorkspaceUi(android.app.Activity activity, DiagnosticsUi theme, Runnable chooseProfile, Runnable manageProfiles,
             Runnable importFile, Runnable download, Runnable save, Runnable exportConfig,
-            Runnable proxyTemplate, Runnable directTemplate, Runnable exportLogs) {
+            Runnable scanNode, Runnable showNode, Runnable proxyTemplate, Runnable directTemplate, Runnable exportLogs) {
         this.theme = theme;
         logFormatter = new LogFormatter(theme);
         boolean wide = theme.context.getResources().getConfiguration().screenWidthDp >= 600;
@@ -92,10 +92,14 @@ final class WorkspaceUi {
             menu.getMenu().add(0, 1, 0, "Export configuration");
             menu.getMenu().add(0, 2, 1, "Proxy template");
             menu.getMenu().add(0, 3, 2, "Direct test");
+            menu.getMenu().add(0, 4, 3, "Scan node QR code");
+            menu.getMenu().add(0, 5, 4, "Show node QR code");
             menu.setOnMenuItemClickListener(item -> {
                 if (item.getItemId() == 1) exportConfig.run();
                 else if (item.getItemId() == 2) proxyTemplate.run();
-                else directTemplate.run();
+                else if (item.getItemId() == 3) directTemplate.run();
+                else if (item.getItemId() == 4) scanNode.run();
+                else showNode.run();
                 return true;
             });
             menu.show();
