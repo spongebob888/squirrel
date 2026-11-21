@@ -51,6 +51,7 @@ final class DiagnosticsUi {
     private final ChooseOutbound choose;
     private final java.util.function.Consumer<String> probe;
     private AppState.Snapshot lastSnapshot;
+    private ActionPopupMenu actionMenu;
 
     DiagnosticsUi(Context activity, Runnable toggle, ChooseOutbound choose,
             java.util.function.Consumer<String> probe) {
@@ -991,6 +992,17 @@ final class DiagnosticsUi {
         button.setBackground(new android.graphics.drawable.RippleDrawable(ColorStateList.valueOf(outline), null, shape(container, 8)));
         button.setOnClickListener(view -> action.run());
         return button;
+    }
+
+    ActionPopupMenu menu(View anchor, String title) {
+        dismissMenu();
+        actionMenu = new ActionPopupMenu(this, anchor, title);
+        return actionMenu;
+    }
+
+    void dismissMenu() {
+        if (actionMenu != null) actionMenu.dismiss();
+        actionMenu = null;
     }
 
     Button action(String label, Runnable action, boolean filled) {

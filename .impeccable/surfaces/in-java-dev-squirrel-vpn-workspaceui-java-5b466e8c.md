@@ -67,3 +67,19 @@ after profile selection, with Edit YAML as the sole filled action. Remove the
 extra YAML action container and format caption; keep the status live region and
 place the equal-width source actions beneath it. No action moves into a new menu,
 and the secure editor, drafts, busy-state disabling and diagnostics are unchanged.
+
+## Manage and More popup refinement
+
+Manage and both More menus use the shared dashboard-themed native action popup:
+12dp corners, outlined light/dark panel fill, 20dp line icons, wrapping 14sp
+labels and at least 48dp rows. Dividers group export, templates and QR actions;
+Delete uses the error role and retains the last-profile guard and confirmation.
+Native scrolling, keyboard access, Back and outside dismissal stay available.
+Menus dismiss before actions run and during activity destruction. The scope
+preserves action labels, drafts, storage and VPN behavior; it adds no raster assets.
+
+Review: build and Android lint pass; four focused menu/profile/navigation tests
+pass on the API 36 x86_64 emulator. Native captures were checked in light/dark,
+1.3 font scale, phone landscape and tablet portrait/landscape. The existing
+keyboard-resize test fails before reaching its menu checks on this emulator;
+the dedicated template-cancel/draft and Back-dismissal regression passes.

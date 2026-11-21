@@ -15,7 +15,6 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.PopupMenu;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -88,23 +87,16 @@ final class WorkspaceUi {
         more.setId(R.id.config_more);
         more.setContentDescription("More configuration actions");
         more.setOnClickListener(view -> {
-            PopupMenu menu = new PopupMenu(theme.context, more);
-            menu.getMenu().add(0, 1, 0, "Export configuration");
-            menu.getMenu().add(0, 2, 1, "Proxy template");
-            menu.getMenu().add(0, 3, 2, "Direct test");
-            menu.getMenu().add(0, 4, 3, "Scan node QR code");
-            menu.getMenu().add(0, 6, 4, "Scan QR from image");
-            menu.getMenu().add(0, 5, 5, "Show node QR code");
-            menu.setOnMenuItemClickListener(item -> {
-                if (item.getItemId() == 1) exportConfig.run();
-                else if (item.getItemId() == 2) proxyTemplate.run();
-                else if (item.getItemId() == 3) directTemplate.run();
-                else if (item.getItemId() == 4) scanNode.run();
-                else if (item.getItemId() == 6) scanImage.run();
-                else showNode.run();
-                return true;
-            });
-            menu.show();
+            theme.menu(more, "More configuration actions")
+                .add("Export configuration", R.drawable.ic_export, exportConfig)
+                .divider()
+                .add("Proxy template", R.drawable.ic_configuration, proxyTemplate)
+                .add("Direct test", R.drawable.ic_network, directTemplate)
+                .divider()
+                .add("Scan node QR code", R.drawable.ic_scan, scanNode)
+                .add("Scan QR from image", R.drawable.ic_image, scanImage)
+                .add("Show node QR code", R.drawable.ic_qr_code, showNode)
+                .show();
         });
         editor = new EditText(theme.context);
         editor.setId(R.id.config_editor);

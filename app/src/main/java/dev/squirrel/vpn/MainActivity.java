@@ -154,20 +154,11 @@ public final class MainActivity extends Activity {
         tools.setBackground(new android.graphics.drawable.RippleDrawable(
             android.content.res.ColorStateList.valueOf(diagnostics.outline), null, null));
         tools.setOnClickListener(view -> {
-            android.widget.PopupMenu menu = new android.widget.PopupMenu(diagnostics.context, tools);
-            menu.getMenu().add(0, R.id.logs_menu, 0, "Logs").setEnabled(!showingLogs).setOnMenuItemClickListener(item -> {
-                openLogs();
-                return true;
-            });
-            menu.getMenu().add("Settings").setOnMenuItemClickListener(item -> {
-                startActivity(new Intent(this, SettingsActivity.class));
-                return true;
-            });
-            menu.getMenu().add("API tools").setOnMenuItemClickListener(item -> {
-                startActivity(new Intent(this, ApiToolsActivity.class));
-                return true;
-            });
-            menu.show();
+            diagnostics.menu(tools, "More options")
+                .add("Logs", R.drawable.ic_logs, this::openLogs, false, !showingLogs)
+                .add("Settings", R.drawable.ic_settings, () -> startActivity(new Intent(this, SettingsActivity.class)))
+                .add("API tools", R.drawable.ic_engine, () -> startActivity(new Intent(this, ApiToolsActivity.class)))
+                .show();
         });
         appHeader.addView(tools, new LinearLayout.LayoutParams(dp(48), dp(48)));
         root.addView(appHeader);
@@ -440,19 +431,20 @@ public final class MainActivity extends Activity {
 
     private void manageProfiles() {
         if (profileState == null || loadingConfig || preparing || downloading) return;
-        String[] actions = profileState.profiles.size() > 1
-            ? new String[]{"New configuration", "Duplicate current", "Rename", "Delete"}
-            : new String[]{"New configuration", "Duplicate current", "Rename"};
-        new AlertDialog.Builder(diagnostics.context).setTitle("Manage configurations").setItems(actions, (dialog, which) -> {
-            if (which < 3) nameProfile(which);
-            else {
+        ActionPopupMenu menu = diagnostics.menu(findViewById(R.id.manage_profiles), "Manage configurations")
+            .add("New configuration", R.drawable.ic_add, () -> nameProfile(0))
+            .add("Duplicate current", R.drawable.ic_duplicate, () -> nameProfile(1))
+            .add("Rename", R.drawable.ic_edit, () -> nameProfile(2));
+        if (profileState.profiles.size() > 1) {
+            menu.divider().add("Delete", R.drawable.ic_delete, () -> {
                 String id = profileId;
                 new AlertDialog.Builder(diagnostics.context).setTitle("Delete " + profileState.selected().name + "?")
                     .setMessage("This removes the saved configuration and its draft. An active VPN keeps running until you disconnect.")
                     .setNegativeButton("Cancel", null).setPositiveButton("Delete", (confirm, button) ->
                         loadProfile(() -> ConfigProfiles.delete(this, id), id)).show();
-            }
-        }).show();
+            }, true, true);
+        }
+        menu.show();
     }
 
     private void nameProfile(int action) {
@@ -978,6 +970,7 @@ public final class MainActivity extends Activity {
         super.onSaveInstanceState(state);
     }
     @Override protected void onDestroy() {
+        diagnostics.dismissMenu();
         if (profilePicker != null) profilePicker.dismiss();
         if (nodeDialog != null) nodeDialog.dismiss();
         workspace.destroy();

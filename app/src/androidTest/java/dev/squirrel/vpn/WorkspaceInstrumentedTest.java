@@ -419,6 +419,51 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
         } finally { getInstrumentation().removeMonitor(scanner); }
     }
 
+    public void testConfigurationMenusKeepDraftWhenDismissedOrTemplateCancelled() throws Exception {
+        launch();
+        page(MainActivity.CONFIGURATION);
+        for (String action : new String[]{"Proxy template", "Direct test"}) {
+            onMain(() -> { workspace.more.performClick(); return null; });
+            clickText(action);
+            assertAccessibleText(action.equals("Proxy template") ? "Load proxy template?" : "Load direct test?");
+            clickText("Cancel");
+            assertEquals(YAML, onMain(() -> workspace.editor.getText().toString()));
+        }
+        onMain(() -> { activity.findViewById(R.id.manage_profiles).performClick(); return null; });
+        Thread.sleep(350);
+        back();
+        assertEquals(YAML, onMain(() -> workspace.editor.getText().toString()));
+        onMain(() -> { workspace.more.performClick(); return null; });
+        Thread.sleep(350);
+        back();
+        assertEquals(YAML, onMain(() -> workspace.editor.getText().toString()));
+        long focusDeadline = SystemClock.uptimeMillis() + 3000;
+        while (SystemClock.uptimeMillis() < focusDeadline && !onMain(() -> workspace.more.hasWindowFocus())) Thread.sleep(50);
+        assertTrue(onMain(() -> workspace.more.hasWindowFocus()));
+    }
+
+    public void testMenuReviewScreenshots() throws Exception {
+        launch();
+        page(MainActivity.CONFIGURATION);
+        capture("configuration-more", () -> workspace.more.performClick());
+        back();
+        capture("configuration-manage", () -> activity.findViewById(R.id.manage_profiles).performClick());
+        back();
+        onMain(() -> {
+            java.util.ArrayList<ConfigProfiles.Profile> profiles = new java.util.ArrayList<>();
+            profiles.add(new ConfigProfiles.Profile("fixture-one", "Synthetic fixture"));
+            profiles.add(new ConfigProfiles.Profile("fixture-two", "Second synthetic fixture"));
+            Field state = MainActivity.class.getDeclaredField("profileState");
+            state.setAccessible(true);
+            state.set(activity, new ConfigProfiles.State(profiles, "fixture-one"));
+            return null;
+        });
+        capture("configuration-manage-delete", () -> activity.findViewById(R.id.manage_profiles).performClick());
+        back();
+        capture("header-more", () -> activity.findViewById(R.id.api_tools_menu).performClick());
+        back();
+    }
+
     /** Real native screenshots, with all visible editor/log values replaced by labeled fixtures. */
     public void testReviewScreenshots() throws Exception {
         launch();
