@@ -68,6 +68,8 @@
     <item name="settings_save" type="id" />
     <item name="settings_status" type="id" />
     <item name="settings_scroll" type="id" />
+    <item name="settings_clear_databases" type="id" />
+    <item name="settings_storage_status" type="id" />
     <item name="download_panel" type="id" />
     <item name="upload_panel" type="id" />
     <item name="download_speed" type="id" />

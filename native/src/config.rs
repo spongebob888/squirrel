@@ -2,7 +2,7 @@ use serde_json::{Value, json};
 use shadowquic::config::{Config, InboundCfg};
 use std::path::{Component, Path, PathBuf};
 
-fn document(text: &str) -> Result<Value, String> {
+pub(crate) fn document(text: &str) -> Result<Value, String> {
     if text.len() > 1024 * 1024 {
         return Err("Configuration exceeds 1 MiB".into());
     }

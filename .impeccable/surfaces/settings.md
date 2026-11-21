@@ -5,9 +5,22 @@ mode: Operate
 
 # Settings
 
-Set the app-wide default HTTP latency-probe URL from the top-right More menu.
+Set the app-wide default HTTP latency-probe URL and clear private databases and
+dashboard HTML from the top-right More menu.
 This standalone page inherits the Squirrelboard native dashboard in `DESIGN.md`;
-it leaves the five main destinations intact.
+it leaves primary navigation intact.
+
+## Storage cleanup
+
+An outlined destructive action under Storage confirms removal of private routing
+databases for all saved profiles, orphan database files and dashboard HTML.
+Configurations, logs and preferences remain. External paths and symbolic links
+are skipped. The action is disabled while the VPN is connecting, connected or
+stopping; the native session lock also prevents deletion while the core runs.
+One background operation spans activity recreation without repeating removal,
+retaining the draft probe URL and reporting progress, removed file count, empty
+results or retryable errors through a live status. The confirmation has secure
+window protection and Cancel preserves all files.
 
 ## Final behavior
 
@@ -40,8 +53,8 @@ The single column continues across phone and tablet widths. Native resizing and
 scrolling keep the form reachable above the real software keyboard. Field error,
 cursor, selection and keyboard behavior remain native; the YAML editor's custom
 focus stroke does not apply here. No new palette, font, component family, motion
-scale or shipping raster is introduced. `DESIGN.md` and `.impeccable/design.json`
-are preserved unchanged; this is an ordinary extension of that system.
+scale or shipping raster is introduced. The Storage section uses the same
+recorded tokens; `DESIGN.md` documents its action and state behavior.
 
 ## Evidence and limits
 
@@ -63,3 +76,16 @@ and tablet keyboard captures were reopened for this pass. The packet reports
 both-ABI build/lint and 19 UI instrumentation tests passing; this documentation
 pass did not rerun them. Emulator and JNI loopback results do not establish
 physical-device or deployed-server behavior.
+
+## Storage review
+
+The cleanup extension passes 24 Rust tests, Rust formatting, both-ABI Android
+build/lint and eight focused device tests on the API 36 x86_64 emulator. Coverage
+includes all-profile/custom-path cleanup, orphan files, external and symlink
+exclusions, protected workspace files, a running native session, Cancel, busy
+states, duplicate work, recreation, empty results and retryable failures.
+Destructive device tests use isolated fixture directories. Native captures in
+`.build/storage-review/` were inspected in light/dark appearance, at font scale
+1.3, in a short landscape viewport and on tablet portrait/landscape viewports.
+Disposition: ship. Actual VPN lifecycle and downloaded server content are not
+replaced by these fixture-based cleanup checks.

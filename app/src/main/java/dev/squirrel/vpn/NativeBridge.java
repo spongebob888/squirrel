@@ -6,6 +6,8 @@ public final class NativeBridge {
     static { System.loadLibrary("squirrel"); }
     private NativeBridge() {}
     public static native String normalizeDatabasePaths(String config, String privateRoot) throws IOException;
+    /** Removes private routing databases and dashboard HTML only while the native core is stopped. */
+    public static native int clearDatabases(String configurations, String privateRoot) throws IOException;
     /** Active session's REST client settings, or JSON null when REST is disabled. */
     public static native String runtimeApiSettings() throws IOException;
     public static native String validate(String config) throws IOException;

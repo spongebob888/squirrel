@@ -2,6 +2,7 @@ mod admin;
 mod config;
 #[cfg(any(target_os = "android", test))]
 mod logging;
+mod storage;
 
 use jni::{
     JNIEnv,
@@ -134,6 +135,28 @@ fn string(env: &mut JNIEnv, value: JString) -> Result<String, String> {
     env.get_string(&value)
         .map(Into::into)
         .map_err(|e| e.to_string())
+}
+
+#[unsafe(no_mangle)]
+pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_clearDatabases(
+    mut env: JNIEnv,
+    _: JClass,
+    configurations: JString,
+    private_root: JString,
+) -> jint {
+    guarded(&mut env, |env| {
+        let configurations = string(env, configurations)?;
+        let configurations: Vec<String> = serde_json::from_str(&configurations)
+            .map_err(|_| "Cannot read saved configurations")?;
+        let root = string(env, private_root)?;
+        let slot = SESSION.lock().unwrap_or_else(|p| p.into_inner());
+        if slot.is_some() {
+            return Err("Disconnect the VPN before clearing databases and UI HTML.".into());
+        }
+        let count = storage::clear(std::path::Path::new(&root), &configurations)?;
+        Ok(count.min(jint::MAX as usize) as jint)
+    })
+    .unwrap_or(0)
 }
 
 #[unsafe(no_mangle)]

@@ -197,6 +197,8 @@ Local and remote imports must be UTF-8 YAML, at most 1 MiB. URL downloads suppor
 
 When loading the VPN configuration, Squirrel resolves relative `router.database[].path` values under its private files directory: `data/geosite.redb` becomes `<app files>/data/geosite.redb`. Downloaded databases persist there across reconnects. Explicit absolute paths are preserved; relative paths that escape the private directory are rejected. The editor, saved YAML, and exports keep the original portable paths and comments.
 
+To remove downloaded data, disconnect the VPN and open **More options → Settings → Storage → Clear databases and UI HTML**. After confirmation, Squirrel clears private routing databases for all saved profiles, leftover database files, and dashboard HTML. Configurations, profile selection, logs, other files and app preferences are kept; files outside private app storage and symbolic links are skipped. Cleanup runs in the background and reports its result. Files may download again on the next connection.
+
 Always-on/lockdown VPN is disabled for this version. Android's “Block connections without VPN” policy prevents bypassed apps from using the underlying network and is incompatible with this UID exclusion strategy. Wi-Fi/mobile handovers rely on the core's reconnection behavior; disconnect/reconnect if a session does not recover.
 
 ## Verification

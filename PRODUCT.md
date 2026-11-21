@@ -44,6 +44,11 @@ security, anonymity, or reliability claims have been established.
   Probe latency starts immediately with the latest saved URL; API tools prefills
   it while retaining a per-request override. Settings validates and saves the URL
   independently of VPN profiles; its unsaved draft survives activity recreation.
+- Settings also clears private routing databases across all saved profiles,
+  leftover database files and downloaded dashboard HTML after confirmation.
+  The VPN must be disconnected. Cleanup runs in the background and survives
+  activity recreation without repeating deletion. Configurations, logs, profile
+  selection and preferences remain; external paths and symbolic links are skipped.
 - Users import a local file, download an HTTP/HTTPS YAML configuration, or start
   from a bundled template. Server details and credentials come from the user.
 - Users validate and save a profile, connect, inspect runtime information, and

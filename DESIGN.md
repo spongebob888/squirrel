@@ -409,6 +409,16 @@ Session records keep the selectable destination and full protocol/inbound/outbou
 
 ### Source workspaces
 
+Settings adds a Storage section below latency preferences, separated by a fine
+divider with (32dp) space above and (24dp) before the (16sp) heading. Shared body
+and help roles explain cleanup scope and the disconnected requirement. The
+outlined (8dp) action has a minimum (48dp) height and error-colored text; native
+confirmation names both databases and UI HTML and keeps Clear destructive.
+Busy and pending states disable the action. A (13sp) live status reports progress,
+file count, empty results or retryable errors; work and its result survive
+activity recreation. Existing Settings scrolling, day/night styling, secure
+windows and the unsaved probe URL remain intact.
+
 YAML is a multiline, horizontally scrolling native EditText inside the secure editing panel, with source-role typography, (14dp) padding, native selection, no suggestions, no personalized keyboard learning and no fullscreen/extract editor. Its (1dp) outline changes to (2dp) periwinkle on focus. Profile selection uses a native chevron action; Manage and More retain all profile/template/export operations.
 
 Manage, configuration More and header More share an anchored native ListPopupWindow. Panel fill, a fine outline, (12dp) corners and (6dp) inner padding match both themes. Start-aligned (14sp) labels have (20dp) line icons, a (12dp) icon gap and minimum (48dp) rows. Width grows from (248dp) to at most (320dp), capped to the visible window minus (32dp); labels wrap at larger font scales and native scrolling handles short windows. Menus align to the anchor's end edge with a (6dp) vertical gap. Thin inset dividers separate export, templates and QR actions; Delete is separated and uses the error role for icon and label. Delete remains absent for the last profile and still opens its existing confirmation. Native selection/ripple, keyboard navigation, Back and outside dismissal remain; menus close before dispatching an action and on activity destruction. No profile names or source text are added to menus.
