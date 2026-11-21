@@ -11,7 +11,7 @@ public final class NativeBridge {
     /** Active session's REST client settings, or JSON null when REST is disabled. */
     public static native String runtimeApiSettings() throws IOException;
     public static native String validate(String config) throws IOException;
-    public static native void start(int tunFd, String config, String logPath) throws IOException;
+    public static native void start(int tunFd, String config) throws IOException;
     public static native void stop() throws IOException;
     /** Empty while running; a diagnostic when the packet engine exits. */
     public static native String status() throws IOException;

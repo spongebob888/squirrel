@@ -31,6 +31,17 @@ final class ShadowQuicApi {
     JSONObject put(String path, JSONObject body) throws Exception { return request("PUT", path, body); }
     JSONObject post(String path, JSONObject body) throws Exception { return request("POST", path, body); }
 
+    okhttp3.Request logStreamRequest() throws IOException {
+        try {
+            okhttp3.Request.Builder request = new okhttp3.Request.Builder().url(base + "/logs");
+            if (!secret.isEmpty()) request.header("Authorization", "Bearer " + secret);
+            return request.build();
+        } catch (IllegalArgumentException error) {
+            // Header validation exceptions can contain the bearer token.
+            throw new IOException("Cannot initialize REST logs from the running API settings.");
+        }
+    }
+
     JSONObject connectionStats() throws Exception {
         JSONObject response = new JSONObject().put("memory", get("/memory")).put("traffic", get("/traffic"));
         try { response.put("tokio_metric", get("/tokio_metric")); }

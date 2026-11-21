@@ -1,4 +1,4 @@
-# Based on ShadowQUIC shadowquic/config_examples/tun_cn.yaml.
+# Based on ShadowQUIC v0.4.13: shadowquic/config_examples/tun_cn.yaml.
 # Replace the server, credentials, and server-name before connecting.
 # Set the LAN DNS upstream addresses below to your network gateway if needed.
 # The REST listener, optional secret, and dashboard settings are used as written.
@@ -80,7 +80,7 @@ router:
         if #ctx.dns_query > 0 and ctx.dns_query[1].name:sub(-4) == ".lan" then
           return "lan-dns"
         end
-        if #ctx.dns_query > 0 and find_domain("geosite-db", "geolocation-cn", ctx.dns_query[1].name) then
+        if #ctx.dns_query > 0 and find_domain("geosite-db", "cn", ctx.dns_query[1].name) then
           return "tls-dns"
         end
         return "fake-dns"
@@ -88,7 +88,7 @@ router:
 
       -- CN domain names.
       if ctx.dst_domain then
-        local ok, cn = pcall(find_domain, "geosite-db", "geolocation-cn", ctx.dst_domain)
+        local ok, cn = pcall(find_domain, "geosite-db", "cn", ctx.dst_domain)
         if ok and cn then return "direct" end
       end
 

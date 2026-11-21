@@ -1,6 +1,8 @@
 package dev.squirrel.vpn;
 
 import android.os.ParcelFileDescriptor;
+import android.content.Context;
+import android.content.ContextWrapper;
 import android.system.Os;
 import android.system.OsConstants;
 import android.system.StructPollfd;
@@ -21,7 +23,8 @@ import org.json.JSONObject;
 @SuppressWarnings("deprecation")
 public final class CoreInstrumentedTest extends InstrumentationTestCase {
     public void testUdpPacketRoundTripAndRestart() throws Exception {
-        udpPacketRoundTripAndRestart("outbounds: [{tag: direct, type: direct}]\nlog-level: debug\n");
+        udpPacketRoundTripAndRestart("outbounds: [{tag: direct, type: direct}]\nlog-level: error\n"
+            + "restful-api: {bind-addr: '127.0.0.1:9090', secret: synthetic-stream-secret}\n");
     }
 
     public void testUdpPacketRoundTripAndRestartWithIpv6Disabled() throws Exception {
@@ -36,7 +39,7 @@ public final class CoreInstrumentedTest extends InstrumentationTestCase {
     private void udpPacketRoundTripAndRestart(String config) throws Exception {
         FileDescriptor app = new FileDescriptor(), core = new FileDescriptor();
         Os.socketpair(OsConstants.AF_UNIX, OsConstants.SOCK_DGRAM, 0, app, core);
-        File log = new File(getInstrumentation().getTargetContext().getCacheDir(), "native-test.log");
+        Context target = getInstrumentation().getTargetContext();
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core);
              DatagramSocket echo = new DatagramSocket(0, InetAddress.getByName("127.0.0.1"))) {
             echo.setSoTimeout(5000);
@@ -52,28 +55,49 @@ public final class CoreInstrumentedTest extends InstrumentationTestCase {
                     } catch (Throwable e) { echoError.set(e); }
                 });
                 server.start();
-                NativeBridge.start(descriptor.getFd(), config, log.getPath());
+                NativeBridge.start(descriptor.getFd(), config);
                 assertEquals("", NativeBridge.status());
-                byte[] payload = ("squirrel-udp-" + attempt).getBytes(StandardCharsets.UTF_8);
-                byte[] packet = udpPacket(echo.getLocalPort(), payload);
-                Os.write(app, packet, 0, packet.length);
-                StructPollfd poll = new StructPollfd();
-                poll.fd = app;
-                poll.events = (short) OsConstants.POLLIN;
-                assertEquals("No UDP reply from the TUN stack; log: " + new String(java.nio.file.Files.readAllBytes(log.toPath()), StandardCharsets.UTF_8),
-                    1, Os.poll(new StructPollfd[]{poll}, 5000));
-                byte[] reply = new byte[2048];
-                int count = Os.read(app, reply, 0, reply.length);
-                assertTrue(count >= 28 + payload.length);
-                assertEquals(17, reply[9]);
-                assertTrue(Arrays.equals(payload, Arrays.copyOfRange(reply, 28, count)));
-                server.join(5500);
-                assertNull(echoError.get());
+                File logs = new File(target.getCacheDir(), "rest-packet-" + System.nanoTime());
+                Context context = new ContextWrapper(target) {
+                    @Override public File getFilesDir() { return logs; }
+                    @Override public Context getApplicationContext() { return this; }
+                };
+                try (RestLogStream stream = new RestLogStream(context, new ShadowQuicApi())) {
+                    long connected = android.os.SystemClock.uptimeMillis() + 5000;
+                    while (!stream.isConnected() && android.os.SystemClock.uptimeMillis() < connected) Thread.sleep(50);
+                    assertTrue("Authenticated REST log stream did not connect", stream.isConnected());
+                    byte[] payload = ("squirrel-udp-" + attempt).getBytes(StandardCharsets.UTF_8);
+                    byte[] packet = udpPacket(echo.getLocalPort(), payload);
+                    Os.write(app, packet, 0, packet.length);
+                    StructPollfd poll = new StructPollfd();
+                    poll.fd = app;
+                    poll.events = (short) OsConstants.POLLIN;
+                    assertEquals("No UDP reply from the TUN stack",
+                        1, Os.poll(new StructPollfd[]{poll}, 5000));
+                    byte[] reply = new byte[2048];
+                    int count = Os.read(app, reply, 0, reply.length);
+                    assertTrue(count >= 28 + payload.length);
+                    assertEquals(17, reply[9]);
+                    assertTrue(Arrays.equals(payload, Arrays.copyOfRange(reply, 28, count)));
+                    server.join(5500);
+                    assertNull(echoError.get());
+                    long logged = android.os.SystemClock.uptimeMillis() + 5000;
+                    while (!AppLog.read(context, true).contains("routing:outbound_selected")
+                            && android.os.SystemClock.uptimeMillis() < logged) Thread.sleep(50);
+                    String output = AppLog.read(context, true);
+                    assertTrue(output, output.contains("routing:outbound_selected"));
+                    assertTrue(output, output.contains("spans="));
+                    assertFalse(output.contains("synthetic-stream-secret"));
+                } finally {
+                    File[] files = new File(logs, "logs").listFiles();
+                    if (files != null) for (File file : files) assertTrue(file.delete());
+                    assertTrue(new File(logs, "logs").delete());
+                    assertTrue(logs.delete());
+                }
                 NativeBridge.stop();
                 // Native shutdown must not close Java's descriptor.
                 assertTrue(Os.fstat(descriptor.getFileDescriptor()).st_mode != 0);
             }
-            assertTrue(log.length() > 0);
         } finally {
             NativeBridge.stop();
             Os.close(app);
@@ -83,7 +107,7 @@ public final class CoreInstrumentedTest extends InstrumentationTestCase {
 
     public void testInvalidConfigurationDoesNotStartCore() throws Exception {
         try {
-            NativeBridge.start(-1, "outbounds: [{type: direct, tag: d}]\nandroid: {dns-servers: []}", "/unused");
+            NativeBridge.start(-1, "outbounds: [{type: direct, tag: d}]\nandroid: {dns-servers: []}");
             fail("Invalid configuration accepted");
         } catch (java.io.IOException expected) {
             assertTrue(expected.getMessage().contains("DNS"));

@@ -429,6 +429,15 @@ Logs and API results use selectable monospace on outlined panel fill with (14dp)
 
 The log panel renders native rich text while retaining its monospace size, wrapping, selection and scrolling. File headings are bold periwinkle, timestamps use secondary slate, and severity labels remain textual and bold: INFO uses green, WARN/WARNING amber, ERROR/FATAL red, and DEBUG/TRACE secondary slate. Service lines without level labels still receive timestamp styling.
 
+Core rows come from the authenticated REST `/api/v1/logs` WebSocket, retained by
+the Android service in `rest.log` and its rotation. Structured timestamps, level,
+target, event, message, remaining fields and spans stay available in the text;
+upstream lag notices become explicit warnings. Collection continues while the
+viewer is paused or closed, retries interruptions, and ends on VPN disconnect.
+The existing filter, pause, styling and full-export behavior remain. Service logs
+report connection failures or disabled REST; the live API does not replay events
+from before subscription or an interruption. No native file subscriber remains.
+
 ANSI SGR supports foreground/background colors, indexed and RGB colors, bold, italic, underline, strikethrough, dim, inverse and selective/full resets. Basic terminal colors map to the app's theme roles; explicit colors are adjusted where necessary to meet 4.5:1 text contrast against their background. Explicit ANSI colors take precedence over inferred level colors. Terminal control sequences are omitted, while message text and literal markup remain visible. Filters match visible text and preserve styles across retained lines, including multiline ANSI ranges. A change to ANSI styling refreshes the view even if its visible text is unchanged. Copy uses visible text without escape codes; full-log export continues to read the original retained files.
 
 ## Do's and Don'ts

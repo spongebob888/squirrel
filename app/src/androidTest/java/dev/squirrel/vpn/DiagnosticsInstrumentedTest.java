@@ -370,8 +370,7 @@ public final class DiagnosticsInstrumentedTest extends InstrumentationTestCase {
             NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context,
                 "outbounds: [{tag: direct, type: direct}, {tag: backup, type: direct}, "
                     + "{tag: 'choice / one', type: selector, outbounds: [direct, backup]}]\n"
-                    + "restful-api: {bind-addr: '127.0.0.1:19092'}\n"),
-                new File(context.getCacheDir(), "inline-selection-test.log").getPath());
+                    + "restful-api: {bind-addr: '127.0.0.1:19092'}\n"));
             ShadowQuicApi api = new ShadowQuicApi();
             JSONObject response = null;
             for (int attempt = 0; attempt < 80; attempt++) {

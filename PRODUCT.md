@@ -94,6 +94,13 @@ security, anonymity, or reliability claims have been established.
   statistics and counter resets. Single-user and all-user statistics scopes are
   explicit. These operations do not require starting the VPN. Mutations confirm
   the target and are not automatically replayed after activity recreation.
+- Core logs are collected through the running configuration's authenticated
+  `/api/v1/logs` WebSocket. The app uses ShadowQUIC's upstream log layer without
+  a custom tracing subscriber or native file writer. Received events, fields,
+  spans and lag notices are retained for viewing/export alongside service logs.
+  Collection retries interruptions and stops on disconnect. The API is live-only;
+  earlier or disconnected-period events are not replayed. REST-disabled and
+  ephemeral-port configurations keep service logs and report unavailable collection.
 - The tools page also exposes local REST operations while connected.
   Remote control-plane operations and local engine snapshots have separate scope.
   Submitted passwords are not persisted in form state or shown in results.

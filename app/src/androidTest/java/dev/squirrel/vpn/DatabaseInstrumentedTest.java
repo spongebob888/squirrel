@@ -12,7 +12,6 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.concurrent.atomic.AtomicReference;
 import org.json.JSONObject;
 
@@ -25,9 +24,11 @@ public final class DatabaseInstrumentedTest extends InstrumentationTestCase {
         assertTrue(root.mkdirs());
         Context context = new ContextWrapper(target) {
             @Override public File getFilesDir() { return root; }
+            @Override public Context getApplicationContext() { return this; }
         };
         File database = new File(root, "data/geosite.redb");
-        File log = new File(root, "core.log");
+        java.util.concurrent.CountDownLatch releaseDownload = new java.util.concurrent.CountDownLatch(1);
+        RestLogStream logs = null;
         FileDescriptor app = new FileDescriptor(), core = new FileDescriptor();
         Os.socketpair(OsConstants.AF_UNIX, OsConstants.SOCK_DGRAM, 0, app, core);
         AtomicReference<Throwable> serverError = new AtomicReference<>();
@@ -46,6 +47,7 @@ public final class DatabaseInstrumentedTest extends InstrumentationTestCase {
                         headers.append((char) value);
                     }
                     byte[] body = "lists:\n  - name: test\n    rules: ['full:example.com']\n".getBytes(StandardCharsets.UTF_8);
+                    if (!releaseDownload.await(10, java.util.concurrent.TimeUnit.SECONDS)) throw new java.io.IOException("REST stream did not connect");
                     client.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Length: " + body.length
                         + "\r\nConnection: close\r\n\r\n").getBytes(StandardCharsets.US_ASCII));
                     client.getOutputStream().write(body);
@@ -65,27 +67,35 @@ public final class DatabaseInstrumentedTest extends InstrumentationTestCase {
                 .getJSONArray("database").getJSONObject(0).getString("path"));
             assertEquals("9.9.9.9", new JSONObject(NativeBridge.validate(config))
                 .getJSONArray("dns").getString(0));
-            NativeBridge.start(descriptor.getFd(), config, log.getPath());
+            NativeBridge.start(descriptor.getFd(), config);
+            logs = new RestLogStream(context, new ShadowQuicApi());
+            long connected = System.currentTimeMillis() + 5000;
+            while (!logs.isConnected() && System.currentTimeMillis() < connected) Thread.sleep(50);
+            assertTrue("REST log stream did not connect", logs.isConnected());
+            releaseDownload.countDown();
             String output = "";
             long deadline = System.currentTimeMillis() + 10000;
             while (System.currentTimeMillis() < deadline) {
-                output = new String(Files.readAllBytes(log.toPath()), StandardCharsets.UTF_8);
+                output = AppLog.read(context, true);
                 if (output.contains("router database ready") || output.contains("download/import failed")) break;
                 Thread.sleep(50);
             }
             responder.join(1000);
             assertNull(serverError.get());
             assertTrue(output, database.isFile() && output.contains("router database ready"));
+            logs.close();
             NativeBridge.stop();
             server.close();
             // The source is now unavailable. A restart must open the private
             // database already on disk without attempting another download.
-            NativeBridge.start(descriptor.getFd(), ConfigStore.readForVpn(context), log.getPath());
+            NativeBridge.start(descriptor.getFd(), ConfigStore.readForVpn(context));
             assertEquals("", NativeBridge.status());
             Thread.sleep(200);
-            assertFalse(new String(Files.readAllBytes(log.toPath()), StandardCharsets.UTF_8)
-                .contains("download/import failed"));
+            assertTrue(database.isFile());
+            assertEquals("", NativeBridge.status());
         } finally {
+            releaseDownload.countDown();
+            if (logs != null) logs.close();
             NativeBridge.stop();
             if (responder != null) responder.join(5500);
             Os.close(app);

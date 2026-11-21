@@ -175,7 +175,7 @@ final class WorkspaceUi {
         logActions.addView(theme.action("Export logs", exportLogs, false), new LinearLayout.LayoutParams(-2, -2));
         add(logPage, logActions, 12, 4);
         if (!wide) add(logPage, live, 0, 0);
-        logStatus = theme.text("Loading service and core logs…", 13, theme.secondary, false);
+        logStatus = theme.text("Loading service and REST logs…", 13, theme.secondary, false);
         logStatus.setId(R.id.log_status);
         add(logPage, logStatus, 6, 12);
         logScroll = new ScrollView(theme.context);
@@ -252,7 +252,7 @@ final class WorkspaceUi {
 
     private void renderLogView(boolean filterChanged) {
         if (!hasSnapshot) {
-            logStatus.setText(logError.isEmpty() ? "Loading service and core logs…" : logError);
+            logStatus.setText(logError.isEmpty() ? "Loading service and REST logs…" : logError);
             logStatus.setTextColor(logError.isEmpty() ? theme.secondary : theme.error);
             return;
         }

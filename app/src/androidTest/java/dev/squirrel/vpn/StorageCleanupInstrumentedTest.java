@@ -68,7 +68,7 @@ public final class StorageCleanupInstrumentedTest extends InstrumentationTestCas
         FileDescriptor app = new FileDescriptor(), core = new FileDescriptor();
         Os.socketpair(OsConstants.AF_UNIX, OsConstants.SOCK_DGRAM, 0, app, core);
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core)) {
-            NativeBridge.start(descriptor.getFd(), DIRECT + "restful-api: null\n", new File(root, "core.log").getPath());
+            NativeBridge.start(descriptor.getFd(), DIRECT + "restful-api: null\n");
             try {
                 StorageCleanup.clear(fixture);
                 fail("Cleanup must reject a live native session");

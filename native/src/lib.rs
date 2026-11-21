@@ -1,8 +1,12 @@
 mod admin;
 mod config;
-#[cfg(any(target_os = "android", test))]
-mod logging;
 mod storage;
+
+// ShadowQUIC's library leaves allocator selection to its embedding application.
+// Keep Rust allocations visible to the REST API's jemalloc memory statistics.
+#[cfg(target_os = "android")]
+#[global_allocator]
+static ALLOCATOR: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use jni::{
     JNIEnv,
@@ -25,7 +29,7 @@ struct Session {
 static SESSION: Mutex<Option<Session>> = Mutex::new(None);
 
 #[cfg(target_os = "android")]
-fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
+fn start(fd: i32, text: &str) -> Result<(), String> {
     let mut slot = SESSION.lock().unwrap_or_else(|p| p.into_inner());
     if slot.is_some() {
         return Err("VPN core is already running".into());
@@ -49,7 +53,21 @@ fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
         }
     }
     {
-        logging::setup(log_path.into(), cfg.log_level.as_tracing_level())?;
+        // The upstream REST endpoint requires its own LogLayer in embedded apps.
+        // No app-defined subscriber, formatter, writer or filter is installed.
+        use tracing_subscriber::prelude::*;
+        static REST_LOGS: std::sync::OnceLock<Result<(), String>> = std::sync::OnceLock::new();
+        REST_LOGS
+            .get_or_init(|| {
+                tracing_subscriber::registry()
+                    .with(
+                        shadowquic::api::logs::LogLayer
+                            .with_filter(shadowquic::api::logs::trace_filter()),
+                    )
+                    .try_init()
+                    .map_err(|error| error.to_string())
+            })
+            .clone()?;
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(2)
             .enable_all()
@@ -85,7 +103,7 @@ fn start(fd: i32, text: &str, log_path: &str) -> Result<(), String> {
 }
 
 #[cfg(not(target_os = "android"))]
-fn start(_: i32, text: &str, _: &str) -> Result<(), String> {
+fn start(_: i32, text: &str) -> Result<(), String> {
     config::parse(text)?;
     Err("Starting the VPN requires Android".into())
 }
@@ -217,11 +235,8 @@ pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_start(
     _: JClass,
     fd: jint,
     text: JString,
-    path: JString,
 ) {
-    guarded(&mut env, |env| {
-        start(fd, &string(env, text)?, &string(env, path)?)
-    });
+    guarded(&mut env, |env| start(fd, &string(env, text)?));
 }
 
 #[unsafe(no_mangle)]
@@ -238,7 +253,7 @@ pub extern "system" fn Java_dev_squirrel_vpn_NativeBridge_status(
         let guard = SESSION.lock().unwrap_or_else(|p| p.into_inner());
         let status = match guard.as_ref() {
             Some(session) if !session.task.is_finished() => "",
-            _ => "ShadowQUIC core stopped. See the core log for details.",
+            _ => "ShadowQUIC core stopped. See Logs for details.",
         };
         env.new_string(status)
             .map(|s| s.into_raw())

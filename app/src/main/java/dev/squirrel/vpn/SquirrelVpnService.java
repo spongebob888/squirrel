@@ -11,7 +11,6 @@ import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.ParcelFileDescriptor;
-import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -61,6 +60,7 @@ public final class SquirrelVpnService extends VpnService {
 
     private void runVpn() {
         ParcelFileDescriptor tunnel = null;
+        RestLogStream logs = null;
         String failure = null;
         try {
             String config = ConfigStore.readForVpn(this);
@@ -89,7 +89,9 @@ public final class SquirrelVpnService extends VpnService {
             tunnel = builder.establish();
             if (tunnel == null) throw new IOException("Android did not establish the VPN interface");
             AppLog.write(this, "VPN interface established; bypass whitelist: " + getPackageName());
-            NativeBridge.start(tunnel.getFd(), config, new File(AppLog.directory(this), "core.log").getPath());
+            NativeBridge.start(tunnel.getFd(), config);
+            try { logs = new RestLogStream(this, new ShadowQuicApi()); }
+            catch (Exception e) { AppLog.write(this, "REST logs unavailable: " + message(e)); }
             if (!stopping.get()) {
                 AppState.set(AppState.Phase.CONNECTED, "VPN active · this app bypasses the tunnel");
                 main.post(() -> {
@@ -109,6 +111,7 @@ public final class SquirrelVpnService extends VpnService {
                 AppLog.write(this, "VPN error: " + failure);
             }
         } finally {
+            if (logs != null) logs.close();
             try { NativeBridge.stop(); }
             catch (Exception | LinkageError e) { AppLog.write(this, "Core cleanup: " + message(e)); }
             if (tunnel != null) {

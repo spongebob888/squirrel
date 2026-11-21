@@ -46,8 +46,7 @@ public final class RestConfigInstrumentedTest extends InstrumentationTestCase {
                     + "', tag: dashboard-test, ui-path: '" + ui.getAbsolutePath()
                     + "', ui-download-url: 'https://example.com/unused.html'" + entry[2] + "}\n";
                 try {
-                    NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context, yaml),
-                        new File(context.getCacheDir(), "rest-config-test.log").getPath());
+                    NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context, yaml));
                     ShadowQuicApi api = new ShadowQuicApi();
                     JSONObject traffic = null;
                     for (int attempt = 0; attempt < 80; attempt++) {
@@ -90,8 +89,7 @@ public final class RestConfigInstrumentedTest extends InstrumentationTestCase {
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core)) {
             for (String section : new String[]{"", "restful-api: null\n", "restful-api: {bind-addr: '127.0.0.1:0'}\n"}) {
                 try {
-                    NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context, DIRECT + section),
-                        new File(context.getCacheDir(), "rest-disabled-test.log").getPath());
+                    NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context, DIRECT + section));
                     assertEquals("", NativeBridge.status());
                     if (section.isEmpty()) {
                         JSONObject settings = new JSONObject(NativeBridge.runtimeApiSettings());
@@ -104,6 +102,10 @@ public final class RestConfigInstrumentedTest extends InstrumentationTestCase {
                             catch (IOException ignored) { Thread.sleep(50); }
                         }
                         assertNotNull("Default REST listener did not become ready", traffic);
+                        JSONObject memory = api.get("/memory");
+                        assertEquals("jemalloc", memory.getString("allocator"));
+                        assertTrue("Rust allocations must be counted by the Android allocator",
+                            memory.getLong("allocated_bytes") > 0);
                     } else if (section.contains("bind-addr")) {
                         expectUnavailable("fixed restful-api port");
                     } else {

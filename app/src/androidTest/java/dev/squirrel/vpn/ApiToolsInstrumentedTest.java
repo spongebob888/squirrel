@@ -199,8 +199,7 @@ public final class ApiToolsInstrumentedTest extends InstrumentationTestCase {
         try (ParcelFileDescriptor descriptor = ParcelFileDescriptor.dup(core); ServerSocket http = new ServerSocket(0)) {
             String config = "outbounds: [{tag: direct, type: direct}, {tag: ' direct ', type: direct}, {tag: ' choice / one ', type: selector, outbounds: [direct, ' direct ']}]\n"
                 + "restful-api: {bind-addr: '127.0.0.1:19091', secret: synthetic-test-only}\n";
-            NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(getInstrumentation().getTargetContext(), config),
-                new File(getInstrumentation().getTargetContext().getCacheDir(), "api-local-test.log").getPath());
+            NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(getInstrumentation().getTargetContext(), config));
             ShadowQuicApi api = new ShadowQuicApi();
             boolean ready = false;
             for (int i = 0; i < 40; i++) {

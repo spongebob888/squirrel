@@ -103,8 +103,7 @@ public final class SettingsInstrumentedTest extends InstrumentationTestCase {
                 java.net.ServerSocket server = new java.net.ServerSocket(0)) {
             server.setSoTimeout(8000);
             NativeBridge.start(descriptor.getFd(), ConfigStore.forRuntime(context,
-                "outbounds: [{tag: direct, type: direct}]\nrestful-api: {bind-addr: '127.0.0.1:19093'}\n"),
-                new File(context.getCacheDir(), "settings-probe-test.log").getPath());
+                "outbounds: [{tag: direct, type: direct}]\nrestful-api: {bind-addr: '127.0.0.1:19093'}\n"));
             ShadowQuicApi api = new ShadowQuicApi();
             JSONObject outbounds = null;
             for (int attempt = 0; attempt < 80; attempt++) {

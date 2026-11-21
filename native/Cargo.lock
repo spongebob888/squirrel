@@ -2016,9 +2016,9 @@ dependencies = [
 
 [[package]]
 name = "redb"
-version = "4.4.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39178e0a867f9e3eaa6292a4ab1dd3613f2519c5b564341e1e7b29b270736cc4"
+checksum = "11175cc688ba1b9d3cec4fe582fd82cb97e2a82e28ccc8101b7b8030a8003280"
 dependencies = [
  "libc",
 ]
@@ -2341,8 +2341,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic"
-version = "0.4.11"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.11#635c223fccf3eca9670bb0df53b8c6228eece85c"
+version = "0.4.13"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.13#23779a30e8b1116cbdbaa6cbd43ee1d859810cb4"
 dependencies = [
  "arc-swap",
  "async-trait",
@@ -2407,8 +2407,8 @@ dependencies = [
 
 [[package]]
 name = "shadowquic-macros"
-version = "0.4.11"
-source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.11#635c223fccf3eca9670bb0df53b8c6228eece85c"
+version = "0.4.13"
+source = "git+https://github.com/spongebob888/shadowquic.git?tag=v0.4.13#23779a30e8b1116cbdbaa6cbd43ee1d859810cb4"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2516,6 +2516,7 @@ dependencies = [
  "serde-saphyr",
  "serde_json",
  "shadowquic",
+ "tikv-jemallocator",
  "tokio",
  "tracing",
  "tracing-subscriber",
