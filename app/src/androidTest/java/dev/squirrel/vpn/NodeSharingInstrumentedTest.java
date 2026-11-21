@@ -1,6 +1,16 @@
 package dev.squirrel.vpn;
 
+import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.net.Uri;
 import android.test.InstrumentationTestCase;
+import com.google.zxing.common.BitMatrix;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -98,6 +108,70 @@ public final class NodeSharingInstrumentedTest extends InstrumentationTestCase {
             assertEquals(link.outbound.get("congestion-control"),
                 ShadowQuicLink.parse(NodeConfiguration.link(nodes.get(tag), tag)).outbound.get("congestion-control"));
         }
+    }
+
+    public void testPngExportKeepsWholeModulesAndQuietZone() throws Exception {
+        Context context = getInstrumentation().getTargetContext();
+        File image = File.createTempFile("node-", ".png", context.getCacheDir());
+        try {
+            BitMatrix modules = NodeQr.encode(LINK);
+            Uri uri = Uri.fromFile(image);
+            NodeQrImage.write(context.getContentResolver(), uri, modules);
+            Bitmap png = BitmapFactory.decodeFile(image.getPath());
+            assertNotNull(png);
+            try {
+                int size = png.getWidth();
+                assertEquals(size, png.getHeight());
+                assertEquals(0, size % modules.getWidth());
+                int scale = size / modules.getWidth();
+                assertEquals(Color.WHITE, png.getPixel(4 * scale - 1, 4 * scale));
+                assertEquals(Color.BLACK, png.getPixel(4 * scale, 4 * scale));
+            } finally { png.recycle(); }
+            assertEquals(LINK, NodeQrImage.read(context.getContentResolver(), uri));
+        } finally { java.nio.file.Files.deleteIfExists(image.toPath()); }
+    }
+
+    public void testScanLargeRotatedLightOnDarkQrImage() throws Exception {
+        Context context = getInstrumentation().getTargetContext();
+        File image = File.createTempFile("node-image-", ".jpg", context.getCacheDir());
+        Bitmap photo = Bitmap.createBitmap(3200, 1200, Bitmap.Config.ARGB_8888);
+        try {
+            Canvas canvas = new Canvas(photo);
+            canvas.drawColor(Color.DKGRAY);
+            canvas.rotate(90, 1800, 600);
+            BitMatrix modules = NodeQr.encode(LINK);
+            Paint ink = new Paint();
+            ink.setColor(Color.WHITE);
+            NodeQr.drawModules(canvas, modules, 1450, 250, 12, ink);
+            try (FileOutputStream output = new FileOutputStream(image)) {
+                assertTrue(photo.compress(Bitmap.CompressFormat.JPEG, 85, output));
+            }
+            assertEquals(LINK, NodeQrImage.read(context.getContentResolver(), Uri.fromFile(image)));
+        } finally {
+            photo.recycle();
+            java.nio.file.Files.deleteIfExists(image.toPath());
+        }
+    }
+
+    public void testUnreadableFileAndImageWithoutQrReportDifferentErrors() throws Exception {
+        Context context = getInstrumentation().getTargetContext();
+        File image = File.createTempFile("no-node-", ".png", context.getCacheDir());
+        try {
+            assertImageError(context, image, "readable image file");
+            Bitmap blank = Bitmap.createBitmap(256, 256, Bitmap.Config.ARGB_8888);
+            try (FileOutputStream out = new FileOutputStream(image)) {
+                blank.eraseColor(Color.WHITE);
+                assertTrue(blank.compress(Bitmap.CompressFormat.PNG, 100, out));
+            } finally { blank.recycle(); }
+            assertImageError(context, image, "No readable QR code");
+        } finally { java.nio.file.Files.deleteIfExists(image.toPath()); }
+    }
+
+    private void assertImageError(Context context, File image, String message) throws Exception {
+        try {
+            NodeQrImage.read(context.getContentResolver(), Uri.fromFile(image));
+            fail("Expected unreadable QR image");
+        } catch (IOException error) { assertTrue(error.getMessage(), error.getMessage().contains(message)); }
     }
 
     private JSONObject runtime(String yaml) throws Exception {

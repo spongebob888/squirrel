@@ -1,11 +1,18 @@
 package dev.squirrel.vpn;
 
+import android.app.Instrumentation;
+import android.content.ContentResolver;
+import android.content.ContentValues;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
+import android.net.Uri;
+import android.os.Build;
 import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.os.SystemClock;
+import android.provider.MediaStore;
 import android.test.InstrumentationTestCase;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
@@ -316,8 +323,12 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
                     new com.google.zxing.common.HybridBinarizer(source))).getText();
                 assertEquals(ShadowQuicLink.parse(link).outbound, ShadowQuicLink.parse(decoded).outbound);
             } finally { rendered.recycle(); }
-            clickText("Close");
-            scanFixture(link);
+            if (Build.VERSION.SDK_INT >= 29) {
+                saveAndScanImage(context, link);
+            } else {
+                clickText("Close");
+                scanFixture(link);
+            }
             clickText("Create from proxy template");
             assertAccessibleText("Created from the proxy template");
             created = ConfigProfiles.list(context).selectedId;
@@ -332,6 +343,41 @@ public final class WorkspaceInstrumentedTest extends InstrumentationTestCase {
             if (created != null && !created.equals(id)) ConfigProfiles.delete(context, created);
             ConfigProfiles.delete(context, id);
         }
+    }
+
+    private void saveAndScanImage(android.content.Context context, String expectedLink) throws Exception {
+        ContentResolver resolver = context.getContentResolver();
+        // A pending MediaStore item supplies a private content URI without storage permissions.
+        ContentValues values = new ContentValues();
+        values.put(MediaStore.MediaColumns.DISPLAY_NAME, "squirrel-qr-test.png");
+        values.put(MediaStore.MediaColumns.MIME_TYPE, "image/png");
+        values.put(MediaStore.MediaColumns.IS_PENDING, 1);
+        Uri image = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+        assertNotNull(image);
+        try {
+            Instrumentation.ActivityMonitor save = imagePicker(Intent.ACTION_CREATE_DOCUMENT, "image/png", image);
+            try {
+                clickText("Save image");
+                assertEquals(1, save.getHits());
+            } finally { getInstrumentation().removeMonitor(save); }
+            clickText("Close");
+            Instrumentation.ActivityMonitor open = imagePicker(Intent.ACTION_OPEN_DOCUMENT, "image/*", image);
+            try {
+                onMain(() -> { workspace.more.performClick(); return null; });
+                tapMenuItem("Scan QR from image");
+                assertAccessibleText("Create from proxy template");
+                assertEquals(1, open.getHits());
+            } finally { getInstrumentation().removeMonitor(open); }
+            assertEquals(ShadowQuicLink.parse(expectedLink).outbound,
+                ShadowQuicLink.parse(NodeQrImage.read(resolver, image)).outbound);
+        } finally { resolver.delete(image, null, null); }
+    }
+
+    private Instrumentation.ActivityMonitor imagePicker(String action, String type, Uri image) throws Exception {
+        IntentFilter filter = new IntentFilter(action, type);
+        filter.addCategory(Intent.CATEGORY_OPENABLE);
+        return getInstrumentation().addMonitor(filter, new Instrumentation.ActivityResult(
+            android.app.Activity.RESULT_OK, new Intent().setData(image)), true);
     }
 
     public void testCameraScannerStartsAndCancelKeepsDraft() throws Exception {

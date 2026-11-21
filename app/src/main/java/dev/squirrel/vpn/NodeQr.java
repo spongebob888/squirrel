@@ -24,7 +24,7 @@ final class NodeQr extends View {
         catch (WriterException e) { throw new IOException("This node link is too large for one QR code."); }
     }
 
-    static AlertDialog show(DiagnosticsUi theme, String tag, BitMatrix modules) {
+    static AlertDialog show(DiagnosticsUi theme, String tag, BitMatrix modules, Runnable saveImage) {
         LinearLayout content = theme.column();
         content.setPadding(theme.dp(20), theme.dp(8), theme.dp(20), 0);
         content.addView(theme.text("Includes the node username and password.", 14, theme.secondary, false));
@@ -33,9 +33,10 @@ final class NodeQr extends View {
         params.topMargin = theme.dp(12);
         content.addView(qr, params);
         AlertDialog dialog = new AlertDialog.Builder(theme.context).setTitle(tag).setView(content)
-            .setPositiveButton("Close", null).create();
+            .setNeutralButton("Save image", null).setPositiveButton("Close", null).create();
         dialog.getWindow().addFlags(WindowManager.LayoutParams.FLAG_SECURE);
         dialog.show();
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> saveImage.run());
         return dialog;
     }
 
@@ -60,6 +61,11 @@ final class NodeQr extends View {
         int scale = Math.min(getWidth(), getHeight()) / size;
         int left = (getWidth() - size * scale) / 2;
         int top = (getHeight() - size * scale) / 2;
+        drawModules(canvas, modules, left, top, scale, ink);
+    }
+
+    static void drawModules(Canvas canvas, BitMatrix modules, int left, int top, int scale, Paint ink) {
+        int size = modules.getWidth();
         for (int y = 0; y < size; y++) for (int x = 0; x < size; x++) {
             if (modules.get(x, y)) canvas.drawRect(left + x * scale, top + y * scale,
                 left + (x + 1) * scale, top + (y + 1) * scale, ink);

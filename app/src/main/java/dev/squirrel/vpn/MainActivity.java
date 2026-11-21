@@ -3,6 +3,7 @@ package dev.squirrel.vpn;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
@@ -45,6 +46,7 @@ import org.snakeyaml.engine.v2.nodes.Node;
 
 public final class MainActivity extends Activity {
     private static final int IMPORT = 10, EXPORT_LOG = 11, VPN_PERMISSION = 12, EXPORT_CONFIG = 13, SCAN_NODE = 14;
+    private static final int IMPORT_NODE_IMAGE = 15, EXPORT_NODE_IMAGE = 16;
     static final int CONNECTION = 0, PROXIES = 1, CONFIGURATION = 2, SESSIONS = 3, LOGS = 4;
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService io = Executors.newSingleThreadExecutor();
@@ -73,6 +75,8 @@ public final class MainActivity extends Activity {
     private String profileId;
     private ShadowQuicLink scannedNode;
     private AlertDialog nodeDialog;
+    private Uri pendingImageImport;
+    private BitMatrix pendingImageExport;
     // Kept in memory with the draft. An empty tag denotes the outbound picker.
     private String sharingTag;
     private final HashMap<String, AppState.Snapshot> pendingProbes = new HashMap<>();
@@ -84,10 +88,15 @@ public final class MainActivity extends Activity {
         final int page;
         final ShadowQuicLink scannedNode;
         final String sharingTag;
-        Draft(HashMap<String, String> texts, int page, ShadowQuicLink scannedNode, String sharingTag) {
-            this.sharingTag = sharingTag;
-            this.scannedNode = scannedNode;
-            this.texts = new HashMap<>(texts); this.page = page;
+        final Uri pendingImageImport;
+        final BitMatrix pendingImageExport;
+        Draft(MainActivity activity) {
+            sharingTag = activity.sharingTag;
+            scannedNode = activity.scannedNode;
+            pendingImageImport = activity.pendingImageImport;
+            pendingImageExport = activity.pendingImageExport;
+            texts = new HashMap<>(activity.profileDrafts);
+            page = activity.pager.getCurrentItem();
         }
     }
     private final Runnable refresh = new Runnable() {
@@ -115,7 +124,7 @@ public final class MainActivity extends Activity {
         diagnostics.setProfileAction(this::chooseProfile);
         workspace = new WorkspaceUi(this, diagnostics, this::chooseProfile, this::manageProfiles,
             this::importFile, this::downloadConfig, () -> save(false), this::exportConfig,
-            this::scanNode, this::exportNode, () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
+            this::scanNode, this::pickNodeImage, this::exportNode, () -> loadExample("example.yaml"), () -> loadExample("direct.yaml"),
             () -> createDocument(EXPORT_LOG, "squirrel-logs.txt", "text/plain"));
         expandedNavigation = getResources().getConfiguration().screenWidthDp >= 840
             && getResources().getConfiguration().screenHeightDp >= 480;
@@ -229,10 +238,13 @@ public final class MainActivity extends Activity {
             profileDrafts.putAll(draft.texts);
             scannedNode = draft.scannedNode;
             sharingTag = draft.sharingTag;
+            pendingImageImport = draft.pendingImageImport;
+            pendingImageExport = draft.pendingImageExport;
             page = draft.page;
         }
         loadProfile(() -> ConfigProfiles.list(this), null, () -> {
-            if (sharingTag != null) loadShareableNodes();
+            if (pendingImageImport != null) readNodeImage(pendingImageImport);
+            else if (sharingTag != null) loadShareableNodes();
         });
         if (page < 0 || page >= pages.length) page = CONNECTION;
         pager.setCurrentItem(page, false);
@@ -703,6 +715,49 @@ public final class MainActivity extends Activity {
         startActivityForResult(options.createScanIntent(this), SCAN_NODE);
     }
 
+    private void pickNodeImage() {
+        startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("image/*")
+            .addCategory(Intent.CATEGORY_OPENABLE), IMPORT_NODE_IMAGE);
+    }
+
+    private void readNodeImage(Uri uri) {
+        runNodeTask(() -> {
+            try {
+                String contents = NodeQrImage.read(getContentResolver(), uri);
+                return () -> {
+                    pendingImageImport = null;
+                    receiveNode(contents);
+                };
+            } catch (IOException | RuntimeException e) {
+                String message = e instanceof IOException ? e.getMessage() : "Could not open the selected image.";
+                return () -> {
+                    pendingImageImport = null;
+                    showError(new IOException(message));
+                };
+            }
+        });
+    }
+
+    private void saveNodeImage(BitMatrix modules) {
+        pendingImageExport = modules;
+        createDocument(EXPORT_NODE_IMAGE, "shadowquic-node.png", "image/png");
+    }
+
+    private void writeNodeImage(Uri uri, BitMatrix modules) {
+        if (modules == null) {
+            showError(new IOException("Reopen the node QR code and save the image again."));
+            return;
+        }
+        io.execute(() -> {
+            try {
+                NodeQrImage.write(getContentResolver(), uri, modules);
+                post(() -> Toast.makeText(this, "QR image saved", Toast.LENGTH_SHORT).show());
+            } catch (IOException | RuntimeException e) {
+                post(() -> showError(new IOException("Could not save the QR image. Try another destination.")));
+            }
+        });
+    }
+
     private void receiveNode(String contents) {
         if (contents == null) { showError(new IOException("The QR code has no node link.")); return; }
         try {
@@ -792,7 +847,7 @@ public final class MainActivity extends Activity {
         runNodeTask(() -> {
             BitMatrix modules = NodeQr.encode(NodeConfiguration.link(node, tag));
             return () -> {
-                nodeDialog = NodeQr.show(diagnostics, tag, modules);
+                nodeDialog = NodeQr.show(diagnostics, tag, modules, () -> saveNodeImage(modules));
                 nodeDialog.setOnDismissListener(dialog -> sharingTag = null);
             };
         });
@@ -855,6 +910,21 @@ public final class MainActivity extends Activity {
     }
     @Override protected void onActivityResult(int request, int result, Intent data) {
         super.onActivityResult(request, result, data);
+        if (request == EXPORT_NODE_IMAGE || request == IMPORT_NODE_IMAGE) {
+            BitMatrix modules = pendingImageExport;
+            if (request == EXPORT_NODE_IMAGE) pendingImageExport = null;
+            if (result != RESULT_OK || data == null) return;
+            Uri image = data.getData();
+            if (image == null || !ContentResolver.SCHEME_CONTENT.equals(image.getScheme())) {
+                showError(new IOException("Choose an image location using the Android file picker."));
+            } else if (request == EXPORT_NODE_IMAGE) {
+                writeNodeImage(image, modules);
+            } else {
+                pendingImageImport = image;
+                if (profileState != null && !loadingConfig) readNodeImage(image);
+            }
+            return;
+        }
         if (request == SCAN_NODE) {
             if (result == RESULT_OK && data != null) receiveNode(data.getStringExtra(Intents.Scan.RESULT));
             return;
@@ -921,7 +991,7 @@ public final class MainActivity extends Activity {
     }
     @Override public Object onRetainNonConfigurationInstance() {
         rememberDraft();
-        return new Draft(profileDrafts, pager.getCurrentItem(), scannedNode, sharingTag);
+        return new Draft(this);
     }
     private void post(Runnable action) {
         main.post(() -> { if (!isFinishing() && !isDestroyed()) action.run(); });
